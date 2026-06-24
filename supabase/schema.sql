@@ -78,6 +78,11 @@ CREATE POLICY "Public can view active products"
 -- (Required because we disabled "Automatically expose new tables" at project creation.)
 GRANT SELECT ON products TO anon;
 
+-- Service role needs explicit grants — auto-expose was disabled at project creation
+GRANT ALL ON orders TO service_role;
+GRANT ALL ON order_items TO service_role;
+GRANT ALL ON products TO service_role;
+
 -- orders and order_items have NO public policies.
 -- They are only written by the server using the service role key,
 -- which bypasses RLS entirely — so no policy needed for writes.

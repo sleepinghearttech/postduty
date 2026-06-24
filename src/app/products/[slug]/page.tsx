@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import CheckoutForm from "@/components/CheckoutForm";
 
 function formatPrice(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
@@ -47,30 +48,22 @@ export default async function ProductPage({ params }: Props) {
           )}
         </div>
 
-        <div className="flex flex-col justify-between">
-          <div>
-            <h1 className="text-2xl font-bold leading-snug">{product.name}</h1>
-            <p className="text-2xl font-bold mt-3">{formatPrice(product.price)}</p>
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold leading-snug">{product.name}</h1>
+          <p className="text-2xl font-bold mt-3">{formatPrice(product.price)}</p>
 
-            {product.description && (
-              <p className="mt-4 text-gray-600 text-sm leading-relaxed">
-                {product.description}
-              </p>
-            )}
-
-            <p className="mt-4 text-sm text-gray-500">
-              {product.stock > 0
-                ? `${product.stock} in stock`
-                : "Out of stock"}
+          {product.description && (
+            <p className="mt-4 text-gray-600 text-sm leading-relaxed">
+              {product.description}
             </p>
-          </div>
+          )}
 
-          <button
-            disabled={product.stock === 0}
-            className="mt-8 w-full bg-black text-white py-3 rounded-lg font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
-          >
-            {product.stock === 0 ? "Out of stock" : "Buy Now"}
-          </button>
+          <p className="mt-4 text-sm text-gray-500">
+            {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+          </p>
+
+          {/* CheckoutForm handles the Buy Now button, form, and payment modal */}
+          <CheckoutForm product={product} />
         </div>
       </div>
     </main>

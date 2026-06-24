@@ -13,4 +13,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // NEVER import this in a component or any file that runs in the browser.
 // Bypasses RLS entirely — used only in server actions and API routes
 // to write orders after payment confirmation.
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
