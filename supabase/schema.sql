@@ -73,6 +73,11 @@ CREATE POLICY "Public can view active products"
   FOR SELECT
   USING (is_active = true);
 
+-- Grant the anon role table-level SELECT access.
+-- RLS policy above then restricts to active rows only.
+-- (Required because we disabled "Automatically expose new tables" at project creation.)
+GRANT SELECT ON products TO anon;
+
 -- orders and order_items have NO public policies.
 -- They are only written by the server using the service role key,
 -- which bypasses RLS entirely — so no policy needed for writes.
