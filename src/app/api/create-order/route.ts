@@ -48,9 +48,14 @@ export async function POST(request: NextRequest) {
   });
 
   if (!rzpRes.ok) {
-    const err = await rzpRes.json();
-    console.error("Razorpay order creation failed:", err);
-    return NextResponse.json({ error: "Payment system error" }, { status: 500 });
+    const err = await rzpRes.json() as { error?: { description?: string; code?: string } };
+    return NextResponse.json({
+      error: "Payment system error",
+      rzpError: err?.error?.description ?? "unknown",
+      rzpCode: err?.error?.code ?? "unknown",
+      keyIdSet: !!process.env.RAZORPAY_KEY_ID,
+      keySecretSet: !!process.env.RAZORPAY_KEY_SECRET,
+    }, { status: 500 });
   }
 
   const rzpOrder = await rzpRes.json() as { id: string; amount: number };
