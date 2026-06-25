@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Payment system error" }, { status: 500 });
   }
 
-  const rzpOrder = await rzpRes.json();
+  const rzpOrder = await rzpRes.json() as { id: string; amount: number };
 
   return NextResponse.json({
     razorpayOrderId: rzpOrder.id,

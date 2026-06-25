@@ -84,11 +84,11 @@ export default function CheckoutForm({ product }: { product: Product }) {
       });
 
       if (!orderRes.ok) {
-        const err = await orderRes.json();
+        const err = await orderRes.json() as { error?: string };
         throw new Error(err.error || "Could not initiate payment");
       }
 
-      const { razorpayOrderId, amount, keyId } = await orderRes.json();
+      const { razorpayOrderId, amount, keyId } = await orderRes.json() as { razorpayOrderId: string; amount: number; keyId: string };
 
       // 2. Load Razorpay checkout script
       const loaded = await loadRazorpayScript();
@@ -134,7 +134,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
             return;
           }
 
-          const { orderId } = await verifyRes.json();
+          const { orderId } = await verifyRes.json() as { orderId: string };
           router.push(`/order-success?orderId=${orderId}`);
         },
         modal: {
