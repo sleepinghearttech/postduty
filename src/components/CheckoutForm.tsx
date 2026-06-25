@@ -84,8 +84,8 @@ export default function CheckoutForm({ product }: { product: Product }) {
       });
 
       if (!orderRes.ok) {
-        const err = await orderRes.json() as { error?: string; rzpError?: string; rzpCode?: string; keyIdSet?: boolean; keySecretSet?: boolean };
-        throw new Error(JSON.stringify(err));
+        const err = await orderRes.json() as { error?: string };
+        throw new Error(err.error ?? "Payment system error");
       }
 
       const { razorpayOrderId, amount, keyId } = await orderRes.json() as { razorpayOrderId: string; amount: number; keyId: string };
