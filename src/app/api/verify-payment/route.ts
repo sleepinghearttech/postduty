@@ -21,7 +21,19 @@ export async function POST(request: NextRequest) {
     customerPhone,
     shippingAddress,
     totalAmount,
-  } = await request.json();
+  } = await request.json() as {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    shippingAddress: string;
+    totalAmount: number;
+  };
 
   // Step 1 — verify the payment signature is genuine
   const secret = process.env.RAZORPAY_KEY_SECRET ?? "";
