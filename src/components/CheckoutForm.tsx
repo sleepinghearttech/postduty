@@ -107,7 +107,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
           email: form.email,
           contact: form.phone,
         },
-        theme: { color: "#000000" },
+        theme: { color: "#0D7C7C" },
         handler: async (response) => {
           // 4. Verify payment on our server and save order
           const verifyRes = await fetch("/api/verify-payment", {
@@ -153,7 +153,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
     return (
       <button
         disabled
-        className="mt-8 w-full bg-black text-white py-3 rounded-lg font-semibold text-sm opacity-40 cursor-not-allowed"
+        className="mt-8 w-full bg-stone-300 text-stone-500 py-3 rounded-xl font-semibold text-sm cursor-not-allowed"
       >
         Out of stock
       </button>
@@ -164,7 +164,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mt-8 w-full bg-black text-white py-3 rounded-lg font-semibold text-sm hover:bg-gray-800 transition-colors"
+        className="mt-8 w-full bg-accent text-white py-3.5 rounded-xl font-bold text-sm hover:bg-accent-dark transition-colors shadow-sm"
       >
         Buy Now
       </button>
@@ -179,7 +179,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
         placeholder="Full name"
         value={form.name}
         onChange={handleChange}
-        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
+        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand"
       />
       <input
         name="email"
@@ -188,7 +188,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
         placeholder="Email address"
         value={form.email}
         onChange={handleChange}
-        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
+        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand"
       />
       <input
         name="phone"
@@ -197,7 +197,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
         placeholder="Phone number"
         value={form.phone}
         onChange={handleChange}
-        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
+        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand"
       />
       <textarea
         name="address"
@@ -206,7 +206,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
         value={form.address}
         onChange={handleChange}
         rows={3}
-        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black resize-none"
+        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand resize-none"
       />
 
       {error && (
@@ -216,7 +216,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-black text-white py-3 rounded-lg font-semibold text-sm disabled:opacity-60 hover:bg-gray-800 transition-colors"
+        className="w-full bg-accent text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-60 hover:bg-accent-dark transition-colors shadow-sm"
       >
         {loading ? "Opening payment..." : `Pay ${formatPrice(product.price)}`}
       </button>
