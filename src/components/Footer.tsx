@@ -34,7 +34,7 @@ export default function Footer() {
         </div>
         <div className="border-t border-warm-border mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2">
           <p className="text-xs text-stone-400">
-            © 2025 PostDuty. Made with care in India.
+            © 2026 PostDuty. Made with care in India.
           </p>
           <p className="text-xs text-stone-400">
             Payments secured by Razorpay
