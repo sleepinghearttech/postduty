@@ -35,3 +35,11 @@ export type OrderItem = {
   unit_price: number; // paise, snapshotted at purchase time
   created_at: string;
 };
+
+export type OrderItemWithProduct = OrderItem & {
+  products: { name: string } | null;
+};
+
+export type OrderWithItems = Order & {
+  order_items: OrderItemWithProduct[];
+};

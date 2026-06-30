@@ -90,3 +90,56 @@ Use this when a product is out of stock or needs to be updated before customers 
 - Changes to price, stock, or description take effect immediately after you click Save — no waiting.
 - If you are not sure about a product, leave it Inactive until you are ready.
 - If you close the browser, you will still be logged in when you come back (for up to 7 days).
+
+---
+
+## How to process an order (when a customer buys)
+
+When a customer completes a payment, their order appears automatically in the Orders section. Here is what to do, step by step.
+
+### Step 1 — See the new order
+
+1. Log in to the admin panel.
+2. Click **Orders** in the top navigation bar.
+3. New paid orders arrive with a **Paid — ready to ship** badge (blue). This means the customer's payment was confirmed by Razorpay. You can trust it.
+
+### Step 2 — Pack the item
+
+Pack the product as per your process. The order card shows you:
+- The customer's full name, email, and phone number
+- The exact shipping address to write on the package
+- Which product and quantity was ordered
+
+### Step 3 — Create the shipment in Shiprocket
+
+1. Log in to your Shiprocket account at shiprocket.in.
+2. Create a new shipment. Enter the customer's details (name, address, phone) and the product weight/dimensions.
+3. Confirm the shipment. Shiprocket will assign a **tracking number** (also called AWB number — it looks like a series of numbers, e.g. `1234567890`).
+
+### Step 4 — Mark the order as shipped in PostDuty
+
+1. Go back to the PostDuty admin panel → Orders.
+2. Find the order.
+3. Click the green **Mark as shipped ↗** button.
+4. The badge changes to **Shipped** (green). A tracking number field appears below the order.
+
+### Step 5 — Save the tracking number
+
+1. Copy the tracking number (AWB) from Shiprocket.
+2. Paste it into the tracking number field on the order card.
+3. Click **Save tracking** (or press Enter).
+4. Done. The tracking number is saved against the order.
+
+### Understanding the status badges
+
+| Badge | Colour | What it means |
+|-------|--------|---------------|
+| Pending | Yellow | Payment not fully confirmed (rare — usually resolves automatically) |
+| Paid — ready to ship | Blue | Payment confirmed. Pack and ship this order. |
+| Shipped | Green | Order has been handed to the courier. |
+
+### Important rules
+
+- You **cannot go backward** — once an order is marked Shipped, you cannot change it back to Paid. This is intentional: the badge is a record of what actually happened.
+- You **cannot skip steps** — an order must move Paid → Shipped in order. You cannot jump from Pending to Shipped.
+- If an order shows **Pending** for more than a few minutes and the customer says they paid, check the Razorpay dashboard. Do not mark it manually unless you can confirm payment there.
