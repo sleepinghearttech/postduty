@@ -62,7 +62,23 @@ export async function POST(request: NextRequest) {
 
   if (orderError || !order) {
     console.error("Failed to save order:", orderError?.message);
-    return NextResponse.json({ error: "Failed to save order", step: "db_insert", detail: orderError?.message }, { status: 500 });
+    await supabaseAdmin.from("failed_order_logs").insert({
+      razorpay_payment_id: razorpayPaymentId,
+      razorpay_order_id: razorpayOrderId,
+      amount: totalAmount,
+      customer_email: customerEmail,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      raw_payload: {
+        razorpayOrderId, razorpayPaymentId, productId, quantity,
+        unitPrice, customerName, customerEmail, customerPhone,
+        shippingAddress, totalAmount,
+      },
+    });
+    return NextResponse.json(
+      { error: `Payment received but order could not be saved. Please contact hello@postduty.in with your payment ID: ${razorpayPaymentId}` },
+      { status: 500 }
+    );
   }
 
   // Step 3 — save order line item
