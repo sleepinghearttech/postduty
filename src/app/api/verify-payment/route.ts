@@ -129,6 +129,9 @@ type RazorpayWebhookEvent = {
         amount: number;
         email: string;
         contact: string;
+        // Razorpay copies order notes onto the payment entity.
+        // We store productId + quantity in create-order; they arrive here.
+        notes: { productId?: string; quantity?: string } | null;
       };
     };
   };
@@ -177,14 +180,69 @@ async function handleRazorpayWebhook(
     return NextResponse.json({ received: true, status: "already_processed" });
   }
 
-  // Recovery case: payment was captured but the customer's browser never
-  // completed the frontend verify-payment call (tab closed, network drop, etc.).
-  // The webhook payload contains: payment ID, order ID, amount, email, phone.
-  // It does NOT contain: customer name, shipping address, or product details —
-  // those were never stored in Razorpay notes (create-order doesn't set them).
-  // Creating a partial order record would appear broken in the admin panel
-  // (no items, no address). Instead, log to failed_order_logs so the admin
-  // can manually recover using the full payload and the Razorpay dashboard.
+  // Recovery case: payment captured but frontend never called verify-payment
+  // (tab closed, network drop, etc.). Attempt full order reconstruction from
+  // webhook data. Notes carry productId + quantity (set in create-order).
+  // Email and contact come from the payment entity directly.
+  // Customer name and shipping address are not available — they are collected
+  // by the checkout form AFTER the Razorpay order is created, so they were
+  // never stored anywhere Razorpay can return to us. Use clear placeholders
+  // so the admin knows immediately this needs follow-up.
+  const notes = payment.notes;
+  const recoveryProductId = notes?.productId;
+  const recoveryQuantity = notes?.quantity ? parseInt(notes.quantity, 10) : NaN;
+
+  if (recoveryProductId && !isNaN(recoveryQuantity)) {
+    // unit_price derived from actual charged amount — matches what customer paid
+    // regardless of any price change after order creation.
+    const unitPrice = Math.round(payment.amount / recoveryQuantity);
+
+    const { data: recoveredOrder, error: recoveryOrderError } = await supabaseAdmin
+      .from("orders")
+      .insert({
+        customer_name: `[Recovery] See Razorpay payment ${payment.id}`,
+        customer_email: payment.email,
+        customer_phone: payment.contact,
+        shipping_address: `Address not captured — contact customer at ${payment.contact}`,
+        total_amount: payment.amount,
+        status: "paid",
+        razorpay_order_id: payment.order_id,
+        razorpay_payment_id: payment.id,
+      })
+      .select("id")
+      .single();
+
+    if (!recoveryOrderError && recoveredOrder) {
+      await supabaseAdmin.from("order_items").insert({
+        order_id: recoveredOrder.id,
+        product_id: recoveryProductId,
+        quantity: recoveryQuantity,
+        unit_price: unitPrice,
+      });
+
+      const { data: product } = await supabaseAdmin
+        .from("products")
+        .select("stock")
+        .eq("id", recoveryProductId)
+        .single();
+
+      if (product) {
+        await supabaseAdmin
+          .from("products")
+          .update({ stock: Math.max(0, product.stock - recoveryQuantity) })
+          .eq("id", recoveryProductId);
+      }
+
+      console.warn(
+        "Webhook recovery: created order from webhook notes. Admin must collect shipping address.",
+        recoveredOrder.id
+      );
+
+      return NextResponse.json({ received: true, status: "recovered" });
+    }
+  }
+
+  // Fallback: notes missing or order insert failed — log for manual recovery.
   await supabaseAdmin.from("failed_order_logs").insert({
     razorpay_payment_id: payment.id,
     razorpay_order_id: payment.order_id,
@@ -196,11 +254,9 @@ async function handleRazorpayWebhook(
   });
 
   console.warn(
-    "Webhook recovery: payment captured but no order in DB. Logged to failed_order_logs.",
+    "Webhook recovery: could not create order — logged to failed_order_logs.",
     payment.id
   );
 
-  // Return 200 so Razorpay does not retry. The payment is safe — it's in
-  // Razorpay's system and now in our failed_order_logs for manual recovery.
   return NextResponse.json({ received: true, status: "logged_for_recovery" });
 }

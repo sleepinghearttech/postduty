@@ -44,6 +44,16 @@ export async function POST(request: NextRequest) {
       amount,
       currency: "INR",
       receipt: `rcpt_${productId.slice(0, 8)}_${Date.now()}`,
+      // Razorpay copies order notes to the payment entity, making them
+      // available in webhooks. Storing productId + quantity here enables
+      // full order recovery if the frontend verify-payment call fails.
+      // Only non-PII fields go here — customer details aren't known yet
+      // (the customer fills the form after this API call) and shipping
+      // addresses don't belong in a payment processor's data store.
+      notes: {
+        productId,
+        quantity: String(quantity),
+      },
     }),
   });
 
