@@ -9,6 +9,13 @@ function computeExpectedSignature(orderId: string, paymentId: string, secret: st
 }
 
 export async function POST(request: NextRequest) {
+  // Razorpay webhooks include this header; checkout calls do not.
+  const webhookSig = request.headers.get("x-razorpay-signature");
+  if (webhookSig !== null) {
+    return handleRazorpayWebhook(request, webhookSig);
+  }
+
+  // ── Checkout verification path ─────────────────────────────────────────
   const {
     razorpayOrderId,
     razorpayPaymentId,
@@ -108,4 +115,92 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ success: true, orderId: order.id });
+}
+
+// ── Webhook handler ────────────────────────────────────────────────────────
+
+type RazorpayWebhookEvent = {
+  event: string;
+  payload: {
+    payment: {
+      entity: {
+        id: string;
+        order_id: string;
+        amount: number;
+        email: string;
+        contact: string;
+      };
+    };
+  };
+};
+
+async function handleRazorpayWebhook(
+  request: NextRequest,
+  signature: string
+): Promise<NextResponse> {
+  // Must read as raw text before any parsing. The HMAC is computed over the
+  // exact bytes Razorpay sent. Calling request.json() would re-serialise the
+  // parsed object, potentially changing whitespace or key order, producing a
+  // different hash even when the payload is legitimate.
+  const rawBody = await request.text();
+
+  // Webhook signature uses RAZORPAY_WEBHOOK_SECRET, not RAZORPAY_KEY_SECRET.
+  // The checkout signature proves the Razorpay SDK signed the payment result.
+  // The webhook signature proves the HTTP request came from Razorpay servers,
+  // not from an attacker POSTing a crafted payload to our endpoint.
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET ?? "";
+  const expected = createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+
+  if (expected !== signature) {
+    return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
+  }
+
+  const event = JSON.parse(rawBody) as RazorpayWebhookEvent;
+
+  // Razorpay may send other event types to this URL if more are enabled later.
+  if (event.event !== "payment.captured") {
+    return NextResponse.json({ received: true });
+  }
+
+  const payment = event.payload.payment.entity;
+
+  // Idempotency: the UNIQUE constraint on razorpay_payment_id means the
+  // frontend checkout path may have already created this order. If so, return
+  // 200 so Razorpay stops retrying — there is nothing to do.
+  const { data: existing } = await supabaseAdmin
+    .from("orders")
+    .select("id")
+    .eq("razorpay_payment_id", payment.id)
+    .maybeSingle();
+
+  if (existing) {
+    return NextResponse.json({ received: true, status: "already_processed" });
+  }
+
+  // Recovery case: payment was captured but the customer's browser never
+  // completed the frontend verify-payment call (tab closed, network drop, etc.).
+  // The webhook payload contains: payment ID, order ID, amount, email, phone.
+  // It does NOT contain: customer name, shipping address, or product details —
+  // those were never stored in Razorpay notes (create-order doesn't set them).
+  // Creating a partial order record would appear broken in the admin panel
+  // (no items, no address). Instead, log to failed_order_logs so the admin
+  // can manually recover using the full payload and the Razorpay dashboard.
+  await supabaseAdmin.from("failed_order_logs").insert({
+    razorpay_payment_id: payment.id,
+    razorpay_order_id: payment.order_id,
+    amount: payment.amount,
+    customer_email: payment.email,
+    customer_name: null,
+    customer_phone: payment.contact,
+    raw_payload: event,
+  });
+
+  console.warn(
+    "Webhook recovery: payment captured but no order in DB. Logged to failed_order_logs.",
+    payment.id
+  );
+
+  // Return 200 so Razorpay does not retry. The payment is safe — it's in
+  // Razorpay's system and now in our failed_order_logs for manual recovery.
+  return NextResponse.json({ received: true, status: "logged_for_recovery" });
 }
