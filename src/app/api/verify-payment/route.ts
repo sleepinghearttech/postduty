@@ -52,6 +52,18 @@ export async function POST(request: NextRequest) {
   }
 
   // Step 2 — save order to database
+  // Idempotency: webhook may have already created this order if it fired before
+  // the frontend reached this point. If so, return success — nothing more to do.
+  const { data: existingOrder } = await supabaseAdmin
+    .from("orders")
+    .select("id")
+    .eq("razorpay_payment_id", razorpayPaymentId)
+    .maybeSingle();
+
+  if (existingOrder) {
+    return NextResponse.json({ success: true, orderId: existingOrder.id });
+  }
+
   const { data: order, error: orderError } = await supabaseAdmin
     .from("orders")
     .insert({
