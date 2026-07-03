@@ -6,7 +6,7 @@
 > **Legend:** `[x]` done · `[ ]` pending · `[~]` in progress · `[!]` blocked (waiting on something)
 > **Owners:** **J** = Jijo (tech/ops) · **P** = Delhi partner (merchant of record, GST) · **F** = sourcing friend
 >
-> _Last updated: 2026-06-29_
+> _Last updated: 2026-07-03_
 
 ---
 
@@ -96,7 +96,7 @@ Get the first real strangers to buy.
 
 Make fulfilment smooth so it doesn't eat your time.
 
-- [ ] **Step 7** — Order management dashboard (admin view of orders, status pending→paid→shipped, tracking entry) — **J**
+- [x] **Step 7** — Order management dashboard (admin view of orders, status pending→paid→shipped, tracking entry) — **J**
 - [ ] Documented fulfilment SOP your friend/partner can follow — **J**
 - [ ] Returns/replacement handling kept minimal & manual (damaged/wrong item only) — **J** / **P**
 - [ ] Decide when manual shipping pain justifies Shiprocket API (₹499/mo) 💰 — **J**
@@ -107,8 +107,9 @@ Make fulfilment smooth so it doesn't eat your time.
 
 Only after the manual loop works. Automate the repetitive parts.
 
-- [ ] n8n new-order pipeline: order → Telegram/WhatsApp alert + Google Sheet log — **J**
-- [ ] n8n error monitor — **J**
+- [ ] **Make.com** new-order pipeline: order → WhatsApp alert + Gmail + Google Sheet log — **J** _(local n8n abandoned: Windows packaging bug in n8n 2.x; Make.com chosen for PostDuty notifications)_
+- [ ] Make.com error monitor — **J**
+- [ ] _(n8n Cloud reserved for business hub automation in Phase 8–9, not PostDuty storefront)_
 - [ ] Shiprocket API automation: auto-create shipment on paid order (needs ₹499/mo plan) 💰 — **J**
 - [ ] Instagram Shopping: product catalogue approved, product tagging live — **J**
 - [ ] First paid ad test (small budget, boosted Reel) once organic demand shows — **J**
