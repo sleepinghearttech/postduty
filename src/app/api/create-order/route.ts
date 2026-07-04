@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
-  console.log("[create-order] RAZORPAY_KEY_ID present:", !!process.env.RAZORPAY_KEY_ID);
-  console.log("[create-order] RAZORPAY_KEY_SECRET present:", !!process.env.RAZORPAY_KEY_SECRET);
-
   const { productId, quantity } = await request.json() as { productId: string; quantity: number };
 
   if (!productId || !quantity || quantity < 1) {
