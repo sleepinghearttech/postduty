@@ -23,7 +23,7 @@ Never commit these. Set in `.env.local` locally and in Cloudflare dashboard for 
 | `SUPABASE_SERVICE_ROLE_KEY` | Runtime secret (Cloudflare) + .env.local | Supabase admin key (bypasses RLS) — server only |
 | `RAZORPAY_KEY_ID` | Runtime (Cloudflare) + .env.local | Razorpay publishable key |
 | `RAZORPAY_KEY_SECRET` | Runtime secret (Cloudflare) + .env.local | Razorpay secret — server only |
-| `ADMIN_SECRET` | Runtime secret (Cloudflare) + .env.local | Admin panel password — server only |
+| `ADMIN_SECRET` | Runtime secret (Cloudflare) + .env.local | Admin panel password — server only. **Rotated 2026-07-06** |
 
 `NEXT_PUBLIC_` vars are baked into the JS bundle at build time. The others are server-side only and must never have the `NEXT_PUBLIC_` prefix.
 
@@ -91,10 +91,16 @@ ADMIN_GUIDE.md                      # Plain-English guide for non-technical part
 - [x] Step 4: Razorpay checkout form, order creation, payment verification, order saved to DB
 - [x] Step 5: Production debugging — env vars in Cloudflare, full payment flow verified live
 - [x] Step 6: Password-protected admin panel — product CRUD, image upload, Supabase Storage
+- [x] Step 7: Admin order dashboard (`src/app/admin/orders/`) + payment safety net (`failed_order_logs` table, idempotent webhook recovery in `verify-payment/route.ts`) — done, this file previously showed it as pending
+- [x] Placeholder compliance pages: `/terms`, `/privacy`, `/refunds`, `/shipping`, `/contact` exist (`src/app/{terms,privacy,refunds,shipping,contact}/page.tsx`) — placeholder legal copy, needs real GSTIN/address/legal-name once partner details + KYC land
 
 ## Up Next
-- [ ] Step 7: Admin dashboard — view and manage orders
 - [ ] Step 8: Razorpay live mode (requires KYC on Razorpay account)
+- [ ] Make.com → WhatsApp order-notification pipeline: no webhook/HTTP code exists in `src/` yet — this is still a Make.com-side scenario build, not a code task here. `hello_world` template delivers fine; the custom order-notification template does not (see ROADMAP.md / hub-level diagnostic checklist for the exact fields to check — template approval status, `language.code`, variable count).
+
+## Other folders
+- **`n8n/`** — an earlier attempt at n8n-based order notifications (WhatsApp + Gmail + Sheets via local n8n + ngrok). Superseded by Make.com for this project, but **intentionally kept** as a fallback in case Make.com free-tier limits are hit or it's reused for another project — don't delete or treat as dead code.
+- **`ROADMAP.md`** — has more granular next-step detail than this file; check both.
 
 ## Local Dev
 ```

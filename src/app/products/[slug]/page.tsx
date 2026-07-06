@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import CheckoutForm from "@/components/CheckoutForm";
 
@@ -14,6 +15,35 @@ function formatPrice(paise: number): string {
 type Props = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("name, description, image_url")
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .single();
+
+  if (!product) {
+    return { title: "Product not found — PostDuty" };
+  }
+
+  const title = `${product.name} — PostDuty`;
+  const description =
+    product.description ?? "Thoughtful gifts for nurses, doctors, and every healthcare hero.";
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: product.image_url ? [{ url: product.image_url }] : undefined,
+    },
+  };
+}
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
