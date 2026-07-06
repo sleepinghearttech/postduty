@@ -32,7 +32,7 @@ Public identity, set up with clean account isolation.
 - [x] Separate `Postduty` Meta Business portfolio confirmed (isolated from Secret Trivandrum & CardioAether) — **J**
 - [x] PostDuty Facebook Page created and connected to the Postduty portfolio — **J**
 - [x] `postduty.in` Instagram account created (dedicated email `postdutyswag@gmail.com`), linked to portfolio — **J**
-- [ ] Rotate `ADMIN_SECRET` — old value was exposed in chat; generate a new one, update `.env.local` + Cloudflare — **J** ⚠️ _do before any real traffic_
+- [x] Rotate `ADMIN_SECRET` — old value was exposed in chat; done 2026-07-06 — **J**
 - [ ] Invite partner to Postduty portfolio (People → Employee role, assign only PostDuty Page + Instagram) — **J** _(waiting on her email)_
 - [ ] Instagram profile dressed: logo, bio, link — **J** _(deferred until products finalised, by your call)_
 - [ ] Link PostDuty Facebook Page ↔ Instagram (enables cross-post + later Shopping) — **J**
@@ -107,7 +107,7 @@ Make fulfilment smooth so it doesn't eat your time.
 
 Only after the manual loop works. Automate the repetitive parts.
 
-- [ ] **Make.com** new-order pipeline: order → WhatsApp alert + Gmail + Google Sheet log — **J** _(local n8n abandoned: Windows packaging bug in n8n 2.x; Make.com chosen for PostDuty notifications)_
+- [~] **Make.com** new-order pipeline: order → WhatsApp alert + Gmail + Google Sheet log — **J** _(local n8n kept as a fallback, not deleted — see `n8n/`. `hello_world` template delivers fine; custom order-notification template does not — see `WHATSAPP_TEMPLATE_DEBUG.md` for the exact checklist)_
 - [ ] Make.com error monitor — **J**
 - [ ] _(n8n Cloud reserved for business hub automation in Phase 8–9, not PostDuty storefront)_
 - [ ] Shiprocket API automation: auto-create shipment on paid order (needs ₹499/mo plan) 💰 — **J**
