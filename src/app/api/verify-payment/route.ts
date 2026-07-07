@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac } from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabase";
+import { sendAdminWhatsAppAlert, sendCustomerWhatsAppConfirmation } from "@/lib/notifications";
+import { sendOrderEmails } from "@/lib/email";
 
 function computeExpectedSignature(orderId: string, paymentId: string, secret: string): string {
   return createHmac("sha256", secret.trim())
@@ -76,7 +78,7 @@ export async function POST(request: NextRequest) {
       razorpay_order_id: razorpayOrderId,
       razorpay_payment_id: razorpayPaymentId,
     })
-    .select("id")
+    .select("*")
     .single();
 
   if (orderError || !order) {
@@ -125,6 +127,13 @@ export async function POST(request: NextRequest) {
       .update({ stock: Math.max(0, current.stock - quantity) })
       .eq("id", productId);
   }
+
+  // Trigger admin and customer alerts (WhatsApp + Email)
+  await Promise.allSettled([
+    sendAdminWhatsAppAlert(order),
+    sendCustomerWhatsAppConfirmation(order),
+    sendOrderEmails(order),
+  ]);
 
   return NextResponse.json({ success: true, orderId: order.id });
 }
@@ -221,7 +230,7 @@ async function handleRazorpayWebhook(
         razorpay_order_id: payment.order_id,
         razorpay_payment_id: payment.id,
       })
-      .select("id")
+      .select("*")
       .single();
 
     if (!recoveryOrderError && recoveredOrder) {
@@ -249,6 +258,13 @@ async function handleRazorpayWebhook(
         "Webhook recovery: created order from webhook notes. Admin must collect shipping address.",
         recoveredOrder.id
       );
+
+      // Trigger admin and customer alerts (WhatsApp + Email)
+      await Promise.allSettled([
+        sendAdminWhatsAppAlert(recoveredOrder),
+        sendCustomerWhatsAppConfirmation(recoveredOrder),
+        sendOrderEmails(recoveredOrder),
+      ]);
 
       return NextResponse.json({ received: true, status: "recovered" });
     }

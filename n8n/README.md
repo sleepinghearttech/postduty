@@ -1,5 +1,13 @@
 # PostDuty n8n Workflow
 
+> [!WARNING]
+> **RETIRED**: Both the Make.com automation and the n8n workflows are **fully retired**.
+> All order notifications are now triggered directly from our Next.js server via API calls for maximum control, speed, and reliability.
+> - WhatsApp Alerts: [notifications.ts](file:///d:/Business%20plan/PostDuty/postduty/src/lib/notifications.ts)
+> - Email Alerts: [email.ts](file:///d:/Business%20plan/PostDuty/postduty/src/lib/email.ts)
+> 
+> This folder is kept purely as an archival reference.
+
 Automated order notification pipeline. Fires when a new paid order is inserted into Supabase, then sends a WhatsApp message, an email, and logs a row to Google Sheets.
 
 ## How to import

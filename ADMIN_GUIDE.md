@@ -143,3 +143,31 @@ Pack the product as per your process. The order card shows you:
 - You **cannot go backward** — once an order is marked Shipped, you cannot change it back to Paid. This is intentional: the badge is a record of what actually happened.
 - You **cannot skip steps** — an order must move Paid → Shipped in order. You cannot jump from Pending to Shipped.
 - If an order shows **Pending** for more than a few minutes and the customer says they paid, check the Razorpay dashboard. Do not mark it manually unless you can confirm payment there.
+
+---
+
+## Order Notifications
+
+When an order is successfully paid, the system automatically triggers several direct notifications (fully replacing the retired Make.com automation):
+
+1. **Admin WhatsApp Alert**: A free-form WhatsApp message is sent to the configured admin number (`ADMIN_WHATSAPP_NUMBER`) with the order details and shipping address.
+2. **Customer WhatsApp Confirmation**: A template-based message using the approved `order_confirmation` template is sent to the customer's phone number via WhatsApp API (v25.0).
+3. **Admin Email Alert**: A detailed email is sent to `postdutyswag@gmail.com` containing the full order summary.
+4. **Customer Email Confirmation**: A friendly email is sent to the customer confirming their order and total amount.
+
+### Notification Configuration & Maintenance
+All configurations are done in code, allowing 100% control and reliability:
+- **WhatsApp API / Template Parameters**: Handled in [notifications.ts](file:///d:/Business%20plan/PostDuty/postduty/src/lib/notifications.ts).
+- **Email Copy / Layout**: Handled in [email.ts](file:///d:/Business%20plan/PostDuty/postduty/src/lib/email.ts).
+
+### Troubleshooting Notifications
+If a notification is not received:
+1. Verify `ORDER_NOTIFICATIONS_ENABLED` is set to `true` in your `.env.local` or Cloudflare dashboard.
+2. Ensure the required environment variables are set and correct:
+   - `WHATSAPP_PERMANENT_TOKEN` (Meta system user token)
+   - `WHATSAPP_PHONE_NUMBER_ID` (Phone number ID, e.g., `1222192880967535`)
+   - `ADMIN_WHATSAPP_NUMBER` (Admin phone number, e.g. `918903885758`)
+   - `RESEND_API_KEY` (Resend API Key)
+3. Check application logs in Cloudflare. If the WhatsApp template fails, Meta's API response will indicate the exact structural mismatch (e.g. parameter mismatch).
+4. Check if the customer's phone number is correctly formatted. The code automatically normalizes standard 10-digit Indian numbers and numbers starting with `0`.
+
