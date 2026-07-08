@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/types";
+import { useCart } from "@/components/CartContext";
 
 // Minimal type declaration so TypeScript knows about the Razorpay browser object
 declare global {
@@ -54,8 +55,10 @@ function loadRazorpayScript(): Promise<boolean> {
 
 export default function CheckoutForm({ product }: { product: Product }) {
   const router = useRouter();
+  const { addToCart } = useCart();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [added, setAdded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
@@ -63,6 +66,12 @@ export default function CheckoutForm({ product }: { product: Product }) {
     phone: "",
     address: "",
   });
+
+  function handleAddToCart() {
+    addToCart(product, 1);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  }
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -135,6 +144,19 @@ export default function CheckoutForm({ product }: { product: Product }) {
           }
 
           const { orderId } = await verifyRes.json() as { orderId: string };
+          
+          // Save order to local storage history
+          try {
+            const history = localStorage.getItem("postduty_orders");
+            const ordersList = history ? JSON.parse(history) : [];
+            if (!ordersList.includes(orderId)) {
+              ordersList.push(orderId);
+              localStorage.setItem("postduty_orders", JSON.stringify(ordersList));
+            }
+          } catch (e) {
+            console.error("Failed to save order to history:", e);
+          }
+
           router.push(`/order-success?orderId=${orderId}`);
         },
         modal: {
@@ -162,12 +184,22 @@ export default function CheckoutForm({ product }: { product: Product }) {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="mt-8 w-full bg-accent text-white py-3.5 rounded-xl font-bold text-sm hover:bg-accent-dark transition-colors shadow-sm"
-      >
-        Buy Now
-      </button>
+      <div className="mt-8 flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={() => setOpen(true)}
+          className="btn-premium flex-1 justify-center"
+        >
+          Buy Now
+        </button>
+        <button
+          onClick={handleAddToCart}
+          className={`btn-ghost flex-1 justify-center ${
+            added ? "bg-emerald-50 border-emerald-200 text-emerald-700" : ""
+          }`}
+        >
+          {added ? "âœ“ Added!" : "Add to Cart"}
+        </button>
+      </div>
     );
   }
 
@@ -216,7 +248,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-accent text-white py-3.5 rounded-xl font-bold text-sm disabled:opacity-60 hover:bg-accent-dark transition-colors shadow-sm"
+        className="btn-premium w-full justify-center disabled:opacity-60"
       >
         {loading ? "Opening payment..." : `Pay ${formatPrice(product.price)}`}
       </button>
