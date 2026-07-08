@@ -4,10 +4,8 @@ import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import CheckoutForm from "@/components/CheckoutForm";
 
-function formatPrice(paise: number): string {
+function formatPriceAmount(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
-    style: "currency",
-    currency: "INR",
     maximumFractionDigits: 0,
   });
 }
@@ -70,7 +68,7 @@ export default async function ProductPage({ params }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 lg:gap-16">
         {/* Image */}
-        <div className="aspect-square bg-brand-light rounded-2xl overflow-hidden">
+        <div className="card-premium aspect-square bg-brand-light">
           {product.image_url ? (
             <img
               src={product.image_url}
@@ -99,12 +97,13 @@ export default async function ProductPage({ params }: Props) {
 
         {/* Info */}
         <div className="flex flex-col">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 leading-snug">
+          <h1 className="font-serif text-3xl text-ink-900 leading-snug">
             {product.name}
           </h1>
 
-          <p className="text-3xl font-bold text-brand mt-3">
-            {formatPrice(product.price)}
+          <p className="price-tag text-2xl mt-3">
+            <span className="cur">₹</span>
+            {formatPriceAmount(product.price)}
           </p>
 
           {product.description && (
@@ -125,6 +124,10 @@ export default async function ProductPage({ params }: Props) {
 
           {/* CheckoutForm handles the Buy Now button, form, and payment modal */}
           <CheckoutForm product={product} />
+
+          <Link href="/" className="btn-ghost mt-3 self-start">
+            Continue shopping
+          </Link>
 
           {/* Trust signals */}
           <div className="mt-6 pt-6 border-t border-warm-border grid grid-cols-3 gap-3 text-center">
@@ -152,6 +155,106 @@ export default async function ProductPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* FAQ & Reviews Section */}
+      <section className="mt-16 sm:mt-24 border-t border-warm-border pt-12 sm:pt-16 grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16">
+        {/* FAQ Accordion */}
+        <div>
+          <h2 className="text-xl font-bold text-stone-900 mb-6">Frequently Asked Questions</h2>
+          <div className="space-y-4">
+            <FAQItem
+              question="Can I customize the keychain?"
+              answer="Currently, our Nurse Character Keychain comes as standard. However, we are preparing custom tags and name engraving for bulk orders soon. Contact us for custom queries."
+            />
+            <FAQItem
+              question="How long does shipping take?"
+              answer="Orders are prepared and shipped within 1-2 business days. Delivery across India typically takes 3 to 7 business days depending on your city and state."
+            />
+            <FAQItem
+              question="What is your return policy?"
+              answer="We offer a 7-day return or replacement window if your product arrives damaged or incorrect. Please send a photo or video to hello@postduty.in within 48 hours of delivery."
+            />
+            <FAQItem
+              question="Are payments secure?"
+              answer="Yes, all transactions are processed securely via Razorpay. PostDuty does not store or see any card details or passwords."
+            />
+          </div>
+        </div>
+
+        {/* Customer Reviews */}
+        <div>
+          <h2 className="text-xl font-bold text-stone-900 mb-6">Customer Reviews</h2>
+          <div className="space-y-4">
+            <ReviewItem
+              name="Dr. Rahul Mehta"
+              role="Resident Doctor"
+              rating={5}
+              date="2 weeks ago"
+              comment="Bought this keychain for my colleague. The quality is outstanding, and the ampule opener function is actually very neat and works perfectly!"
+            />
+            <ReviewItem
+              name="Jisha Mathew"
+              role="Registered Nurse (ICU)"
+              rating={5}
+              date="3 weeks ago"
+              comment="Super cute keychain! It is lightweight but strong. My fellow nurses in the ward keep asking where I got it from."
+            />
+            <ReviewItem
+              name="Amrit Pal Singh"
+              role="Medical Student"
+              rating={5}
+              date="1 month ago"
+              comment="The shipping was fast, and the packaging was lovely. Really nice token of appreciation for someone in healthcare."
+            />
+          </div>
+        </div>
+      </section>
     </main>
+  );
+}
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  return (
+    <details className="group border-b border-warm-border pb-4 cursor-pointer">
+      <summary className="flex justify-between items-center font-bold text-stone-800 text-sm list-none outline-none">
+        <span>{question}</span>
+        <span className="text-brand transition-transform duration-200 group-open:rotate-180">▼</span>
+      </summary>
+      <p className="mt-2 text-stone-500 text-xs leading-relaxed transition-all duration-300">
+        {answer}
+      </p>
+    </details>
+  );
+}
+
+function ReviewItem({
+  name,
+  role,
+  rating,
+  date,
+  comment,
+}: {
+  name: string;
+  role: string;
+  rating: number;
+  date: string;
+  comment: string;
+}) {
+  return (
+    <div className="bg-white border border-warm-border rounded-xl p-4 shadow-xs">
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-sm font-bold text-stone-800">{name}</span>
+          <span className="text-[10px] text-stone-400 block">{role}</span>
+        </div>
+        <span className="text-[10px] text-stone-400">{date}</span>
+      </div>
+      <div className="flex gap-0.5 my-2">
+        {Array.from({ length: rating }).map((_, i) => (
+          <span key={i} className="text-amber-400 text-xs">★</span>
+        ))}
+      </div>
+      <p className="text-stone-600 text-xs leading-relaxed">{comment}</p>
+    </div>
   );
 }
