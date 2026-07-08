@@ -40,38 +40,16 @@ function formatRupeesPlain(amountInPaise: number): string {
 }
 
 /**
- * Sends a free-form WhatsApp alert to the ADMIN_WHATSAPP_NUMBER.
- * Note: Free-form messages are sent as type: text.
+ * Sends a free-form text WhatsApp alert to the ADMIN_WHATSAPP_NUMBER.
+ * IMPORTANT: free-form ("session") messages only deliver if the admin has
+ * messaged the business number within the last 24h (Meta's session window).
+ * Outside that window, Meta still returns 200/accepted but silently drops
+ * the message — this was the root cause of the historic "green ticks, no
+ * message" bug. Use sendAdminOrderAlert()/sendAdminShippedAlert() instead;
+ * this is kept only as their fallback when the admin_order_alert template
+ * isn't approved/available yet.
  */
-export async function sendAdminWhatsAppAlert(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
-  if (!enabled) {
-    console.log("[WhatsApp Admin] Notifications disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
-    return;
-  }
-
-  const token = process.env.WHATSAPP_PERMANENT_TOKEN;
-  const adminPhoneRaw = process.env.ADMIN_WHATSAPP_NUMBER;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "1222192880967535";
-
-  if (!token || !adminPhoneRaw) {
-    console.error("[WhatsApp Admin] Missing WHATSAPP_PERMANENT_TOKEN or ADMIN_WHATSAPP_NUMBER env variables");
-    return;
-  }
-
-  const adminPhone = normalizePhoneNumber(adminPhoneRaw);
-  const amountInRupees = formatRupees(order.total_amount);
-
-  const messageBody = `🚨 *New PostDuty Order!*
-Order ID: \`${order.id}\`
-Customer: *${order.customer_name}*
-Email: ${order.customer_email}
-Phone: ${order.customer_phone}
-Amount: *${amountInRupees}*
-
-*Shipping Address:*
-${order.shipping_address}`;
-
+async function sendAdminFreeformText(adminPhone: string, phoneNumberId: string, token: string, messageBody: string): Promise<void> {
   try {
     const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
       method: "POST",
@@ -96,11 +74,98 @@ ${order.shipping_address}`;
       console.error(`[WhatsApp Admin] Non-OK response from Meta API: Status: ${response.status}. Body: ${errText}`);
     } else {
       const data = await response.json();
-      console.log("[WhatsApp Admin] Alert sent successfully. Response:", data);
+      console.log("[WhatsApp Admin] Free-form alert sent (may silently not deliver outside the 24h session window). Response:", data);
     }
   } catch (err) {
     console.error("[WhatsApp Admin] Network/Internal error sending admin alert:", err);
   }
+}
+
+/**
+ * Sends an admin alert via the admin_order_alert template (not session-gated
+ * like free-form text). Falls back to free-form text if the template isn't
+ * approved yet or the send fails for any reason.
+ * Template body: "...Event: {{1}}. The related order ID is {{2}}, placed by
+ * customer {{3}}. Additional details: {{4}}..." (submitted 2026-07-08, PENDING
+ * approval — falls back automatically until Meta approves it).
+ */
+async function sendAdminAlert(event: string, orderId: string, customerName: string, details: string, fallbackBody: string): Promise<void> {
+  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (!enabled) {
+    console.log("[WhatsApp Admin] Notifications disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
+    return;
+  }
+
+  const token = process.env.WHATSAPP_PERMANENT_TOKEN;
+  const adminPhoneRaw = process.env.ADMIN_WHATSAPP_NUMBER;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "1222192880967535";
+
+  if (!token || !adminPhoneRaw) {
+    console.error("[WhatsApp Admin] Missing WHATSAPP_PERMANENT_TOKEN or ADMIN_WHATSAPP_NUMBER env variables");
+    return;
+  }
+
+  const adminPhone = normalizePhoneNumber(adminPhoneRaw);
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: adminPhone,
+        type: "template",
+        template: {
+          name: "admin_order_alert",
+          language: { code: "en_IN" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: event },
+                { type: "text", text: orderId },
+                { type: "text", text: customerName },
+                { type: "text", text: details },
+              ],
+            },
+          ],
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.warn(`[WhatsApp Admin] admin_order_alert template send failed (status ${response.status}). Falling back to free-form text. Body: ${errText}`);
+      await sendAdminFreeformText(adminPhone, phoneNumberId, token, fallbackBody);
+    } else {
+      const data = await response.json();
+      console.log("[WhatsApp Admin] Template alert sent successfully. Response:", data);
+    }
+  } catch (err) {
+    console.error("[WhatsApp Admin] Network/Internal error sending admin template alert, falling back to free-form:", err);
+    await sendAdminFreeformText(adminPhone, phoneNumberId, token, fallbackBody);
+  }
+}
+
+/**
+ * Sends an alert to the admin about a new order.
+ */
+export async function sendAdminWhatsAppAlert(order: Order): Promise<void> {
+  const amountInRupees = formatRupees(order.total_amount);
+  const fallbackBody = `🚨 *New PostDuty Order!*
+Order ID: \`${order.id}\`
+Customer: *${order.customer_name}*
+Email: ${order.customer_email}
+Phone: ${order.customer_phone}
+Amount: *${amountInRupees}*
+
+*Shipping Address:*
+${order.shipping_address}`;
+
+  await sendAdminAlert("New order received", order.id, order.customer_name, `Amount: ${amountInRupees}`, fallbackBody);
 }
 
 /**
@@ -335,54 +400,10 @@ ${trackingLink}`;
  * Sends a WhatsApp notification to the admin when an order is shipped.
  */
 export async function sendAdminShippedWhatsApp(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
-  if (!enabled) {
-    console.log("[WhatsApp Admin] Shipped alerts disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
-    return;
-  }
-
-  const token = process.env.WHATSAPP_PERMANENT_TOKEN;
-  const adminPhoneRaw = process.env.ADMIN_WHATSAPP_NUMBER;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "1222192880967535";
-
-  if (!token || !adminPhoneRaw) {
-    console.error("[WhatsApp Admin] Missing WHATSAPP_PERMANENT_TOKEN or ADMIN_WHATSAPP_NUMBER env variables");
-    return;
-  }
-
-  const adminPhone = normalizePhoneNumber(adminPhoneRaw);
-  const messageBody = `📦 *PostDuty Order Shipped!*
+  const fallbackBody = `📦 *PostDuty Order Shipped!*
 Order ID: \`${order.id}\`
 Customer: *${order.customer_name}*
 Tracking Number: *${order.tracking_number || "None"}*`;
 
-  try {
-    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: adminPhone,
-        type: "text",
-        text: {
-          preview_url: false,
-          body: messageBody,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`[WhatsApp Admin] Non-OK response from Meta API for shipping: Status: ${response.status}. Body: ${errText}`);
-    } else {
-      const data = await response.json();
-      console.log("[WhatsApp Admin] Shipping alert sent successfully. Response:", data);
-    }
-  } catch (err) {
-    console.error("[WhatsApp Admin] Network/Internal error sending admin shipping alert:", err);
-  }
+  await sendAdminAlert("Order shipped", order.id, order.customer_name, `Tracking: ${order.tracking_number || "None"}`, fallbackBody);
 }
