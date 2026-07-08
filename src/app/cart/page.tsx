@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/CartContext";
@@ -39,8 +39,81 @@ export default function CartPage() {
     address: "",
   });
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [couponApplied, setCouponApplied] = useState<{
+    code: string;
+    discountAmount: number;
+    message: string;
+  } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
+  // Gift state
+  const [isGift, setIsGift] = useState(false);
+  const [giftMessage, setGiftMessage] = useState("");
+
+  // Auto-apply referral code from localStorage
+  useEffect(() => {
+    try {
+      const refCode = localStorage.getItem("postduty_referral_code");
+      if (refCode && !couponApplied) {
+        setCouponCode(refCode);
+      }
+    } catch { /* ignore */ }
+  }, [couponApplied]);
+
+  const giftCharge = isGift ? 2000 : 0; // ₹20 in paise
+  const discountAmount = couponApplied?.discountAmount ?? 0;
+  const finalTotal = totalAmount + giftCharge - discountAmount;
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  async function handleApplyCoupon() {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    setCouponApplied(null);
+
+    try {
+      const res = await fetch("/api/validate-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: couponCode.trim(),
+          cartTotal: totalAmount + giftCharge,
+        }),
+      });
+
+      const data = await res.json() as {
+        valid: boolean;
+        discountAmount?: number;
+        message: string;
+      };
+
+      if (data.valid && data.discountAmount) {
+        setCouponApplied({
+          code: couponCode.trim().toUpperCase(),
+          discountAmount: data.discountAmount,
+          message: data.message,
+        });
+        setCouponError(null);
+      } else {
+        setCouponError(data.message);
+      }
+    } catch {
+      setCouponError("Failed to validate coupon. Please try again.");
+    }
+    setCouponLoading(false);
+  }
+
+  function removeCoupon() {
+    setCouponApplied(null);
+    setCouponCode("");
+    setCouponError(null);
+    try { localStorage.removeItem("postduty_referral_code"); } catch { /* ignore */ }
   }
 
   async function handleCheckout(e: React.FormEvent) {
@@ -59,6 +132,9 @@ export default function CartPage() {
             productId: item.product.id,
             quantity: item.quantity,
           })),
+          couponCode: couponApplied?.code || undefined,
+          isGift,
+          giftMessage: isGift ? giftMessage : undefined,
         }),
       });
 
@@ -109,7 +185,11 @@ export default function CartPage() {
               customerEmail: form.email,
               customerPhone: form.phone,
               shippingAddress: form.address,
-              totalAmount: totalAmount,
+              totalAmount: amount,
+              couponCode: couponApplied?.code || undefined,
+              discountAmount: couponApplied?.discountAmount ?? 0,
+              isGift,
+              giftMessage: isGift ? giftMessage : undefined,
             }),
           });
 
@@ -129,6 +209,8 @@ export default function CartPage() {
               ordersList.push(orderId);
               localStorage.setItem("postduty_orders", JSON.stringify(ordersList));
             }
+            // Clear referral code after successful purchase
+            localStorage.removeItem("postduty_referral_code");
           } catch (e) {
             console.error("Failed to save order to history:", e);
           }
@@ -150,25 +232,28 @@ export default function CartPage() {
 
   if (cart.length === 0) {
     return (
-      <main className="max-w-md mx-auto px-4 py-20 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-light mb-6">
+      <main className="reveal-up max-w-md mx-auto px-4 py-20 text-center">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-brand-light to-gold-soft mb-6">
+          {/* Gift box with bow — fits the "gifts for healthcare heroes" positioning */}
           <svg
-            className="w-8 h-8 text-brand"
+            className="w-10 h-10 text-brand"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
             xmlns="http://www.w3.org/2000/svg"
           >
+            <rect x="3.5" y="9.5" width="17" height="10.5" rx="1" strokeWidth={1.4} />
+            <path d="M3.5 13h17" strokeWidth={1.4} />
+            <path d="M12 9.5v10.5" strokeWidth={1.4} />
             <path
-              strokeLinecap="round"
+              d="M12 9.5c-1-3-3-4.2-4.5-3.4C6 6.8 6.5 9 8.5 9.3c1.2.2 2.6.2 3.5.2zM12 9.5c1-3 3-4.2 4.5-3.4C18 6.8 17.5 9 15.5 9.3c-1.2.2-2.6.2-3.5.2z"
+              strokeWidth={1.3}
               strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
             />
           </svg>
         </div>
-        <h1 className="text-2xl font-extrabold text-stone-900">Your cart is empty</h1>
-        <p className="mt-3 text-stone-500 text-sm max-w-xs mx-auto leading-relaxed">
+        <h1 className="font-serif text-2xl text-ink-900">Your cart is empty</h1>
+        <p className="mt-3 text-ink-400 text-sm max-w-xs mx-auto leading-relaxed">
           Looks like you haven&apos;t added anything to your cart yet. Find the perfect gift for your healthcare hero.
         </p>
         <Link href="/" className="btn-premium mt-8">
@@ -327,14 +412,105 @@ export default function CartPage() {
               />
             </div>
 
+            {/* Gift Option */}
+            <div className="border border-amber-200 bg-amber-50 rounded-xl p-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isGift}
+                  onChange={(e) => {
+                    setIsGift(e.target.checked);
+                    // Re-validate coupon if gift status changes minimum order
+                    if (couponApplied) {
+                      setCouponApplied(null);
+                      setCouponCode(couponApplied.code);
+                    }
+                  }}
+                  className="w-4 h-4 accent-amber-600 rounded"
+                />
+                <span className="text-sm font-semibold text-stone-700">
+                  🎁 Is this a gift? Add a printed greeting card <span className="text-amber-700">(+₹20)</span>
+                </span>
+              </label>
+              {isGift && (
+                <textarea
+                  placeholder="Your gift message (optional) — we'll print it on a card and include it in the package"
+                  value={giftMessage}
+                  onChange={(e) => setGiftMessage(e.target.value)}
+                  rows={2}
+                  maxLength={200}
+                  className="mt-3 w-full border border-amber-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400 resize-none bg-white"
+                />
+              )}
+            </div>
+
+            {/* Coupon Code */}
+            <div>
+              <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
+                Coupon Code
+              </label>
+              {couponApplied ? (
+                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  <div>
+                    <span className="font-mono font-bold text-green-700 text-sm">{couponApplied.code}</span>
+                    <span className="text-xs text-green-600 ml-2">{couponApplied.message}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeCoupon}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    placeholder="Enter code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                    className="px-4 py-2 bg-brand text-white text-xs font-bold rounded-lg hover:bg-brand/90 disabled:opacity-50 transition-colors"
+                  >
+                    {couponLoading ? "..." : "Apply"}
+                  </button>
+                </div>
+              )}
+              {couponError && (
+                <p className="text-red-500 text-xs mt-1">{couponError}</p>
+              )}
+            </div>
+
+            {/* Order Summary */}
             <div className="border-t border-warm-border pt-4 mt-6 space-y-2">
+              <div className="flex items-center justify-between text-xs text-stone-400">
+                <span>Subtotal</span>
+                <span>{formatPrice(totalAmount)}</span>
+              </div>
+              {isGift && (
+                <div className="flex items-center justify-between text-xs text-amber-600">
+                  <span>🎁 Gift Card</span>
+                  <span>+{formatPrice(giftCharge)}</span>
+                </div>
+              )}
+              {discountAmount > 0 && (
+                <div className="flex items-center justify-between text-xs text-green-600">
+                  <span>Coupon Discount</span>
+                  <span>-{formatPrice(discountAmount)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-xs text-stone-400">
                 <span>Shipping</span>
                 <span>Free Shipping</span>
               </div>
               <div className="flex items-center justify-between font-bold text-stone-800 text-base">
                 <span>Total Amount</span>
-                <span className="text-brand">{formatPrice(totalAmount)}</span>
+                <span className="text-brand">{formatPrice(finalTotal)}</span>
               </div>
             </div>
 
@@ -347,7 +523,7 @@ export default function CartPage() {
               disabled={loading}
               className="btn-premium w-full justify-center disabled:opacity-60 mt-4"
             >
-              {loading ? "Opening payment..." : `Pay ${formatPrice(totalAmount)}`}
+              {loading ? "Opening payment..." : `Pay ${formatPrice(finalTotal)}`}
             </button>
           </form>
         </div>
