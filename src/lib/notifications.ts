@@ -129,7 +129,7 @@ export async function sendCustomerWhatsAppConfirmation(order: Order): Promise<vo
   /**
    * Template fields configuration:
    * Template name: order_confirmation
-   * Language: en_US
+   * Language: en_IN
    *
    * Actual template body (from Meta Business Manager):
    *   Hi {{1}}, your PostDuty order is confirmed! 🎉
@@ -153,7 +153,7 @@ export async function sendCustomerWhatsAppConfirmation(order: Order): Promise<vo
     template: {
       name: "order_confirmation",
       language: {
-        code: "en_US",
+        code: "en_IN",
       },
       components: [
         {
@@ -196,5 +196,193 @@ export async function sendCustomerWhatsAppConfirmation(order: Order): Promise<vo
     }
   } catch (err) {
     console.error("[WhatsApp Customer] Network/Internal error sending customer template confirmation:", err);
+  }
+}
+
+/**
+ * Sends a WhatsApp notification to the customer when the order is shipped.
+ * Template: order_shipped
+ * Params: 
+ * {{1}} -> Customer Name
+ * {{2}} -> Order ID
+ * {{3}} -> Tracking Number
+ * {{4}} -> Tracking Link
+ */
+export async function sendCustomerShippedWhatsApp(order: Order): Promise<void> {
+  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (!enabled) {
+    console.log("[WhatsApp Customer] Shipped notifications disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
+    return;
+  }
+
+  const token = process.env.WHATSAPP_PERMANENT_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "1222192880967535";
+
+  if (!token) {
+    console.error("[WhatsApp Customer] Missing WHATSAPP_PERMANENT_TOKEN env variable");
+    return;
+  }
+
+  const customerPhone = normalizePhoneNumber(order.customer_phone);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://postduty.in";
+  const trackingLink = `${baseUrl}/orders/${order.id}`;
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: customerPhone,
+    type: "template",
+    template: {
+      name: "order_shipped",
+      language: {
+        code: "en_IN",
+      },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            {
+              type: "text",
+              text: order.customer_name,
+            },
+            {
+              type: "text",
+              text: order.id,
+            },
+            {
+              type: "text",
+              text: order.tracking_number || "Pending",
+            },
+            {
+              type: "text",
+              text: trackingLink,
+            },
+          ],
+        },
+      ],
+    },
+  };
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json() as { error?: { code?: number; message?: string } };
+
+    if (!response.ok) {
+      // Template may be missing, unapproved, or language-mismatched — fall back to
+      // free-form text in all cases so the customer still gets notified.
+      console.warn(`[WhatsApp Customer] order_shipped template send failed (status ${response.status}, error code ${data.error?.code}). Falling back to free-form text.`);
+      await sendCustomerShippedFallbackText(order, customerPhone, trackingLink);
+    } else {
+      console.log("[WhatsApp Customer] Shipping template sent successfully. Response:", data);
+    }
+  } catch (err) {
+    console.error("[WhatsApp Customer] Network/Internal error sending customer shipping confirmation:", err);
+  }
+}
+
+/**
+ * Fallback free-form text when the customer shipped template is not yet approved in Meta Business Suite.
+ */
+async function sendCustomerShippedFallbackText(order: Order, customerPhone: string, trackingLink: string): Promise<void> {
+  const token = process.env.WHATSAPP_PERMANENT_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "1222192880967535";
+  
+  const messageBody = `Hi ${order.customer_name}, your PostDuty order has been shipped! 📦
+Order ID: \`${order.id.slice(0, 8).toUpperCase()}\`
+Tracking Number: *${order.tracking_number || "Pending"}*
+
+You can track your package details here:
+${trackingLink}`;
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: customerPhone,
+        type: "text",
+        text: {
+          preview_url: false,
+          body: messageBody,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[WhatsApp Customer] Fallback shipping text failed: Status: ${response.status}. Body: ${errText}`);
+    } else {
+      console.log("[WhatsApp Customer] Fallback shipping text sent successfully.");
+    }
+  } catch (err) {
+    console.error("[WhatsApp Customer] Error sending fallback shipping text:", err);
+  }
+}
+
+/**
+ * Sends a WhatsApp notification to the admin when an order is shipped.
+ */
+export async function sendAdminShippedWhatsApp(order: Order): Promise<void> {
+  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (!enabled) {
+    console.log("[WhatsApp Admin] Shipped alerts disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
+    return;
+  }
+
+  const token = process.env.WHATSAPP_PERMANENT_TOKEN;
+  const adminPhoneRaw = process.env.ADMIN_WHATSAPP_NUMBER;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "1222192880967535";
+
+  if (!token || !adminPhoneRaw) {
+    console.error("[WhatsApp Admin] Missing WHATSAPP_PERMANENT_TOKEN or ADMIN_WHATSAPP_NUMBER env variables");
+    return;
+  }
+
+  const adminPhone = normalizePhoneNumber(adminPhoneRaw);
+  const messageBody = `📦 *PostDuty Order Shipped!*
+Order ID: \`${order.id}\`
+Customer: *${order.customer_name}*
+Tracking Number: *${order.tracking_number || "None"}*`;
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: adminPhone,
+        type: "text",
+        text: {
+          preview_url: false,
+          body: messageBody,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[WhatsApp Admin] Non-OK response from Meta API for shipping: Status: ${response.status}. Body: ${errText}`);
+    } else {
+      const data = await response.json();
+      console.log("[WhatsApp Admin] Shipping alert sent successfully. Response:", data);
+    }
+  } catch (err) {
+    console.error("[WhatsApp Admin] Network/Internal error sending admin shipping alert:", err);
   }
 }
