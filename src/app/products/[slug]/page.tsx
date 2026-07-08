@@ -56,8 +56,41 @@ export default async function ProductPage({ params }: Props) {
   if (error || !product) {
     notFound();
   }
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://postduty.jijo925.workers.dev";
+
+  // JSON-LD structured data for Google rich snippets
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description ?? "Thoughtful gifts for healthcare heroes",
+    image: product.image_url ?? undefined,
+    url: `${baseUrl}/products/${product.slug}`,
+    brand: {
+      "@type": "Brand",
+      name: "PostDuty",
+    },
+    offers: {
+      "@type": "Offer",
+      price: (product.price / 100).toFixed(2),
+      priceCurrency: "INR",
+      availability: product.stock > 0
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+      url: `${baseUrl}/products/${product.slug}`,
+      seller: {
+        "@type": "Organization",
+        name: "PostDuty",
+      },
+    },
+  };
 
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     <main className="max-w-5xl mx-auto px-4 py-10 sm:py-14">
       <Link
         href="/"
@@ -210,6 +243,7 @@ export default async function ProductPage({ params }: Props) {
         </div>
       </section>
     </main>
+    </>
   );
 }
 
@@ -251,7 +285,9 @@ function ReviewItem({
       </div>
       <div className="flex gap-0.5 my-2">
         {Array.from({ length: rating }).map((_, i) => (
-          <span key={i} className="text-amber-400 text-xs">★</span>
+          <svg key={i} className="w-3 h-3 text-gold" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M10 1.5l2.59 5.25 5.79.84-4.19 4.08.99 5.77L10 14.6l-5.18 2.84.99-5.77-4.19-4.08 5.79-.84L10 1.5z" />
+          </svg>
         ))}
       </div>
       <p className="text-stone-600 text-xs leading-relaxed">{comment}</p>
