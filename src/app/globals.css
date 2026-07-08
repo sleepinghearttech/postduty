@@ -1,18 +1,170 @@
 @import "tailwindcss";
 
+/* ============================================================
+   PostDuty — Premium design tokens (v2, 7 Jul 2026)
+   Refined from the original clinical palette toward a warm,
+   editorial gift-brand feel. All original token NAMES kept, so
+   every existing bg-brand / text-accent / border-warm-border
+   class keeps working — only the values are richer.
+   Revert anytime: restore globals.css.bak
+   ============================================================ */
 @theme inline {
-  --color-brand: #0D7C7C;
-  --color-brand-dark: #0A5F5F;
-  --color-brand-light: #E8F5F4;
-  --color-accent: #E07249;
-  --color-accent-dark: #C05A35;
-  --color-warm-bg: #FAF9F7;
-  --color-warm-border: #E8E2DC;
+  /* Brand — deeper, more premium teal */
+  --color-brand: #0C6B6B;
+  --color-brand-dark: #084C4C;
+  --color-brand-light: #E9F3F1;
+
+  /* Accent — richer terracotta */
+  --color-accent: #D8613A;
+  --color-accent-dark: #B44A28;
+
+  /* Warm neutrals — ivory canvas + soft border */
+  --color-warm-bg: #FBFAF7;
+  --color-warm-border: #ECE6DD;
+
+  /* NEW premium tokens */
+  --color-gold: #C6A15B;         /* thin rules, price accents */
+  --color-gold-soft: #EFE4CC;
+  --color-ink-900: #17201E;      /* headings */
+  --color-ink-700: #33403C;      /* body */
+  --color-ink-400: #7A8A85;      /* muted */
 
   --font-sans: var(--font-jakarta);
+  --font-serif: var(--font-fraunces, Georgia, 'Times New Roman', serif);
+
+  /* premium shadows */
+  --shadow-card: 0 1px 2px rgba(23,32,30,.04), 0 8px 24px -12px rgba(23,32,30,.12);
+  --shadow-card-hover: 0 2px 4px rgba(23,32,30,.06), 0 18px 40px -16px rgba(23,32,30,.22);
 }
 
+/* ---------- base polish ---------- */
+html { scroll-behavior: smooth; }
 body {
-  background-color: #FAF9F7;
-  color: #1C1917;
+  background-color: #FBFAF7;
+  color: #33403C;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+::selection { background: #0C6B6B; color: #fff; }
+
+/* Editorial serif for display headings — apply with class="font-serif" */
+.font-serif { font-family: var(--font-serif); letter-spacing: -0.01em; }
+
+/* Tighter, richer headings everywhere */
+h1, h2, h3 { color: var(--color-ink-900); letter-spacing: -0.02em; }
+
+/* Thin gold divider */
+.rule-gold { height: 2px; width: 44px; background: var(--color-gold); border: 0; border-radius: 2px; }
+
+/* Premium button — drop-in: className="btn-premium" */
+.btn-premium {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: var(--color-brand); color: #fff;
+  padding: .75rem 1.6rem; border-radius: 9999px;
+  font-weight: 600; font-size: .875rem; letter-spacing: .01em;
+  box-shadow: 0 8px 20px -8px rgba(12,107,107,.55);
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.btn-premium:hover { background: var(--color-brand-dark); transform: translateY(-1px); box-shadow: 0 12px 26px -8px rgba(12,107,107,.6); }
+.btn-premium:active { transform: translateY(0); }
+
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: transparent; color: var(--color-brand);
+  padding: .7rem 1.4rem; border-radius: 9999px; font-weight: 600; font-size: .875rem;
+  border: 1.5px solid color-mix(in srgb, var(--color-brand) 30%, transparent);
+  transition: .18s;
+}
+.btn-ghost:hover { background: var(--color-brand-light); border-color: var(--color-brand); }
+
+/* Premium product card — drop-in: className="card-premium" */
+.card-premium {
+  background: #fff; border: 1px solid var(--color-warm-border);
+  border-radius: 18px; overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+.card-premium:hover { transform: translateY(-4px); box-shadow: var(--shadow-card-hover); border-color: color-mix(in srgb, var(--color-brand) 25%, transparent); }
+
+/* Price chip */
+.price-tag { font-weight: 800; color: var(--color-ink-900); }
+.price-tag .cur { color: var(--color-gold); font-weight: 700; }
+
+/* Section eyebrow */
+.eyebrow { font-size: .7rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--color-brand); }
+
+/* Subtle premium background wash for hero, layered with a faint dot-grid
+   texture and a print-like grain — both inline SVG data-URIs, no HTTP request */
+.hero-wash {
+  position: relative;
+  background:
+    radial-gradient(120% 90% at 50% -10%, #F1F7F5 0%, rgba(241,247,245,0) 60%),
+    linear-gradient(180deg, #F4F1EA 0%, #FBFAF7 100%);
+}
+.hero-wash::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Ccircle cx='2' cy='2' r='1.2' fill='%230C6B6B' fill-opacity='0.08'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* Print-like grain texture — apply alongside hero-wash or on body for tactile richness */
+.grain-texture::after {
+  content: "";
+  position: absolute; inset: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Gold corner flourish — small decorative accent, position with a wrapper */
+.corner-flourish { color: var(--color-gold); opacity: 0.6; }
+
+/* Thin gold rule with a centered ornament, for section dividers beyond the plain hr */
+.rule-gold-ornate { position: relative; height: 2px; width: 88px; background: var(--color-gold); border: 0; border-radius: 2px; margin-left: auto; margin-right: auto; }
+.rule-gold-ornate::before {
+  content: "";
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(45deg);
+  width: 7px; height: 7px; background: var(--color-gold);
+}
+
+/* Shimmer sweep on premium buttons — pure CSS, no JS */
+.btn-premium { position: relative; overflow: hidden; }
+.btn-premium::after {
+  content: "";
+  position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,.35), transparent);
+  transform: skewX(-20deg);
+  transition: left .55s ease;
+}
+.btn-premium:hover::after { left: 130%; }
+
+/* Entrance animation — fade + slide up, respects reduced-motion */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-up { animation: reveal-up .6s ease-out both; }
+  .reveal-up-delay-1 { animation: reveal-up .6s ease-out .08s both; }
+  .reveal-up-delay-2 { animation: reveal-up .6s ease-out .16s both; }
+}
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading skeleton shimmer — apply skeleton + a sized className (e.g. h-4 w-24) */
+.skeleton {
+  position: relative; overflow: hidden;
+  background: var(--color-warm-border);
+  border-radius: 6px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* Nice scrollbar */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #D9D2C6; border-radius: 8px; border: 2px solid #FBFAF7; }
+*::-webkit-scrollbar-thumb:hover { background: #C6A15B; }

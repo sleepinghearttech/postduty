@@ -42,28 +42,56 @@ export default async function HomePage() {
 
   return (
     <main>
-      {/* Hero */}
-      <section className="hero-wash py-20 sm:py-28 px-4 text-center">
-        <p className="eyebrow">For those who show up</p>
-        <hr className="rule-gold mx-auto my-4" />
-        <h1 className="font-serif text-4xl sm:text-6xl font-semibold text-ink-900 leading-[1.1] max-w-2xl mx-auto">
+      {/* Hero — "the slide" */}
+      <section className="hero-wash grain-texture relative overflow-hidden py-20 sm:py-28 px-4 text-center">
+        {/* Gold corner flourishes */}
+        <svg className="corner-flourish absolute top-6 left-6 w-10 h-10 sm:w-14 sm:h-14 hidden sm:block" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+          <path d="M2 2v18M2 2h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <svg className="corner-flourish absolute bottom-6 right-6 w-10 h-10 sm:w-14 sm:h-14 hidden sm:block" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+          <path d="M54 54V36M54 54H36" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+
+        <p className="eyebrow reveal-up">For those who show up</p>
+        <hr className="rule-gold mx-auto my-4 reveal-up" />
+        <h1 className="reveal-up-delay-1 font-serif text-4xl sm:text-6xl font-semibold text-ink-900 leading-[1.1] max-w-2xl mx-auto">
           Small things that carry the shift.
         </h1>
-        <p className="mt-5 text-ink-400 text-base max-w-md mx-auto leading-relaxed">
+        <p className="reveal-up-delay-1 mt-5 text-ink-400 text-base max-w-md mx-auto leading-relaxed">
           Considered, durable accessories for doctors, nurses &amp; students
           across India.
         </p>
         {products && products.length > 0 && (
-          <a href="#products" className="btn-premium mt-8">
+          <a href="#products" className="reveal-up-delay-2 btn-premium mt-8">
             Explore the collection
           </a>
         )}
-        <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-ink-400">
-          <span><b className="text-ink-700">Prepaid</b> · secure checkout</span>
-          <span><b className="text-ink-700">24–48h</b> dispatch</span>
-          <span><b className="text-ink-700">Tracked</b> delivery</span>
+        <div className="reveal-up-delay-2 mt-8 flex flex-wrap justify-center gap-x-8 gap-y-3 text-xs text-ink-400">
+          <span className="flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-brand opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <b className="text-ink-700">Prepaid</b>&nbsp;· secure checkout
+          </span>
+          <span className="flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-brand opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <b className="text-ink-700">24–48h</b>&nbsp;dispatch
+          </span>
+          <span className="flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-brand opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+            <b className="text-ink-700">Tracked</b>&nbsp;delivery
+          </span>
         </div>
       </section>
+
+      {/* Section divider — subtle scalloped edge between hero and grid */}
+      <svg className="block w-full text-warm-bg" style={{ height: "18px" }} viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 0 Q 10 12 20 0 Q 30 12 40 0 Q 50 12 60 0 Q 70 12 80 0 Q 90 12 100 0 Q 110 12 120 0 V12 H0 Z" fill="currentColor" />
+      </svg>
 
       {/* Product grid */}
       <section id="products" className="max-w-5xl mx-auto px-4 py-14">
