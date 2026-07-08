@@ -1,1 +1,18 @@
-{ "node": "postduty", "progress": 78, "status": "active", "note": "Store live; WhatsApp confirmed delivering in prod (not a blocker). Premium design steps 1-7 applied + committed locally, awaiting visual review + deploy." }
+{
+  "node": "postduty",
+  "progress": 78,
+  "status": "active",
+  "note": "Store live with premium design deployed. WhatsApp confirmed delivering in prod (not a blocker). Fixed a real prod-down incident during deploy: Turbopack builds break OpenNext-Cloudflare at runtime -- build script now forces --webpack. Next: decorative polish pass (hero/motifs/textures) on top of this.",
+  "children": {
+    "pd-whatsapp": {
+      "progress": 100,
+      "status": "done",
+      "note": "order_confirmation approved + delivering. order_shipped falls back to free-form text while its template is pending approval."
+    },
+    "pd-compliance": {
+      "progress": 10,
+      "status": "active",
+      "note": "5 policy pages live as routes; domain + Razorpay KYC still pending."
+    }
+  }
+}

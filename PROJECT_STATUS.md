@@ -90,7 +90,7 @@ Indian e-commerce regulatory compliance pages, all linked from the footer.
 
 ---
 
-## ✅ Phase 3.6: Premium Visual Redesign — COMPLETE (local, not deployed)
+## ✅ Phase 3.6: Premium Visual Redesign — COMPLETE AND DEPLOYED (2026-07-08)
 
 Applied the 7-step plan in `Business hub/PostDuty_Premium_Design_Spec.md` on top of the premium `globals.css` tokens shipped 7 Jul. Presentation-only — no API/Supabase/Razorpay/admin logic touched.
 
@@ -104,7 +104,10 @@ Applied the 7-step plan in `Business hub/PostDuty_Premium_Design_Spec.md` on top
 | 6. Footer — serif brand, gold rule | `src/components/Footer.tsx` | ✅ Done |
 | 7. Buttons everywhere (cart, checkout, order lookup) | `CheckoutForm.tsx`, `cart/page.tsx`, `order-success/page.tsx`, `orders/page.tsx`, `orders/[id]/page.tsx` | ✅ Done |
 
-Each step committed separately; `npm run build` passes after every commit. **Not deployed** — Jijo reviews on `localhost:3000` first, then runs `npm run deploy`.
+Each step committed separately; `npm run build` passes after every commit. **Live** at https://postduty.jijo925.workers.dev.
+
+### ⚠️ Deploy incident + permanent fix (2026-07-08)
+First deploy attempt of this design returned **500 on every route** in production (`ChunkLoadError: Failed to load chunk server/chunks/ssr/[root-of-the-server]__*._.js`). Root cause: Next.js 16's default **Turbopack** production build is incompatible with OpenNext-Cloudflare's Workers runtime chunk loading — not an app-code bug. Rolled back to the last good version (`21cf5d4f`) within minutes to restore service, diagnosed locally via `npm run preview` (safe, no prod impact) instead of redeploying blind, and confirmed the fix: **`package.json`'s `build` script now runs `next build --webpack`** instead of plain `next build`. Verified `/`, `/cart`, `/products/[slug]`, `/privacy`, `/orders` all return 200 locally before redeploying — second deploy succeeded cleanly. **Do not remove `--webpack` from the build script** — Turbopack production builds will silently break this deployment target again.
 
 ---
 
