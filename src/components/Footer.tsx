@@ -14,18 +14,19 @@ export default function Footer() {
       <div className="max-w-5xl mx-auto px-4 py-10">
         <div className="flex flex-col sm:flex-row justify-between gap-8">
           <div>
-            <p className="font-extrabold text-brand text-lg tracking-tight">PostDuty</p>
-            <p className="text-stone-500 text-sm mt-1 max-w-xs leading-relaxed">
+            <p className="font-serif text-brand text-xl">PostDuty</p>
+            <p className="text-ink-400 text-sm mt-1 max-w-xs leading-relaxed">
               Thoughtful gifts for nurses, doctors, and every healthcare hero across India.
             </p>
-            <p className="text-stone-400 text-xs mt-3">hello@postduty.in</p>
+            <p className="text-ink-400 text-xs mt-3">hello@postduty.in</p>
           </div>
           <nav className="flex flex-col gap-2.5">
+            <hr className="rule-gold mb-1" />
             {policyLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm text-stone-500 hover:text-brand transition-colors"
+                className="text-sm text-ink-400 hover:text-brand transition-colors"
               >
                 {link.label}
               </Link>
@@ -33,10 +34,10 @@ export default function Footer() {
           </nav>
         </div>
         <div className="border-t border-warm-border mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <p className="text-xs text-stone-400">
+          <p className="text-xs text-ink-400">
             © 2026 PostDuty. Made with care in India.
           </p>
-          <p className="text-xs text-stone-400">
+          <p className="text-xs text-ink-400">
             Payments secured by Razorpay
           </p>
         </div>
