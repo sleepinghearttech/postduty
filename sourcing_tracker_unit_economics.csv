@@ -1,0 +1,13 @@
+Product,Planned Sell Price,Landed Cost/Unit,Packaging,Razorpay Fee (2% of sell price),Shipping (default),Contribution/Unit,Notes
+Retractable badge reel,149,,8,3,45,,Fill Landed Cost/Unit once a real supplier quote is in; Contribution/Unit = Sell Price - Landed Cost - Packaging - Razorpay Fee - Shipping
+Ampule opener,179,,8,4,45,,
+LED pen torch with pupil gauge,224,,8,4,45,,Sell price is the midpoint of the playbook's 199-249 range for this calc only -- use the real chosen price once decided
+Printed scrub cap (ponytail + regular),324,,8,6,45,,Sell price is the midpoint of the playbook's 299-349 range for this calc only
+ID card + lanyard combo (specialty designs),199,,8,4,45,,
+Stethoscope name tag (3D-printed personalized),274,,8,5,45,,Sell price is the midpoint of the playbook's 249-299 range for this calc only
+Enamel pins / badges (specialty icons),174,,8,3,45,,Sell price is the midpoint of the playbook's 149-199 range for this calc only
+Tourniquet band (elastic buckle type),149,,8,3,45,,
+Drug-dose / vitals quick-reference pocket cards (laminated set),199,,8,4,45,,Priced as a set per the playbook
+"""Hospital brain"" duty notebooks / ward sheets pad",249,,8,5,45,,
+,,,,,,,
+Bundle @ AOV,499,,8,10,45,,Reference row for the ₹499 average-order-value bundle target -- fill Landed Cost/Unit as a weighted blend once the real product mix is known
