@@ -18,31 +18,35 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Checkout verification path ─────────────────────────────────────────
-  const {
-    razorpayOrderId,
-    razorpayPaymentId,
-    razorpaySignature,
-    productId,
-    quantity,
-    unitPrice,
-    customerName,
-    customerEmail,
-    customerPhone,
-    shippingAddress,
-    totalAmount,
-  } = await request.json() as {
+  const body = await request.json() as {
     razorpayOrderId: string;
     razorpayPaymentId: string;
     razorpaySignature: string;
-    productId: string;
-    quantity: number;
-    unitPrice: number;
+    productId?: string;
+    quantity?: number;
+    unitPrice?: number;
     customerName: string;
     customerEmail: string;
     customerPhone: string;
     shippingAddress: string;
     totalAmount: number;
+    items?: Array<{ productId: string; quantity: number; unitPrice: number }>;
+    couponCode?: string;
+    discountAmount?: number;
+    isGift?: boolean;
+    giftMessage?: string;
   };
+
+  const {
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature,
+    customerName,
+    customerEmail,
+    customerPhone,
+    shippingAddress,
+    totalAmount,
+  } = body;
 
   // Step 1 — verify the payment signature is genuine
   const secret = process.env.RAZORPAY_KEY_SECRET ?? "";
@@ -53,16 +57,64 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
   }
 
+  // Resolve items array with backward compatibility for single-product checkout
+  let items = body.items;
+  if (!items && body.productId && body.quantity && body.unitPrice) {
+    items = [{
+      productId: body.productId,
+      quantity: body.quantity,
+      unitPrice: body.unitPrice,
+    }];
+  }
+
+  if (!items || items.length === 0) {
+    return NextResponse.json({ error: "No items provided" }, { status: 400 });
+  }
+
   // Step 2 — save order to database
   // Idempotency: webhook may have already created this order if it fired before
-  // the frontend reached this point. If so, return success — nothing more to do.
+  // the frontend reached this point. If so, update details and return success.
   const { data: existingOrder } = await supabaseAdmin
     .from("orders")
-    .select("id")
+    .select("id, customer_name, shipping_address")
     .eq("razorpay_payment_id", razorpayPaymentId)
     .maybeSingle();
 
   if (existingOrder) {
+    const hasPlaceholders = 
+      existingOrder.customer_name?.startsWith("[Recovery]") || 
+      existingOrder.shipping_address?.startsWith("Address not captured");
+
+    if (hasPlaceholders) {
+      const { error: updateError } = await supabaseAdmin
+        .from("orders")
+        .update({
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+          shipping_address: shippingAddress,
+        })
+        .eq("id", existingOrder.id);
+
+      if (updateError) {
+        console.error("Failed to update recovered order with checkout details:", updateError.message);
+      } else {
+        // Fetch full updated order and trigger notifications
+        const { data: updatedOrder } = await supabaseAdmin
+          .from("orders")
+          .select("*")
+          .eq("id", existingOrder.id)
+          .single();
+
+        if (updatedOrder) {
+          await Promise.allSettled([
+            sendAdminWhatsAppAlert(updatedOrder),
+            sendCustomerWhatsAppConfirmation(updatedOrder),
+            sendOrderEmails(updatedOrder),
+          ]);
+        }
+      }
+    }
     return NextResponse.json({ success: true, orderId: existingOrder.id });
   }
 
@@ -77,6 +129,10 @@ export async function POST(request: NextRequest) {
       status: "paid",
       razorpay_order_id: razorpayOrderId,
       razorpay_payment_id: razorpayPaymentId,
+      coupon_code: body.couponCode?.trim().toUpperCase() || null,
+      discount_amount: body.discountAmount ?? 0,
+      is_gift: body.isGift === true,
+      gift_message: body.giftMessage || null,
     })
     .select("*")
     .single();
@@ -90,11 +146,7 @@ export async function POST(request: NextRequest) {
       customer_email: customerEmail,
       customer_name: customerName,
       customer_phone: customerPhone,
-      raw_payload: {
-        razorpayOrderId, razorpayPaymentId, productId, quantity,
-        unitPrice, customerName, customerEmail, customerPhone,
-        shippingAddress, totalAmount,
-      },
+      raw_payload: body,
     });
     return NextResponse.json(
       { error: `Payment received but order could not be saved. Please contact hello@postduty.in with your payment ID: ${razorpayPaymentId}` },
@@ -102,30 +154,57 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 3 — save order line item
-  const { error: itemError } = await supabaseAdmin.from("order_items").insert({
+  // Step 3 — save order line items
+  const orderItemsData = items.map(item => ({
     order_id: order.id,
-    product_id: productId,
-    quantity,
-    unit_price: unitPrice,
-  });
+    product_id: item.productId,
+    quantity: item.quantity,
+    unit_price: item.unitPrice,
+  }));
+
+  const { error: itemError } = await supabaseAdmin
+    .from("order_items")
+    .insert(orderItemsData);
 
   if (itemError) {
-    console.error("Failed to save order item:", itemError.message);
+    console.error("Failed to save order items:", itemError.message);
   }
 
-  // Step 4 — decrement stock
-  const { data: current } = await supabaseAdmin
-    .from("products")
-    .select("stock")
-    .eq("id", productId)
-    .single();
-
-  if (current) {
-    await supabaseAdmin
+  // Step 4 — decrement stock for each item
+  for (const item of items) {
+    const { data: current } = await supabaseAdmin
       .from("products")
-      .update({ stock: Math.max(0, current.stock - quantity) })
-      .eq("id", productId);
+      .select("stock")
+      .eq("id", item.productId)
+      .single();
+
+    if (current) {
+      await supabaseAdmin
+        .from("products")
+        .update({ stock: Math.max(0, current.stock - item.quantity) })
+        .eq("id", item.productId);
+    }
+  }
+
+  // Increment coupon usage if one was applied
+  if (body.couponCode) {
+    const code = body.couponCode.trim().toUpperCase();
+    const { error: rpcError } = await supabaseAdmin.rpc("increment_coupon_usage", { coupon_code: code });
+    if (rpcError) {
+      // Fallback: manual increment if the RPC isn't set up in Supabase
+      console.warn("[verify-payment] RPC increment_coupon_usage failed, trying manual:", rpcError.message);
+      const { data } = await supabaseAdmin
+        .from("coupons")
+        .select("times_used")
+        .eq("code", code)
+        .single();
+      if (data) {
+        await supabaseAdmin
+          .from("coupons")
+          .update({ times_used: (data as { times_used: number }).times_used + 1 })
+          .eq("code", code);
+      }
+    }
   }
 
   // Trigger admin and customer alerts (WhatsApp + Email)
@@ -150,9 +229,15 @@ type RazorpayWebhookEvent = {
         amount: number;
         email: string;
         contact: string;
-        // Razorpay copies order notes onto the payment entity.
-        // We store productId + quantity in create-order; they arrive here.
-        notes: { productId?: string; quantity?: string } | null;
+        notes: {
+          productId?: string;
+          quantity?: string;
+          items?: string;
+          couponCode?: string;
+          discountAmount?: string;
+          isGift?: string;
+          giftMessage?: string;
+        } | null;
       };
     };
   };
@@ -162,16 +247,8 @@ async function handleRazorpayWebhook(
   request: NextRequest,
   signature: string
 ): Promise<NextResponse> {
-  // Must read as raw text before any parsing. The HMAC is computed over the
-  // exact bytes Razorpay sent. Calling request.json() would re-serialise the
-  // parsed object, potentially changing whitespace or key order, producing a
-  // different hash even when the payload is legitimate.
   const rawBody = await request.text();
 
-  // Webhook signature uses RAZORPAY_WEBHOOK_SECRET, not RAZORPAY_KEY_SECRET.
-  // The checkout signature proves the Razorpay SDK signed the payment result.
-  // The webhook signature proves the HTTP request came from Razorpay servers,
-  // not from an attacker POSTing a crafted payload to our endpoint.
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET ?? "";
   const expected = createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
 
@@ -181,16 +258,12 @@ async function handleRazorpayWebhook(
 
   const event = JSON.parse(rawBody) as RazorpayWebhookEvent;
 
-  // Razorpay may send other event types to this URL if more are enabled later.
   if (event.event !== "payment.captured") {
     return NextResponse.json({ received: true });
   }
 
   const payment = event.payload.payment.entity;
 
-  // Idempotency: the UNIQUE constraint on razorpay_payment_id means the
-  // frontend checkout path may have already created this order. If so, return
-  // 200 so Razorpay stops retrying — there is nothing to do.
   const { data: existing } = await supabaseAdmin
     .from("orders")
     .select("id")
@@ -201,22 +274,32 @@ async function handleRazorpayWebhook(
     return NextResponse.json({ received: true, status: "already_processed" });
   }
 
-  // Recovery case: payment captured but frontend never called verify-payment
-  // (tab closed, network drop, etc.). Attempt full order reconstruction from
-  // webhook data. Notes carry productId + quantity (set in create-order).
-  // Email and contact come from the payment entity directly.
-  // Customer name and shipping address are not available — they are collected
-  // by the checkout form AFTER the Razorpay order is created, so they were
-  // never stored anywhere Razorpay can return to us. Use clear placeholders
-  // so the admin knows immediately this needs follow-up.
+  // Parse items from notes for webhook recovery
   const notes = payment.notes;
-  const recoveryProductId = notes?.productId;
-  const recoveryQuantity = notes?.quantity ? parseInt(notes.quantity, 10) : NaN;
+  let recoveryItems: Array<{ productId: string; quantity: number }> = [];
 
-  if (recoveryProductId && !isNaN(recoveryQuantity)) {
-    // unit_price derived from actual charged amount — matches what customer paid
-    // regardless of any price change after order creation.
-    const unitPrice = Math.round(payment.amount / recoveryQuantity);
+  if (notes && notes.items) {
+    try {
+      recoveryItems = JSON.parse(notes.items);
+    } catch (e) {
+      console.error("Failed to parse items from webhook notes:", e);
+    }
+  }
+
+  // Backward compatibility fallback for single-item order notes
+  if (recoveryItems.length === 0 && notes?.productId && notes?.quantity) {
+    recoveryItems = [{
+      productId: notes.productId,
+      quantity: parseInt(notes.quantity, 10),
+    }];
+  }
+
+  if (recoveryItems.length > 0 && recoveryItems.every(i => i.productId && !isNaN(i.quantity))) {
+    const productIds = recoveryItems.map(i => i.productId);
+    const { data: products } = await supabaseAdmin
+      .from("products")
+      .select("id, price")
+      .in("id", productIds);
 
     const { data: recoveredOrder, error: recoveryOrderError } = await supabaseAdmin
       .from("orders")
@@ -229,29 +312,42 @@ async function handleRazorpayWebhook(
         status: "paid",
         razorpay_order_id: payment.order_id,
         razorpay_payment_id: payment.id,
+        coupon_code: notes?.couponCode || null,
+        discount_amount: notes?.discountAmount ? parseInt(notes.discountAmount, 10) : 0,
+        is_gift: notes?.isGift === "true",
+        gift_message: notes?.giftMessage || null,
       })
       .select("*")
       .single();
 
     if (!recoveryOrderError && recoveredOrder) {
-      await supabaseAdmin.from("order_items").insert({
-        order_id: recoveredOrder.id,
-        product_id: recoveryProductId,
-        quantity: recoveryQuantity,
-        unit_price: unitPrice,
+      const orderItemsToInsert = recoveryItems.map(item => {
+        const prod = products?.find(p => p.id === item.productId);
+        const unitPrice = prod ? prod.price : Math.round(payment.amount / recoveryItems.length);
+        return {
+          order_id: recoveredOrder.id,
+          product_id: item.productId,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+        };
       });
 
-      const { data: product } = await supabaseAdmin
-        .from("products")
-        .select("stock")
-        .eq("id", recoveryProductId)
-        .single();
+      await supabaseAdmin.from("order_items").insert(orderItemsToInsert);
 
-      if (product) {
-        await supabaseAdmin
+      // Decrement stock in parallel
+      for (const item of recoveryItems) {
+        const { data: product } = await supabaseAdmin
           .from("products")
-          .update({ stock: Math.max(0, product.stock - recoveryQuantity) })
-          .eq("id", recoveryProductId);
+          .select("stock")
+          .eq("id", item.productId)
+          .single();
+
+        if (product) {
+          await supabaseAdmin
+            .from("products")
+            .update({ stock: Math.max(0, product.stock - item.quantity) })
+            .eq("id", item.productId);
+        }
       }
 
       console.warn(

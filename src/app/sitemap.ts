@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 import { supabase } from "@/lib/supabase";
 
-// TODO: update once postduty.in is live and pointed at Cloudflare (Business Hub Plan 2.3)
-const SITE_URL = "https://postduty.jijo925.workers.dev";
+// Uses env var so it works on both dev and production without code changes
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://postduty.jijo925.workers.dev";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { data: products } = await supabase

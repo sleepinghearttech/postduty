@@ -407,3 +407,99 @@ Tracking Number: *${order.tracking_number || "None"}*`;
 
   await sendAdminAlert("Order shipped", order.id, order.customer_name, `Tracking: ${order.tracking_number || "None"}`, fallbackBody);
 }
+
+/**
+ * Day 1 follow-up: "Did your order reach safely?"
+ * Sent 1 day after delivery.
+ */
+export async function sendFollowUpDay1WhatsApp(order: Order): Promise<void> {
+  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (!enabled) return;
+
+  const token = process.env.WHATSAPP_PERMANENT_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneNumberId) return;
+
+  const customerPhone = normalizePhoneNumber(order.customer_phone);
+
+  const messageBody = `Hi ${order.customer_name}! 👋
+
+Your PostDuty order should have reached you by now. We hope you love it! ❤️
+
+If there's any issue at all — wrong item, damaged packaging, anything — just reply here and we'll sort it out immediately.
+
+Thank you for supporting PostDuty! 🙏`;
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: customerPhone,
+        type: "text",
+        text: { preview_url: false, body: messageBody },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[WhatsApp FollowUp Day1] Failed: ${response.status}. ${errText}`);
+    } else {
+      console.log(`[WhatsApp FollowUp Day1] Sent to ${customerPhone}`);
+    }
+  } catch (err) {
+    console.error("[WhatsApp FollowUp Day1] Error:", err);
+  }
+}
+
+/**
+ * Day 5 follow-up: "How are you liking it? Share a photo for 10% off next order."
+ * Sent 5 days after delivery.
+ */
+export async function sendFollowUpDay5WhatsApp(order: Order): Promise<void> {
+  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (!enabled) return;
+
+  const token = process.env.WHATSAPP_PERMANENT_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneNumberId) return;
+
+  const customerPhone = normalizePhoneNumber(order.customer_phone);
+
+  const messageBody = `Hey ${order.customer_name}! 🌟
+
+It's been a few days since your PostDuty order arrived. How are you liking it?
+
+📸 *Share a photo wearing or using your product* and we'll send you a *10% off code* for your next order!
+
+Just reply with a photo right here. We'd love to feature you! 💜`;
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: customerPhone,
+        type: "text",
+        text: { preview_url: false, body: messageBody },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[WhatsApp FollowUp Day5] Failed: ${response.status}. ${errText}`);
+    } else {
+      console.log(`[WhatsApp FollowUp Day5] Sent to ${customerPhone}`);
+    }
+  } catch (err) {
+    console.error("[WhatsApp FollowUp Day5] Error:", err);
+  }
+}

@@ -40,7 +40,27 @@ export default async function HomePage() {
     console.error("Failed to load products:", error.message);
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://postduty.jijo925.workers.dev";
+
+  const orgJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "PostDuty",
+    url: baseUrl,
+    description: "Thoughtful gifts for nurses, doctors, and every healthcare hero.",
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: "hello@postduty.in",
+      contactType: "customer service",
+    },
+  };
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+      />
     <main>
       {/* Hero — "the slide" */}
       <section className="hero-wash grain-texture relative overflow-hidden py-20 sm:py-28 px-4 text-center">
@@ -157,5 +177,6 @@ export default async function HomePage() {
         )}
       </section>
     </main>
+    </>
   );
 }

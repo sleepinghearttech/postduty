@@ -57,31 +57,49 @@ src/
   middleware.ts                     # Guards all /admin/* routes — checks admin_session cookie
   app/
     page.tsx                        # Homepage — product grid (Server Component)
-    products/[slug]/page.tsx        # Product detail page (Server Component)
-    order-success/page.tsx          # Post-payment success page
+    products/[slug]/page.tsx        # Product detail page + FAQ + Reviews (Server Component)
+    cart/page.tsx                   # Shopping cart review + checkout (Client Component)
+    orders/page.tsx                 # Guest order lookup + recent history (Client Component)
+    orders/[id]/page.tsx            # Public order status detail + tracking timeline (Server Component)
+    order-success/page.tsx          # Post-payment success page + localStorage save (Client Component)
+    terms/page.tsx                  # Terms of Service (compliance)
+    privacy/page.tsx                # Privacy Policy (compliance)
+    refunds/page.tsx                # Refund & Cancellation Policy (compliance)
+    shipping/page.tsx               # Shipping Policy (compliance)
+    contact/page.tsx                # Contact Us + Grievance Officer (compliance)
     admin/
       login/page.tsx                # Admin login form (Client Component)
+      orders/page.tsx               # Admin order dashboard (Client Component)
       products/
         page.tsx                    # Admin products page — fetches all products server-side
         ProductsClient.tsx          # Interactive product cards, image upload, CRUD (Client Component)
     api/
-      create-order/route.ts         # POST — creates Razorpay order, returns orderId + amount
-      verify-payment/route.ts       # POST — verifies HMAC signature, saves order to Supabase
+      create-order/route.ts         # POST — creates Razorpay order (supports single + multi-item)
+      verify-payment/route.ts       # POST — verifies HMAC, saves order + items, decrements stock, sends notifications
+      orders/lookup/route.ts        # POST — guest order lookup by ID + email/phone verification
       admin/
         login/route.ts              # POST — checks password, sets admin_session cookie
         upload-image/route.ts       # POST — uploads file to Supabase Storage, returns public URL
         create-product/route.ts     # POST — creates product (price in rupees, converts to paise)
         update-product/route.ts     # POST — partial update by id
+        update-order/route.ts       # POST — status transition + tracking number + triggers shipped notifications
         delete-product/route.ts     # POST — deletes product; refuses if in any order_items row
   components/
-    CheckoutForm.tsx                # Checkout form + Razorpay modal (Client Component)
+    CartContext.tsx                  # React Context for cart state + localStorage persistence (Client Component)
+    CheckoutForm.tsx                # Checkout form + Razorpay modal + Add to Cart (Client Component)
+    Header.tsx                      # Site header with logo, Track Order link, cart icon + badge (Client Component)
+    Footer.tsx                      # Site footer with policy links
   lib/
-    supabase.ts                     # Two Supabase client instances
+    supabase.ts                     # Two Supabase client instances (anon + admin)
     types.ts                        # TypeScript types: Product, Order, OrderItem, OrderStatus
+    notifications.ts                # WhatsApp sending: order alerts, customer confirm, shipped alerts
+    email.ts                        # Email sending: order receipts, shipping confirmations
 supabase/
   schema.sql                        # Full DB schema + RLS + GRANTs + seed data
 wrangler.jsonc                      # Cloudflare Worker config (nodejs_compat flag required)
 ADMIN_GUIDE.md                      # Plain-English guide for non-technical partner
+PROJECT_STATUS.md                   # Master project status tracker (share with team)
+PostDuty_Product_to_Customer_Playbook.md  # Business playbook: sourcing, marketing, shipping, retention
 ```
 
 ## Completed Steps
@@ -91,16 +109,27 @@ ADMIN_GUIDE.md                      # Plain-English guide for non-technical part
 - [x] Step 4: Razorpay checkout form, order creation, payment verification, order saved to DB
 - [x] Step 5: Production debugging — env vars in Cloudflare, full payment flow verified live
 - [x] Step 6: Password-protected admin panel — product CRUD, image upload, Supabase Storage
-- [x] Step 7: Admin order dashboard (`src/app/admin/orders/`) + payment safety net (`failed_order_logs` table, idempotent webhook recovery in `verify-payment/route.ts`) — done, this file previously showed it as pending
-- [x] Placeholder compliance pages: `/terms`, `/privacy`, `/refunds`, `/shipping`, `/contact` exist (`src/app/{terms,privacy,refunds,shipping,contact}/page.tsx`) — placeholder legal copy, needs real GSTIN/address/legal-name once partner details + KYC land
+- [x] Step 7: Admin order dashboard + payment safety net (failed_order_logs table, idempotent webhook recovery)
+- [x] Step 8: Native order alerts (WhatsApp + Email). Fixed webhook race condition, corrected template language to `en_IN`
+- [x] Step 9: Compliance pages: `/terms`, `/privacy`, `/refunds`, `/shipping`, `/contact` — full legal copy, placeholders for partner KYC details
+- [x] Step 10: Shopping cart (CartContext + localStorage), Header cart icon + badge, Add to Cart buttons, `/cart` page
+- [x] Step 11: Multi-item API refactoring — `create-order` and `verify-payment` support item arrays with backward compat
+- [x] Step 12: Customer order tracking — `/orders` lookup page, `/orders/[id]` detail page, secure lookup API
+- [x] Step 13: Shipped notifications — WhatsApp + Email auto-triggered when admin marks order as shipped
+- [x] Step 14: Product page FAQ accordion + customer reviews section
 
 ## Up Next
-- [ ] Step 8: Razorpay live mode (requires KYC on Razorpay account)
-- [ ] Make.com → WhatsApp order-notification pipeline: no webhook/HTTP code exists in `src/` yet — this is still a Make.com-side scenario build, not a code task here. `hello_world` template delivers fine; the custom order-notification template does not (see ROADMAP.md / hub-level diagnostic checklist for the exact fields to check — template approval status, `language.code`, variable count).
+- [ ] Step 15: Razorpay live mode (requires KYC on Razorpay account)
+- [ ] Step 16: Buy `postduty.in` domain on Cloudflare, connect to Worker
+- [ ] Step 17: Setup production environment variables on Cloudflare
+- [ ] Step 18: Verify `postduty.in` domain on Resend to remove email sandbox limits
+- [ ] Step 19: Get dedicated WhatsApp API number (cheap SIM) and update Meta settings
+- [ ] Step 20: Post-purchase cron jobs (T+1 check-in, T+5 review ask, 60-day win-back)
 
 ## Other folders
-- **`n8n/`** — an earlier attempt at n8n-based order notifications (WhatsApp + Gmail + Sheets via local n8n + ngrok). Superseded by Make.com for this project, but **intentionally kept** as a fallback in case Make.com free-tier limits are hit or it's reused for another project — don't delete or treat as dead code.
-- **`ROADMAP.md`** — has more granular next-step detail than this file; check both.
+- **`n8n/`** — an earlier attempt at n8n-based order notifications (WhatsApp + Gmail + Sheets via local n8n + ngrok). Superseded by native Next.js API routes in `src/lib/notifications.ts` and `src/lib/email.ts`. **Intentionally kept** as reference — don't delete.
+- **`ROADMAP.md`** — an older granular roadmap. The current source of truth is `PROJECT_STATUS.md` (comprehensive) and this file (`CLAUDE.md`, technical reference).
+- **`PostDuty_Product_to_Customer_Playbook.md`** — business playbook covering sourcing, marketing, shipping, and retention. The definitive business strategy document.
 
 ## Local Dev
 ```

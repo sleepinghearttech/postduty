@@ -19,15 +19,17 @@ function formatRupees(paise: number) {
 // ─── status badge ─────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  paid:    'bg-blue-100 text-blue-700',
-  shipped: 'bg-green-100 text-green-700',
+  pending:   'bg-yellow-100 text-yellow-700',
+  paid:      'bg-blue-100 text-blue-700',
+  shipped:   'bg-green-100 text-green-700',
+  delivered: 'bg-emerald-100 text-emerald-700',
 }
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: 'Pending',
-  paid:    'Paid — ready to ship',
-  shipped: 'Shipped',
+  pending:   'Pending',
+  paid:      'Paid — ready to ship',
+  shipped:   'Shipped',
+  delivered: 'Delivered ✓',
 }
 
 function StatusBadge({ status }: { status: OrderStatus }) {
@@ -44,7 +46,7 @@ function StatsBar({ orders }: { orders: OrderWithItems[] }) {
   const totalOrders = orders.length
   const awaitingShipment = orders.filter(o => o.status === 'paid').length
   const totalRevenuePaise = orders
-    .filter(o => o.status === 'paid' || o.status === 'shipped')
+    .filter(o => o.status === 'paid' || o.status === 'shipped' || o.status === 'delivered')
     .reduce((sum, o) => sum + o.total_amount, 0)
 
   return (
@@ -152,7 +154,19 @@ function OrderCard({
           </p>
           <p className="text-xs text-gray-400 mt-0.5">{formatDate(order.created_at)}</p>
         </div>
-        <StatusBadge status={order.status as OrderStatus} />
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {order.is_gift && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700" title={order.gift_message || 'Gift order'}>
+              🎁 Gift
+            </span>
+          )}
+          {order.coupon_code && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700">
+              🏷️ {order.coupon_code}
+            </span>
+          )}
+          <StatusBadge status={order.status as OrderStatus} />
+        </div>
       </div>
 
       {/* Details grid */}
@@ -191,6 +205,12 @@ function OrderCard({
             Total
           </p>
           <p className="text-lg font-bold text-gray-900">{formatRupees(order.total_amount)}</p>
+          {order.discount_amount > 0 && (
+            <p className="text-xs text-green-600 mt-0.5">Discount: -{formatRupees(order.discount_amount)}</p>
+          )}
+          {order.is_gift && order.gift_message && (
+            <p className="text-xs text-amber-600 mt-1 italic">"{ order.gift_message}"</p>
+          )}
         </div>
       </div>
 
@@ -216,7 +236,16 @@ function OrderCard({
             </button>
           )}
           {order.status === 'shipped' && (
-            <span className="text-xs text-gray-400 italic">Shipped — enter tracking below</span>
+            <button
+              onClick={() => handleStatusChange('delivered')}
+              disabled={saving}
+              className="text-sm px-4 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Saving…' : 'Mark as delivered ✓'}
+            </button>
+          )}
+          {order.status === 'delivered' && (
+            <span className="text-xs text-emerald-600 italic">Delivered — follow-up messages will be sent automatically</span>
           )}
           {flash && (
             <span
@@ -227,8 +256,8 @@ function OrderCard({
           )}
         </div>
 
-        {/* Tracking input — visible once shipped */}
-        {order.status === 'shipped' && (
+        {/* Tracking input — visible once shipped or delivered */}
+        {(order.status === 'shipped' || order.status === 'delivered') && (
           <>
             <div className="flex items-center gap-2">
               <input

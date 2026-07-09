@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PostDuty — Project Status Report</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --accent-light: #e0e7ff;
+      --green: #22c55e;
+      --green-bg: #dcfce7;
+      --green-border: #86efac;
+      --yellow: #eab308;
+      --yellow-bg: #fef9c3;
+      --yellow-border: #fde047;
+      --red: #ef4444;
+      --red-bg: #fee2e2;
+      --red-border: #fca5a5;
+      --blue: #3b82f6;
+      --blue-bg: #dbeafe;
+      --border: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0;
+    }
+
+    /* ─── HEADER ─── */
+    .hero {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%);
+      color: white;
+      padding: 48px 32px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 70%, rgba(255,255,255,0.08) 0%, transparent 50%);
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+      position: relative;
+    }
+    .hero .subtitle {
+      font-size: 1rem;
+      opacity: 0.85;
+      font-weight: 400;
+      position: relative;
+    }
+    .hero .date {
+      display: inline-block;
+      margin-top: 16px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(4px);
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      position: relative;
+    }
+
+    /* ─── LAYOUT ─── */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    /* ─── OVERALL PROGRESS ─── */
+    .progress-hero {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 28px;
+      margin: -28px auto 28px;
+      position: relative;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+      max-width: 800px;
+    }
+    .progress-hero h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    .progress-bar-outer {
+      background: #f1f5f9;
+      border-radius: 12px;
+      height: 28px;
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar-inner {
+      height: 100%;
+      border-radius: 12px;
+      background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: white;
+      transition: width 1s ease;
+    }
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .big-status {
+      margin-top: 18px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--green);
+    }
+    .big-status .emoji { font-size: 1.3rem; }
+
+    /* ─── SECTION CARDS ─── */
+    .section {
+      background: var(--card);
+      border-radius: 14px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+    .section-icon.green { background: var(--green-bg); }
+    .section-icon.yellow { background: var(--yellow-bg); }
+    .section-icon.red { background: var(--red-bg); }
+    .section-icon.blue { background: var(--blue-bg); }
+
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+    .section-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .badge-done { background: var(--green-bg); color: #15803d; border: 1px solid var(--green-border); }
+    .badge-progress { background: var(--yellow-bg); color: #a16207; border: 1px solid var(--yellow-border); }
+    .badge-future { background: var(--blue-bg); color: #1d4ed8; border: 1px solid #93c5fd; }
+
+    .section-body { padding: 16px 24px 20px; }
+
+    /* ─── TASK LISTS ─── */
+    .task-list { list-style: none; }
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.92rem;
+    }
+    .task-item:last-child { border-bottom: none; }
+    .task-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .check-done { background: var(--green-bg); color: var(--green); border: 1.5px solid var(--green-border); }
+    .check-pending { background: var(--red-bg); color: var(--red); border: 1.5px solid var(--red-border); }
+    .check-waiting { background: var(--yellow-bg); color: var(--yellow); border: 1.5px solid var(--yellow-border); }
+    .check-blocked { background: #f3f4f6; color: #9ca3af; border: 1.5px solid #d1d5db; }
+
+    .task-text { flex: 1; }
+    .task-text strong { font-weight: 600; }
+    .task-detail {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .task-owner {
+      display: inline-block;
+      background: var(--accent-light);
+      color: var(--accent);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 1px 8px;
+      border-radius: 10px;
+      margin-left: 4px;
+    }
+
+    /* ─── CALLOUT BOX ─── */
+    .callout {
+      background: linear-gradient(135deg, #fef3c7, #fefce8);
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    .callout-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+      font-size: 0.92rem;
+    }
+
+    .callout.info {
+      background: linear-gradient(135deg, #dbeafe, #eff6ff);
+      border-color: #93c5fd;
+    }
+
+    /* ─── SUMMARY GRID ─── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .summary-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .summary-card .emoji { font-size: 1.5rem; display: block; margin-bottom: 6px; }
+    .summary-card .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .summary-card .value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 3px;
+    }
+    .summary-card .value.ok { color: var(--green); }
+    .summary-card .value.warn { color: var(--yellow); }
+    .summary-card .value.stop { color: var(--red); }
+
+    /* ─── FLOW DIAGRAM ─── */
+    .flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 16px 0;
+    }
+    .flow-step {
+      background: var(--accent-light);
+      color: var(--accent);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .flow-arrow { color: var(--text-muted); font-size: 1.2rem; }
+
+    /* ─── IMPROVEMENTS ─── */
+    .improve-card {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
+    }
+    .improve-card:last-child { margin-bottom: 0; }
+    .improve-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 4px; }
+    .improve-desc { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* ─── TEAM LEGEND ─── */
+    .team {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .team-member {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .team-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: white;
+    }
+
+    /* ─── FOOTER ─── */
+    .footer {
+      text-align: center;
+      padding: 32px 20px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* ─── PRINT FRIENDLY ─── */
+    @media print {
+      body { background: white; }
+      .hero { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .section { break-inside: avoid; box-shadow: none; border: 1px solid #e2e8f0; }
+      .progress-hero { box-shadow: none; border: 1px solid #e2e8f0; }
+    }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 1.6rem; }
+      .section-header { flex-wrap: wrap; }
+      .section-badge { margin-left: 0; margin-top: 4px; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════ HEADER ═══════════════ -->
+  <div class="hero">
+    <h1>🩺 PostDuty</h1>
+    <div class="subtitle">Project Status Report — Shared with the Team</div>
+    <div class="date">📅 Last Updated: 7 July 2026</div>
+  </div>
+
+  <!-- ═══════════════ PROGRESS BAR ═══════════════ -->
+  <div class="container">
+
+    <div class="progress-hero">
+      <h2>Overall Launch Progress</h2>
+      <div class="progress-bar-outer">
+        <div class="progress-bar-inner" style="width: 65%;">65%</div>
+      </div>
+      <div class="progress-labels">
+        <span>Started</span>
+        <span>Website Done</span>
+        <span>KYC Pending</span>
+        <span>🚀 Launch</span>
+      </div>
+      <div class="big-status">
+        <span class="emoji">✅</span> All tech is built and tested. Waiting for business KYC to go live!
+      </div>
+
+      <div class="team" style="margin-top: 20px;">
+        <div class="team-member">
+          <div class="team-avatar" style="background: #6366f1;">J</div>
+          <span><strong>Jijo</strong> — Tech &amp; Strategy</span>
+        </div>
+        <div class="team-member">
+          <div class="team-avatar" style="background: #f59e0b;">P</div>
+          <span><strong>Partner</strong> — Delhi Ops &amp; KYC</span>
+        </div>
+        <div class="team-member">
+          <div class="team-avatar" style="background: #22c55e;">F</div>
+          <span><strong>Friend</strong> — Sourcing Help</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ WHAT'S WORKING ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon green">📊</div>
+        <div class="section-title">What's Working Right Now</div>
+      </div>
+      <div class="section-body">
+        <div class="summary-grid">
+          <div class="summary-card">
+            <span class="emoji">🌐</span>
+            <div class="label">Website</div>
+            <div class="value ok">✅ Live</div>
+          </div>
+          <div class="summary-card">
+            <span class="emoji">💳</span>
+            <div class="label">Payments</div>
+            <div class="value warn">⚠️ Test Mode</div>
+          </div>
+          <div class="summary-card">
+            <span class="emoji">💬</span>
+            <div class="label">WhatsApp</div>
+            <div class="value warn">⚠️ Test Number</div>
+          </div>
+          <div class="summary-card">
+            <span class="emoji">📧</span>
+            <div class="label">Email</div>
+            <div class="value warn">⚠️ Sandbox</div>
+          </div>
+          <div class="summary-card">
+            <span class="emoji">🗄️</span>
+            <div class="label">Database</div>
+            <div class="value ok">✅ Working</div>
+          </div>
+          <div class="summary-card">
+            <span class="emoji">🛒</span>
+            <div class="label">Shopping Cart</div>
+            <div class="value ok">✅ Working</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ HOW IT WORKS ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon blue">⚙️</div>
+        <div class="section-title">How an Order Works (end to end)</div>
+      </div>
+      <div class="section-body">
+        <div class="flow">
+          <div class="flow-step">🛍️ Customer<br>browses &amp; adds<br>to cart</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step">💳 Pays via<br>Razorpay</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step">📦 Order saved<br>in database<br>+ stock reduced</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step">🔔 Auto alerts<br>WhatsApp + Email<br>to customer &amp; us</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step">🚚 We mark<br>"Shipped" in<br>admin panel</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step">📬 Customer gets<br>tracking number<br>via WhatsApp<br>+ Email</div>
+        </div>
+        <div class="callout info">
+          <div class="callout-title">💡 Safety Net Built In</div>
+          Even if a customer closes their browser mid-payment, the order still gets saved automatically. No money is ever lost.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PHASE 1: TECH ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon green">🛠️</div>
+        <div class="section-title">Website &amp; Tech Setup</div>
+        <span class="section-badge badge-done">✅ Complete</span>
+      </div>
+      <div class="section-body">
+        <ul class="task-list">
+          <li class="task-item">
+            <div class="task-check check-done">✓</div>
+            <div class="task-text">
+              <strong>Store website</strong>
+              <span class="task-detail">Product pages, prices, photos — all from database, easy to change anytime</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-done">✓</div>
+            <div class="task-text">
+              <strong>Payment gateway (Razorpay)</strong>
+              <span class="task-detail">Customers can pay via UPI, cards, net banking. Tested and working.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-done">✓</div>
+            <div class="task-text">
+              <strong>Product management panel</strong>
+              <span class="task-detail">Password-protected admin page to add/edit products, upload photos, manage stock</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-done">✓</div>
+            <div class="task-text">
+              <strong>Order dashboard</strong>
+              <span class="task-detail">See all orders, change status to "shipped", save tracking numbers</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-done">✓</div>
+            <div class="task-text">
+              <strong>Shopping cart (multi-item checkout)</strong>
+              <span class="task-detail">Customers can buy multiple products in one go → increases average order value</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PHASE 2: NOTIFICATIONS ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon green">🔔</div>
+        <div class="section-title">Automatic Notifications</div>
+        <span class="section-badge badge-done">✅ Complete</span>
+      </div>
+      <div class="section-body">
+        <ul class="task-list">
+          <li class="task-item">
+            <div class="task-check check-done">✓</div>
+            <div class="task-text">
+              <strong>When customer pays →</strong>
+              <span class="task-detail">✔ WhatsApp order confirmation to customer  ✔ Email receipt to customer  ✔ WhatsApp alert to us (admins)</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-done">✓</div>
+            <div class="task-text">
+              <strong>When we mark "shipped" →</strong>
+              <span class="task-detail">✔ WhatsApp to customer with tracking number  ✔ Email to customer with tracking link  ✔ WhatsApp to us confirming dispatch</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-done">✓</div>
+            <div class="task-text">
+              <strong>Customer order tracking page</strong>
+              <span class="task-detail">Customers can check their order status on our website anytime — reduces "where is my order?" messages</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PHASE 3: LEGAL ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon green">📜</div>
+        <div class="section-title">Legal &amp; Compliance Pages</div>
+        <span class="section-badge badge-done">✅ Template Ready</span>
+      </div>
+      <div class="section-body">
+        <ul class="task-list">
+          <li class="task-item">
+            <div class="task-check check-done">✓</div>
+            <div class="task-text">
+              <strong>All 5 mandatory pages created</strong>
+              <span class="task-detail">Terms of Service · Privacy Policy · Refund Policy · Shipping Policy · Contact Us (with Grievance Officer section)</span>
+            </div>
+          </li>
+        </ul>
+        <div class="callout">
+          <div class="callout-title">⚠️ Action Needed from Partner</div>
+          These pages have placeholder text like [BUSINESS_NAME], [GSTIN], [REGISTERED_ADDRESS]. Once the KYC paperwork gives us these details, Jijo will fill them in. Takes 5 minutes.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PHASE 4: LAUNCH BLOCKERS ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon yellow">🚧</div>
+        <div class="section-title">What's Needed Before We Can Launch</div>
+        <span class="section-badge badge-progress">🔧 In Progress</span>
+      </div>
+      <div class="section-body">
+
+        <p style="font-size:0.9rem; color: var(--text-muted); margin-bottom: 16px;">These are the steps blocking us from accepting <strong>real money</strong> from real customers. Most need just a few clicks, but some depend on each other.</p>
+
+        <ul class="task-list">
+          <li class="task-item">
+            <div class="task-check check-pending">1</div>
+            <div class="task-text">
+              <strong>Buy our domain: postduty.in</strong> <span class="task-owner">J</span>
+              <span class="task-detail">~₹900/year on Cloudflare. This becomes our permanent website address.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">2</div>
+            <div class="task-text">
+              <strong>Connect domain to our website</strong> <span class="task-owner">J</span>
+              <span class="task-detail">One-time Cloudflare setting. SSL (the "secure lock" icon) is automatic.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">3</div>
+            <div class="task-text">
+              <strong>Enable real email delivery</strong> <span class="task-owner">J</span>
+              <span class="task-detail">Right now emails only go to our test address. Need to add the domain to Resend so all customers get emails.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">4</div>
+            <div class="task-text">
+              <strong>Get a phone number for WhatsApp API</strong> <span class="task-owner">J</span>
+              <span class="task-detail">Buy a cheap prepaid SIM (₹200). Register it once with Meta. This becomes the number that sends automated messages to customers. Our personal numbers stay untouched.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-waiting">5</div>
+            <div class="task-text">
+              <strong>Get the "order shipped" WhatsApp template approved</strong> <span class="task-owner">J</span>
+              <span class="task-detail">Submitted to Meta for review. Usually approved within hours. System works even without it (sends plain text fallback).</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">6</div>
+            <div class="task-text">
+              <strong>Collect KYC details</strong> <span class="task-owner">P</span>
+              <span class="task-detail">Need: legal business name, GSTIN, registered address, PAN, phone number, bank account details.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-blocked">7</div>
+            <div class="task-text">
+              <strong>Submit Razorpay Live KYC</strong> <span class="task-owner">P</span>
+              <span class="task-detail">⏳ Blocked until step 6 is done. Submit business + bank details on Razorpay to switch from "test money" to "real money". Takes 2-5 business days.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-blocked">8</div>
+            <div class="task-text">
+              <strong>Fill in real details in legal pages</strong> <span class="task-owner">J</span>
+              <span class="task-detail">⏳ Blocked until step 6 is done. Replace placeholder text with real business name, GSTIN, address.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">9</div>
+            <div class="task-text">
+              <strong>Invite partner to Meta Business account</strong> <span class="task-owner">J + P</span>
+              <span class="task-detail">Give partner access to the PostDuty page &amp; Instagram in Meta Business Suite.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-blocked">10</div>
+            <div class="task-text">
+              <strong>🎯 The final test: place one real order</strong> <span class="task-owner">J + P</span>
+              <span class="task-detail">⏳ Blocked until steps 7 + 4 are done. Pay real money, check every notification fires, track the order, the whole loop.</span>
+            </div>
+          </li>
+        </ul>
+
+        <div class="callout">
+          <div class="callout-title">🔑 The Key Bottleneck</div>
+          <strong>Step 6 (KYC details from Partner)</strong> unlocks steps 7 + 8. Steps 1-5 and 9 can happen right now, independently. Once KYC is done, we can launch within 2-3 days.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PHASE 5: SOURCING ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon blue">📦</div>
+        <div class="section-title">Product Sourcing &amp; Inventory</div>
+        <span class="section-badge badge-future">📅 Can Start Now</span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:0.9rem; color: var(--text-muted); margin-bottom: 16px;">While we wait for KYC, the partner can start these tasks in parallel:</p>
+        <ul class="task-list">
+          <li class="task-item">
+            <div class="task-check check-pending">!</div>
+            <div class="task-text">
+              <strong>Walk Bhagirath Palace, Delhi</strong> <span class="task-owner">P</span>
+              <span class="task-detail">India's biggest surgical market. Check prices for badge reels, pen torches, ampule openers. Collect visiting cards.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">!</div>
+            <div class="task-text">
+              <strong>Visit Sadar Bazaar for packaging</strong> <span class="task-owner">P</span>
+              <span class="task-detail">Source 200 poly mailers, brand stickers, thank-you cards, QR code inserts. Budget: ₹1,500-2,500.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">!</div>
+            <div class="task-text">
+              <strong>Message IndiaMART suppliers</strong> <span class="task-owner">F</span>
+              <span class="task-detail">Contact 3-5 suppliers per product. Ask: MOQ, price at 20/50 pieces, sample cost, shipping time.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">!</div>
+            <div class="task-text">
+              <strong>Photograph existing products</strong> <span class="task-owner">P</span>
+              <span class="task-detail">6-8 angles per product, phone camera, near a window for natural light, on white paper.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">!</div>
+            <div class="task-text">
+              <strong>Create 3 bundle/kit listings</strong> <span class="task-owner">J</span>
+              <span class="task-detail">"Ward Survival Kit ₹499", "Intern Starter Pack ₹599", "Night Duty Kit ₹449" — bundles fix the low-AOV problem.</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PHASE 6: MARKETING ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon blue">📣</div>
+        <div class="section-title">Marketing &amp; Growth Plan</div>
+        <span class="section-badge badge-future">📅 After Launch</span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:0.9rem; color: var(--text-muted); margin-bottom: 16px;">These come <em>after</em> we launch. The sequence matters — follow this order:</p>
+        <ul class="task-list">
+          <li class="task-item">
+            <div class="task-check check-pending">1</div>
+            <div class="task-text">
+              <strong>Soft launch to 30-50 medico friends</strong> <span class="task-owner">J</span>
+              <span class="task-detail">Personal WhatsApp messages (not a broadcast). Goal: 10 orders + 5 testimonials + bug reports.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">2</div>
+            <div class="task-text">
+              <strong>Instagram content: 3 Reels per week</strong> <span class="task-owner">J + P</span>
+              <span class="task-detail">Product demos · Ward-life humor (gets shared in batch groups = free distribution) · Behind-the-brand story.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">3</div>
+            <div class="task-text">
+              <strong>Campus ambassadors (3 colleges)</strong> <span class="task-owner">J + P</span>
+              <span class="task-detail">Free product + 10% commission per referral. Custom QR code stickers for hostel notice boards.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">4</div>
+            <div class="task-text">
+              <strong>Google Shopping free listings</strong> <span class="task-owner">J</span>
+              <span class="task-detail">₹0 cost. Our products appear in Google Shopping tab. Need domain first.</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">5</div>
+            <div class="task-text">
+              <strong>Google Ads (₹20k free credits parked)</strong> <span class="task-owner">J</span>
+              <span class="task-detail">Only after the first stranger order. Shopping ads + search ads on medico keywords like "badge reel for nurses India".</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check check-pending">6</div>
+            <div class="task-text">
+              <strong>Instagram Ads (only after 30+ orders/month)</strong> <span class="task-owner">J</span>
+              <span class="task-detail">Boost our best-performing organic Reel. Concentrated ₹500-700/day burst for 2-3 weeks, then stop and analyze.</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══════════════ IMPROVEMENTS MADE ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon green">💡</div>
+        <div class="section-title">Smart Improvements We've Added to Our Plan</div>
+        <span class="section-badge badge-done">✅ Integrated</span>
+      </div>
+      <div class="section-body">
+        <div class="improve-card">
+          <div class="improve-title">🎁 Gift Option at Checkout</div>
+          <div class="improve-desc">Checkbox: "Is this a gift? Add a printed greeting card (+₹20)". Medical gifts are huge (NEET results, convocations). Lifts average order value.</div>
+        </div>
+        <div class="improve-card">
+          <div class="improve-title">⏱️ Smart Preorder Messaging</div>
+          <div class="improve-desc">When someone orders a preorder item, their WhatsApp and email confirmations automatically say "Ships in 7-10 days" — prevents customer complaints.</div>
+        </div>
+        <div class="improve-card">
+          <div class="improve-title">📱 Ambassador QR Stickers</div>
+          <div class="improve-desc">Custom sticker sheets with QR codes that link to each ambassador's personal discount page. Stick them on hostel notice boards for free marketing.</div>
+        </div>
+        <div class="improve-card">
+          <div class="improve-title">📮 Cheaper Shipping for Small Items</div>
+          <div class="improve-desc">Badge reels and lanyards weigh under 100g — ship in bubble mailer envelopes at ₹20-25 instead of boxes at ₹36-50. Doubles our margin on single items.</div>
+        </div>
+        <div class="improve-card">
+          <div class="improve-title">🤖 Zero-Cost Automated Follow-ups</div>
+          <div class="improve-desc">After delivery: Day 1 check-in ("reached safely?"), Day 5 review request, Day 60 win-back offer. Built into our own server at ₹0/month — no paid tools needed.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ MONEY TALK ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon blue">💰</div>
+        <div class="section-title">Budget Allocation (₹10k–25k total)</div>
+      </div>
+      <div class="section-body">
+        <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+          <tr style="background:#f8fafc; font-weight:600;">
+            <td style="padding:10px 12px; border-bottom:2px solid var(--border);">Item</td>
+            <td style="padding:10px 12px; border-bottom:2px solid var(--border); text-align:right;">Amount</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">First product batches (10-30 pcs each)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:right; font-weight:600;">₹8,000 – 14,000</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Samples from 5-8 suppliers</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:right; font-weight:600;">₹800 – 1,500</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Packaging (mailers, stickers, thank-you cards × 200)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:right; font-weight:600;">₹1,500 – 2,500</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Domain (postduty.in)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:right; font-weight:600;">~₹900</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9;">Paid ad testing (only after first stranger order)</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:right; font-weight:600;">₹3,000 – 6,000</td>
+          </tr>
+          <tr style="background:#f0fdf4;">
+            <td style="padding:10px 12px; font-weight:700;">Running costs (website + notifications + database)</td>
+            <td style="padding:10px 12px; text-align:right; font-weight:700; color:var(--green);">₹0/month</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ 90-DAY TIMELINE ═══════════════ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon blue">🗓️</div>
+        <div class="section-title">90-Day Game Plan</div>
+      </div>
+      <div class="section-body">
+        <ul class="task-list">
+          <li class="task-item">
+            <div class="task-check" style="background:var(--accent-light); color:var(--accent); border:1.5px solid #c7d2fe; font-weight:700; font-size:0.65rem;">W1-2</div>
+            <div class="task-text">
+              <strong>Weeks 1–2: Sourcing + KYC (in parallel)</strong>
+              <span class="task-detail">Build supplier tracker → message IndiaMART → partner walks Bhagirath Palace → order samples → photograph SKUs → set up WhatsApp catalog</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check" style="background:var(--accent-light); color:var(--accent); border:1.5px solid #c7d2fe; font-weight:700; font-size:0.65rem;">W3-4</div>
+            <div class="task-text">
+              <strong>Weeks 3–4: Stock up + soft launch</strong>
+              <span class="task-detail">Samples arrive → pick winners → buy 10-30 unit batches → list 3 bundles → domain live → first real test order → soft launch to friends</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check" style="background:var(--accent-light); color:var(--accent); border:1.5px solid #c7d2fe; font-weight:700; font-size:0.65rem;">W5-8</div>
+            <div class="task-text">
+              <strong>Weeks 5–8: Content + campus push</strong>
+              <span class="task-detail">3 Reels/week → campus group sharing → ambassador pilot (3 colleges) → post-purchase flow live → first preorder test</span>
+            </div>
+          </li>
+          <li class="task-item">
+            <div class="task-check" style="background:var(--accent-light); color:var(--accent); border:1.5px solid #c7d2fe; font-weight:700; font-size:0.65rem;">W9-12</div>
+            <div class="task-text">
+              <strong>Weeks 9–12: First stranger + Google Ads</strong>
+              <span class="task-detail">First stranger order milestone → activate ₹20k Google Ads credits → seed 10 influencer kits → build 3+ reviews/product → evaluate and iterate</span>
+            </div>
+          </li>
+        </ul>
+
+        <div class="callout">
+          <div class="callout-title">🛑 Day 90 Honesty Checkpoint</div>
+          If after 90 days of full effort we don't have ≥30 total orders and ≥1 repeat customer → the problem is product-market fit, not marketing. Go back to product research, don't throw more money at ads.
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <div class="footer">
+      <p><strong>PostDuty</strong> — Medico accessories for doctors, nurses &amp; medical students</p>
+      <p style="margin-top:4px;">This report is auto-generated from the project. Open this file in any browser or print to PDF.</p>
+      <p style="margin-top:8px; font-size:0.75rem;">💡 Tip: To save as PDF → Open in Chrome → Ctrl+P → "Save as PDF"</p>
+    </div>
+
+  </div>
+
+</body>
+</html>

@@ -107,8 +107,7 @@ Make fulfilment smooth so it doesn't eat your time.
 
 Only after the manual loop works. Automate the repetitive parts.
 
-- [~] **Make.com** new-order pipeline: order → WhatsApp alert + Gmail + Google Sheet log — **J** _(local n8n kept as a fallback, not deleted — see `n8n/`. `hello_world` template delivers fine; custom order-notification template does not — see `WHATSAPP_TEMPLATE_DEBUG.md` for the exact checklist)_
-- [ ] Make.com error monitor — **J**
+- [x] **Next.js Native Alerts** pipeline: order → WhatsApp alert + Email notifications directly from the Next.js server — **J** _(successfully debugged template en_IN and fixed race condition with webhook recovery)_
 - [ ] _(n8n Cloud reserved for business hub automation in Phase 8–9, not PostDuty storefront)_
 - [ ] Shiprocket API automation: auto-create shipment on paid order (needs ₹499/mo plan) 💰 — **J**
 - [ ] Instagram Shopping: product catalogue approved, product tagging live — **J**

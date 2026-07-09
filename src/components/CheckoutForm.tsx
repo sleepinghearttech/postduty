@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/types";
 import { useCart } from "@/components/CartContext";
@@ -67,6 +67,79 @@ export default function CheckoutForm({ product }: { product: Product }) {
     address: "",
   });
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [couponApplied, setCouponApplied] = useState<{
+    code: string;
+    discountAmount: number;
+    message: string;
+  } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
+  // Gift state
+  const [isGift, setIsGift] = useState(false);
+  const [giftMessage, setGiftMessage] = useState("");
+
+  // Auto-apply referral code from localStorage
+  useEffect(() => {
+    try {
+      const refCode = localStorage.getItem("postduty_referral_code");
+      if (refCode && !couponApplied) {
+        setCouponCode(refCode);
+      }
+    } catch { /* ignore */ }
+  }, [couponApplied]);
+
+  const giftCharge = isGift ? 2000 : 0; // ₹20 in paise
+  const discountAmount = couponApplied?.discountAmount ?? 0;
+  const finalTotal = product.price + giftCharge - discountAmount;
+
+  async function handleApplyCoupon() {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    setCouponApplied(null);
+
+    try {
+      const res = await fetch("/api/validate-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: couponCode.trim(),
+          cartTotal: product.price + giftCharge,
+        }),
+      });
+
+      const data = await res.json() as {
+        valid: boolean;
+        discountAmount?: number;
+        message: string;
+      };
+
+      if (data.valid && data.discountAmount) {
+        setCouponApplied({
+          code: couponCode.trim().toUpperCase(),
+          discountAmount: data.discountAmount,
+          message: data.message,
+        });
+        setCouponError(null);
+      } else {
+        setCouponError(data.message);
+      }
+    } catch {
+      setCouponError("Failed to validate coupon. Please try again.");
+    }
+    setCouponLoading(false);
+  }
+
+  function removeCoupon() {
+    setCouponApplied(null);
+    setCouponCode("");
+    setCouponError(null);
+    try { localStorage.removeItem("postduty_referral_code"); } catch { /* ignore */ }
+  }
+
   function handleAddToCart() {
     addToCart(product, 1);
     setAdded(true);
@@ -89,7 +162,13 @@ export default function CheckoutForm({ product }: { product: Product }) {
       const orderRes = await fetch("/api/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: product.id, quantity: 1 }),
+        body: JSON.stringify({
+          productId: product.id,
+          quantity: 1,
+          couponCode: couponApplied?.code || undefined,
+          isGift,
+          giftMessage: isGift ? giftMessage : undefined,
+        }),
       });
 
       if (!orderRes.ok) {
@@ -133,7 +212,11 @@ export default function CheckoutForm({ product }: { product: Product }) {
               customerEmail: form.email,
               customerPhone: form.phone,
               shippingAddress: form.address,
-              totalAmount: product.price,
+              totalAmount: amount,
+              couponCode: couponApplied?.code || undefined,
+              discountAmount: couponApplied?.discountAmount ?? 0,
+              isGift,
+              giftMessage: isGift ? giftMessage : undefined,
             }),
           });
 
@@ -144,7 +227,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
           }
 
           const { orderId } = await verifyRes.json() as { orderId: string };
-          
+
           // Save order to local storage history
           try {
             const history = localStorage.getItem("postduty_orders");
@@ -153,6 +236,8 @@ export default function CheckoutForm({ product }: { product: Product }) {
               ordersList.push(orderId);
               localStorage.setItem("postduty_orders", JSON.stringify(ordersList));
             }
+            // Clear referral code after successful purchase
+            localStorage.removeItem("postduty_referral_code");
           } catch (e) {
             console.error("Failed to save order to history:", e);
           }
@@ -197,7 +282,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
             added ? "bg-emerald-50 border-emerald-200 text-emerald-700" : ""
           }`}
         >
-          {added ? "âœ“ Added!" : "Add to Cart"}
+          {added ? "✓ Added!" : "Add to Cart"}
         </button>
       </div>
     );
@@ -241,6 +326,104 @@ export default function CheckoutForm({ product }: { product: Product }) {
         className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand resize-none"
       />
 
+      {/* Gift Option */}
+      <div className="border border-amber-200 bg-amber-50 rounded-xl p-4">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isGift}
+            onChange={(e) => {
+              setIsGift(e.target.checked);
+              // Re-validate coupon if gift status changes minimum order
+              if (couponApplied) {
+                setCouponApplied(null);
+                setCouponCode(couponApplied.code);
+              }
+            }}
+            className="w-4 h-4 accent-amber-600 rounded"
+          />
+          <span className="text-sm font-semibold text-stone-700">
+            🎁 Is this a gift? Add a printed greeting card <span className="text-amber-700">(+₹20)</span>
+          </span>
+        </label>
+        {isGift && (
+          <textarea
+            placeholder="Your gift message (optional) — we'll print it on a card and include it in the package"
+            value={giftMessage}
+            onChange={(e) => setGiftMessage(e.target.value)}
+            rows={2}
+            maxLength={200}
+            className="mt-3 w-full border border-amber-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400 resize-none bg-white"
+          />
+        )}
+      </div>
+
+      {/* Coupon Code */}
+      <div>
+        <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
+          Coupon Code
+        </label>
+        {couponApplied ? (
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            <div>
+              <span className="font-mono font-bold text-green-700 text-sm">{couponApplied.code}</span>
+              <span className="text-xs text-green-600 ml-2">{couponApplied.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={removeCoupon}
+              className="text-xs text-red-500 hover:text-red-700 font-medium"
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              placeholder="Enter code"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand font-mono"
+            />
+            <button
+              type="button"
+              onClick={handleApplyCoupon}
+              disabled={couponLoading || !couponCode.trim()}
+              className="px-4 py-2 bg-brand text-white text-xs font-bold rounded-lg hover:bg-brand/90 disabled:opacity-50 transition-colors"
+            >
+              {couponLoading ? "..." : "Apply"}
+            </button>
+          </div>
+        )}
+        {couponError && (
+          <p className="text-red-500 text-xs mt-1">{couponError}</p>
+        )}
+      </div>
+
+      {/* Order Summary */}
+      <div className="border-t border-warm-border pt-3 space-y-1.5">
+        <div className="flex items-center justify-between text-xs text-stone-400">
+          <span>Item price</span>
+          <span>{formatPrice(product.price)}</span>
+        </div>
+        {isGift && (
+          <div className="flex items-center justify-between text-xs text-amber-600">
+            <span>🎁 Gift Card</span>
+            <span>+{formatPrice(giftCharge)}</span>
+          </div>
+        )}
+        {discountAmount > 0 && (
+          <div className="flex items-center justify-between text-xs text-green-600">
+            <span>Coupon Discount</span>
+            <span>-{formatPrice(discountAmount)}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between font-bold text-stone-800 text-sm pt-1">
+          <span>Total</span>
+          <span className="text-brand">{formatPrice(finalTotal)}</span>
+        </div>
+      </div>
+
       {error && (
         <p className="text-red-500 text-xs leading-relaxed">{error}</p>
       )}
@@ -250,7 +433,7 @@ export default function CheckoutForm({ product }: { product: Product }) {
         disabled={loading}
         className="btn-premium w-full justify-center disabled:opacity-60"
       >
-        {loading ? "Opening payment..." : `Pay ${formatPrice(product.price)}`}
+        {loading ? "Opening payment..." : `Pay ${formatPrice(finalTotal)}`}
       </button>
 
       <button

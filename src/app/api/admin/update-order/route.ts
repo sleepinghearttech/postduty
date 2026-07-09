@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { OrderStatus } from '@/lib/types'
+import { sendCustomerShippedWhatsApp, sendAdminShippedWhatsApp } from '@/lib/notifications'
+import { sendCustomerShippingEmail } from '@/lib/email'
 
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending: ['paid'],
-  paid:    ['shipped'],
-  shipped: [],
+  pending:   ['paid'],
+  paid:      ['shipped'],
+  shipped:   ['delivered'],
+  delivered: [],
 }
 
 export async function POST(request: NextRequest) {
@@ -24,48 +27,68 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'id is required' }, { status: 400 })
   }
 
+  const { data: currentOrder, error: fetchError } = await supabaseAdmin
+    .from('orders')
+    .select('*')
+    .eq('id', body.id)
+    .single()
+
+  if (fetchError || !currentOrder) {
+    return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+  }
+
   const updates: Record<string, unknown> = {}
+  let triggerShippedNotifications = false
 
   if (body.status !== undefined) {
-    const { data: current, error: fetchError } = await supabaseAdmin
-      .from('orders')
-      .select('status')
-      .eq('id', body.id)
-      .single()
-
-    if (fetchError || !current) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
-    }
-
-    const allowed = VALID_TRANSITIONS[current.status as OrderStatus] ?? []
+    const allowed = VALID_TRANSITIONS[currentOrder.status as OrderStatus] ?? []
     if (!allowed.includes(body.status)) {
       return NextResponse.json(
-        { error: `Invalid status transition: ${current.status} → ${body.status}` },
+        { error: `Invalid status transition: ${currentOrder.status} → ${body.status}` },
         { status: 400 }
       )
     }
 
     updates.status = body.status
+    if (body.status === 'shipped' && currentOrder.status !== 'shipped') {
+      triggerShippedNotifications = true
+    }
+    if (body.status === 'delivered') {
+      updates.delivered_at = new Date().toISOString()
+    }
   }
 
   if (body.tracking_number !== undefined) {
     updates.tracking_number = body.tracking_number
+    // If tracking number is updated/added on a shipped order, trigger notification
+    if (currentOrder.status === 'shipped' && currentOrder.tracking_number !== body.tracking_number) {
+      triggerShippedNotifications = true;
+    }
   }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data: updatedOrder, error } = await supabaseAdmin
     .from('orders')
     .update(updates)
     .eq('id', body.id)
     .select()
     .single()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error || !updatedOrder) {
+    return NextResponse.json({ error: error?.message || 'Update failed' }, { status: 500 })
   }
 
-  return NextResponse.json({ order: data })
+  // Trigger shipped notifications in parallel if requested
+  if (triggerShippedNotifications) {
+    await Promise.allSettled([
+      sendCustomerShippedWhatsApp(updatedOrder),
+      sendAdminShippedWhatsApp(updatedOrder),
+      sendCustomerShippingEmail(updatedOrder)
+    ])
+  }
+
+  return NextResponse.json({ order: updatedOrder })
 }
