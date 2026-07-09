@@ -2,7 +2,7 @@
   "node": "postduty",
   "progress": 83,
   "status": "active",
-  "note": "Store live with premium design deployed (incl. decorative polish pass, committed not deployed). Coupons/gifting/referrals/SEO-JSON-LD/post-purchase-crons feature batch finished and committed: ran the Supabase migration live, closed the gap where CheckoutForm's Buy Now flow lacked coupons/gifts (cart already had them), fixed a real build-blocking type error, built the cron route. Native Cloudflare Cron Trigger not possible on this stack (OpenNext's Worker has no scheduled handler) -- needs an external scheduler hitting /api/cron/post-purchase daily, documented in ADMIN_GUIDE.md.",
+  "note": "Everything deployed live: premium design + decorative polish pass + full coupons/gifting/referrals/SEO-JSON-LD/post-purchase-crons feature batch. Verified live: homepage, cart, all legal pages, /orders, /ref/[code], validate-coupon API, and the cron route (CRON_SECRET confirmed active in production) all return correct responses. hello@postduty.in swapped for the real postdutyswag@gmail.com everywhere customer-facing. Remaining: needs an external scheduler (e.g. cron-job.org) actually wired up to trigger /api/cron/post-purchase daily -- the route works, nothing calls it on a schedule yet.",
   "children": {
     "pd-whatsapp": {
       "progress": 100,
@@ -15,9 +15,9 @@
       "note": "5 policy pages live as routes; domain + Razorpay KYC still pending."
     },
     "pd-coupons-gifts-referrals": {
-      "progress": 95,
+      "progress": 98,
       "status": "active",
-      "note": "Coupons, gift option, ambassador referral pages, product+org SEO JSON-LD, post-purchase follow-up cron route all built, committed, DB migration run live. Committed but not deployed -- owner reviewing on localhost first. Remaining: needs an external scheduler (e.g. cron-job.org) wired up to actually trigger the daily cron route."
+      "note": "Coupons, gift option, ambassador referral pages, product+org SEO JSON-LD, post-purchase follow-up cron route all built, committed, deployed live, verified working in production. Only remaining piece: an external scheduler to actually trigger the daily cron route (e.g. cron-job.org) -- nothing calls it on a schedule yet."
     }
   }
 }
