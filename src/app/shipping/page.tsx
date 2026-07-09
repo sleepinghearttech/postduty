@@ -55,7 +55,7 @@ export default function ShippingPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">6. Damaged / Lost Shipments</h2>
           <p>
-            If your package is damaged during transit, please save all packaging materials and damaged goods, and contact us immediately at <a href="mailto:hello@postduty.in" className="text-brand hover:underline">hello@postduty.in</a> with a photo/video within 48 hours of receipt so we can arrange a replacement.
+            If your package is damaged during transit, please save all packaging materials and damaged goods, and contact us immediately at <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a> with a photo/video within 48 hours of receipt so we can arrange a replacement.
           </p>
         </section>
       </div>

@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       raw_payload: body,
     });
     return NextResponse.json(
-      { error: `Payment received but order could not be saved. Please contact hello@postduty.in with your payment ID: ${razorpayPaymentId}` },
+      { error: `Payment received but order could not be saved. Please contact postdutyswag@gmail.com with your payment ID: ${razorpayPaymentId}` },
       { status: 500 }
     );
   }

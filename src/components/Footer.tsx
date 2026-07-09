@@ -18,7 +18,7 @@ export default function Footer() {
             <p className="text-ink-400 text-sm mt-1 max-w-xs leading-relaxed">
               Thoughtful gifts for nurses, doctors, and every healthcare hero across India.
             </p>
-            <p className="text-ink-400 text-xs mt-3">hello@postduty.in</p>
+            <p className="text-ink-400 text-xs mt-3">postdutyswag@gmail.com</p>
           </div>
           <nav className="flex flex-col gap-2.5">
             <hr className="rule-gold mb-1" />

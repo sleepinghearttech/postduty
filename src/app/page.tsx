@@ -50,7 +50,7 @@ export default async function HomePage() {
     description: "Thoughtful gifts for nurses, doctors, and every healthcare hero.",
     contactPoint: {
       "@type": "ContactPoint",
-      email: "hello@postduty.in",
+      email: "postdutyswag@gmail.com",
       contactType: "customer service",
     },
   };

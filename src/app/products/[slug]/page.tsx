@@ -205,7 +205,7 @@ export default async function ProductPage({ params }: Props) {
             />
             <FAQItem
               question="What is your return policy?"
-              answer="We offer a 7-day return or replacement window if your product arrives damaged or incorrect. Please send a photo or video to hello@postduty.in within 48 hours of delivery."
+              answer="We offer a 7-day return or replacement window if your product arrives damaged or incorrect. Please send a photo or video to postdutyswag@gmail.com within 48 hours of delivery."
             />
             <FAQItem
               question="Are payments secure?"

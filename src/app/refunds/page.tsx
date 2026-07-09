@@ -22,14 +22,14 @@ export default function RefundsPage() {
             <li>The item must be unused, unwashed, and in the same condition that you received it.</li>
             <li>It must be in its original packaging.</li>
             <li>You must provide proof of purchase (such as your Order ID or receipt).</li>
-            <li>For damaged or incorrect items, we request that you email us a photo or short unboxing video showing the issue within 48 hours of delivery to <a href="mailto:hello@postduty.in" className="text-brand hover:underline">hello@postduty.in</a>.</li>
+            <li>For damaged or incorrect items, we request that you email us a photo or short unboxing video showing the issue within 48 hours of delivery to <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a>.</li>
           </ul>
         </section>
 
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">3. Cancellations</h2>
           <p>
-            You can request to cancel your order within **2 hours of placement**, provided the order has not already been prepared or dispatched. Once an order is processed or shipped, it cannot be cancelled. To cancel, please contact us immediately at <a href="mailto:hello@postduty.in" className="text-brand hover:underline">hello@postduty.in</a> with your Order ID.
+            You can request to cancel your order within **2 hours of placement**, provided the order has not already been prepared or dispatched. Once an order is processed or shipped, it cannot be cancelled. To cancel, please contact us immediately at <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a> with your Order ID.
           </p>
         </section>
 
@@ -46,7 +46,7 @@ export default function RefundsPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">5. Late or Missing Refunds</h2>
           <p>
-            If you haven&apos;t received a refund yet, first check your bank account or contact your credit card issuer. It may take some time before your refund is officially posted. If you have done this and still have not received your refund, please reach out to us at <a href="mailto:hello@postduty.in" className="text-brand hover:underline">hello@postduty.in</a> and we will investigate immediately.
+            If you haven&apos;t received a refund yet, first check your bank account or contact your credit card issuer. It may take some time before your refund is officially posted. If you have done this and still have not received your refund, please reach out to us at <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a> and we will investigate immediately.
           </p>
         </section>
       </div>

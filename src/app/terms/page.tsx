@@ -58,7 +58,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">8. Contact Information</h2>
           <p>
-            Questions about the Terms of Service should be sent to us at <a href="mailto:hello@postduty.in" className="text-brand hover:underline">hello@postduty.in</a>.
+            Questions about the Terms of Service should be sent to us at <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a>.
           </p>
         </section>
       </div>

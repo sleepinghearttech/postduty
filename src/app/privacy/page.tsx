@@ -57,7 +57,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">7. Contact &amp; Questions</h2>
           <p>
-            If you would like to access, correct, amend, or delete any personal information we have about you, register a complaint, or simply want more information, contact us at <a href="mailto:hello@postduty.in" className="text-brand hover:underline">hello@postduty.in</a>.
+            If you would like to access, correct, amend, or delete any personal information we have about you, register a complaint, or simply want more information, contact us at <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a>.
           </p>
         </section>
       </div>

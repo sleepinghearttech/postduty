@@ -15,8 +15,8 @@ export default function ContactPage() {
           <div>
             <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Email Support</h3>
             <p className="text-base font-semibold text-stone-800">
-              <a href="mailto:hello@postduty.in" className="text-brand hover:underline">
-                hello@postduty.in
+              <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">
+                postdutyswag@gmail.com
               </a>
             </p>
           </div>
@@ -61,8 +61,8 @@ export default function ContactPage() {
             <div>
               <p className="text-xs text-stone-400 font-semibold uppercase tracking-wider">Email</p>
               <p className="font-semibold text-stone-800">
-                <a href="mailto:hello@postduty.in" className="text-brand hover:underline">
-                  hello@postduty.in
+                <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">
+                  postdutyswag@gmail.com
                 </a>
               </p>
               <p className="text-xs text-stone-400 mt-1">Please include your Order ID in the email subject for faster resolution.</p>

@@ -93,12 +93,12 @@ export async function sendOrderEmails(order: Order): Promise<void> {
         
         <p>Once your order ships, we'll send you another update with your courier tracking details so you can follow its journey.</p>
         
-        <p>If you have any questions or need to make changes to your shipping details, feel free to reply to this email or reach out to us at <a href="mailto:hello@postduty.in">hello@postduty.in</a>.</p>
+        <p>If you have any questions or need to make changes to your shipping details, feel free to reply to this email or reach out to us at <a href="mailto:postdutyswag@gmail.com">postdutyswag@gmail.com</a>.</p>
         
         <p style="margin-top: 30px;">Best regards,<br><strong>The PostDuty Team</strong></p>
         
         <div style="margin-top: 40px; font-size: 0.8em; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 15px;">
-          PostDuty Storefront · hello@postduty.in
+          PostDuty Storefront · postdutyswag@gmail.com
         </div>
       </div>
     `
@@ -185,12 +185,12 @@ export async function sendCustomerShippingEmail(order: Order): Promise<void> {
         
         <p>Deliveries typically take between **3 to 7 business days** to arrive depending on your city. You can use the link above to monitor your status.</p>
         
-        <p>If you have any questions, reply to this email or contact us at <a href="mailto:hello@postduty.in">hello@postduty.in</a>.</p>
+        <p>If you have any questions, reply to this email or contact us at <a href="mailto:postdutyswag@gmail.com">postdutyswag@gmail.com</a>.</p>
         
         <p style="margin-top: 30px;">Best regards,<br><strong>The PostDuty Team</strong></p>
         
         <div style="margin-top: 40px; font-size: 0.8em; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 15px;">
-          PostDuty Storefront · hello@postduty.in
+          PostDuty Storefront · postdutyswag@gmail.com
         </div>
       </div>
     `
@@ -252,7 +252,7 @@ export async function sendFollowUpDay1Email(order: Order): Promise<void> {
         <p style="margin-top: 30px;">Best regards,<br><strong>The PostDuty Team</strong></p>
         
         <div style="margin-top: 40px; font-size: 0.8em; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 15px;">
-          PostDuty Storefront · hello@postduty.in
+          PostDuty Storefront · postdutyswag@gmail.com
         </div>
       </div>
     `,
@@ -317,7 +317,7 @@ export async function sendFollowUpDay5Email(order: Order): Promise<void> {
         <p style="margin-top: 30px;">Best regards,<br><strong>The PostDuty Team</strong></p>
         
         <div style="margin-top: 40px; font-size: 0.8em; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 15px;">
-          PostDuty Storefront · hello@postduty.in
+          PostDuty Storefront · postdutyswag@gmail.com
         </div>
       </div>
     `,
@@ -388,7 +388,7 @@ export async function sendWinBackEmail(order: Order, couponCode: string): Promis
         <p style="margin-top: 30px;">Best regards,<br><strong>The PostDuty Team</strong></p>
         
         <div style="margin-top: 40px; font-size: 0.8em; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 15px;">
-          PostDuty Storefront · hello@postduty.in
+          PostDuty Storefront · postdutyswag@gmail.com
         </div>
       </div>
     `,
