@@ -1,18 +1,23 @@
 {
   "node": "postduty",
-  "progress": 83,
+  "progress": 88,
   "status": "active",
-  "note": "Everything deployed live: premium design + decorative polish pass + full coupons/gifting/referrals/SEO-JSON-LD/post-purchase-crons feature batch. Verified live: homepage, cart, all legal pages, /orders, /ref/[code], validate-coupon API, and the cron route (CRON_SECRET confirmed active in production) all return correct responses. hello@postduty.in swapped for the real postdutyswag@gmail.com everywhere customer-facing. Remaining: needs an external scheduler (e.g. cron-job.org) actually wired up to trigger /api/cron/post-purchase daily -- the route works, nothing calls it on a schedule yet.",
+  "note": "postduty.in purchased, connected to Cloudflare (zone active), attached to the Worker as a custom domain (SSL issued) -- verified live at https://postduty.in (200). Both admin_order_alert and order_shipped WhatsApp templates now approved (confirmed by owner 2026-07-14), alongside order_confirmation. Known gap found this pass: NEXT_PUBLIC_BASE_URL is still hardcoded to the old postduty.jijo925.workers.dev in .env.local/build config -- SEO JSON-LD, sitemap, email links and WhatsApp links are all still pointing at the workers.dev URL instead of postduty.in until this is updated and rebuilt/redeployed. Resend has NOT been verified for postduty.in yet (checked DNS directly -- no DKIM/send-subdomain records exist on the zone).",
   "children": {
     "pd-whatsapp": {
       "progress": 100,
       "status": "done",
-      "note": "order_confirmation approved + delivering. order_shipped falls back to free-form text while its template is pending approval."
+      "note": "order_confirmation, admin_order_alert, order_shipped -- all 3 templates approved and delivering."
+    },
+    "pd-domain": {
+      "progress": 75,
+      "status": "active",
+      "note": "Purchased + connected to Cloudflare + attached to Worker, live at https://postduty.in. Still open: verify domain on Resend (no DNS records yet), update NEXT_PUBLIC_BASE_URL to https://postduty.in and redeploy."
     },
     "pd-compliance": {
       "progress": 10,
       "status": "active",
-      "note": "5 policy pages live as routes; domain + Razorpay KYC still pending."
+      "note": "5 policy pages live as routes; Razorpay KYC still pending (test mode)."
     },
     "pd-coupons-gifts-referrals": {
       "progress": 98,

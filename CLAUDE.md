@@ -119,16 +119,17 @@ PostDuty_Product_to_Customer_Playbook.md  # Business playbook: sourcing, marketi
 - [x] Step 14: Product page FAQ accordion + customer reviews section
 
 ## Up Next
+- [x] Step 16: Buy `postduty.in` domain on Cloudflare, connect to Worker — **done 2026-07-14**, live at https://postduty.in (custom domain, SSL issued)
+- [x] Step 20: Post-purchase cron jobs (T+1 check-in, T+5 review ask, 60-day win-back) — built, route works, `CRON_SECRET` active
 - [ ] Step 15: Razorpay live mode (requires KYC on Razorpay account)
-- [ ] Step 16: Buy `postduty.in` domain on Cloudflare, connect to Worker
-- [ ] Step 17: Setup production environment variables on Cloudflare
-- [ ] Step 18: Verify `postduty.in` domain on Resend to remove email sandbox limits
+- [ ] Step 17: Fix `NEXT_PUBLIC_BASE_URL` — still the old `postduty.jijo925.workers.dev` in `.env.local`/build config, needs to become `https://postduty.in` then rebuild + redeploy (SEO/sitemap/email/WhatsApp links all still reference the old URL)
+- [ ] Step 18: Verify `postduty.in` domain on Resend to remove email sandbox limits — checked DNS directly, no Resend records on the zone yet
 - [ ] Step 19: Get dedicated WhatsApp API number (cheap SIM) and update Meta settings
-- [ ] Step 20: Post-purchase cron jobs (T+1 check-in, T+5 review ask, 60-day win-back)
+- [ ] Step 21: Wire an external scheduler (e.g. cron-job.org) to hit `/api/cron/post-purchase` daily
 
 ## Other folders
 - **`n8n/`** — an earlier attempt at n8n-based order notifications (WhatsApp + Gmail + Sheets via local n8n + ngrok). Superseded by native Next.js API routes in `src/lib/notifications.ts` and `src/lib/email.ts`. **Intentionally kept** as reference — don't delete.
-- **`ROADMAP.md`** — an older granular roadmap. The current source of truth is `PROJECT_STATUS.md` (comprehensive) and this file (`CLAUDE.md`, technical reference).
+- **`_archive/`** — outdated docs kept for reference: `ROADMAP.md` (older granular roadmap, superseded by `PROJECT_STATUS.md`) and `WHATSAPP_TEMPLATE_DEBUG.md` (diagnostic checklist for a template-delivery bug now resolved — all 3 templates approved and delivering).
 - **`PostDuty_Product_to_Customer_Playbook.md`** — business playbook covering sourcing, marketing, shipping, and retention. The definitive business strategy document.
 
 ## Local Dev
