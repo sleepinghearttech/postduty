@@ -27,6 +27,8 @@ Never commit these. Set in `.env.local` locally and in Cloudflare dashboard for 
 
 `NEXT_PUBLIC_` vars are baked into the JS bundle at build time. The others are server-side only and must never have the `NEXT_PUBLIC_` prefix.
 
+**Gotcha (hit 2026-07-14):** Cloudflare's Worker settings page has two separate env var sections that look similar — **Settings → Variables and secrets** (runtime only, does NOT reach the Next.js build step) and **Settings → Build** (build-time, required for `NEXT_PUBLIC_` vars to get inlined correctly). Editing the wrong one silently does nothing for `NEXT_PUBLIC_` vars, or worse, overwrites the wrong existing variable if you edit an existing row instead of adding a new one.
+
 ## Key Architecture Decisions
 - **Price in paise** (integer) not rupees — avoids float rounding errors. ₹199 = 19900.
 - **Two Supabase clients**: `supabase` (anon, obeys RLS, for reads) and `supabaseAdmin` (service role, bypasses RLS, for order writes and all admin operations). Both in `src/lib/supabase.ts`.
@@ -122,7 +124,7 @@ PostDuty_Product_to_Customer_Playbook.md  # Business playbook: sourcing, marketi
 - [x] Step 16: Buy `postduty.in` domain on Cloudflare, connect to Worker — **done 2026-07-14**, live at https://postduty.in (custom domain, SSL issued)
 - [x] Step 20: Post-purchase cron jobs (T+1 check-in, T+5 review ask, 60-day win-back) — built, route works, `CRON_SECRET` active
 - [ ] Step 15: Razorpay live mode (requires KYC on Razorpay account)
-- [x] Step 17: Fix `NEXT_PUBLIC_BASE_URL` — **done 2026-07-14**, now `https://postduty.in`, rebuilt + redeployed via `npm run deploy`, verified live in sitemap + JSON-LD. ⚠️ Still need to add this var in Cloudflare dashboard → Workers Builds → environment variables, or the next `git push`-triggered auto-deploy reverts it to the old workers.dev URL (API token used by Claude lacked permission to set it programmatically).
+- [x] Step 17: Fix `NEXT_PUBLIC_BASE_URL` — **done 2026-07-14**, now `https://postduty.in`, rebuilt + redeployed via `npm run deploy`, verified live in sitemap + JSON-LD, and added to Cloudflare Workers Builds' build-time environment variables (Settings → Build) — durable across future `git push` auto-deploys.
 - [ ] Step 18: Verify `postduty.in` domain on Resend to remove email sandbox limits — checked DNS directly, no Resend records on the zone yet
 - [ ] Step 19: Get dedicated WhatsApp API number (cheap SIM) and update Meta settings
 - [ ] Step 21: Wire an external scheduler (e.g. cron-job.org) to hit `/api/cron/post-purchase` daily

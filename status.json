@@ -1,8 +1,8 @@
 {
   "node": "postduty",
-  "progress": 90,
+  "progress": 92,
   "status": "active",
-  "note": "postduty.in purchased, connected to Cloudflare (zone active), attached to the Worker as a custom domain (SSL issued) -- verified live at https://postduty.in (200). Both admin_order_alert and order_shipped WhatsApp templates now approved (confirmed by owner 2026-07-14), alongside order_confirmation. NEXT_PUBLIC_BASE_URL fixed to https://postduty.in and redeployed 2026-07-14 -- sitemap.xml and JSON-LD verified live pointing at postduty.in. NOTE: Cloudflare Workers Builds (GitHub auto-deploy) config does not have this var set -- the fix was deployed via local `npm run deploy`, so the next push-triggered CI build will bake the old URL back in unless NEXT_PUBLIC_BASE_URL is also added in the Cloudflare dashboard's Workers Builds environment variables (API token used here lacks permission to set it programmatically). Resend has NOT been verified for postduty.in yet (checked DNS directly -- no DKIM/send-subdomain records exist on the zone).",
+  "note": "postduty.in purchased, connected to Cloudflare (zone active), attached to the Worker as a custom domain (SSL issued) -- verified live at https://postduty.in (200). Both admin_order_alert and order_shipped WhatsApp templates now approved (confirmed by owner 2026-07-14), alongside order_confirmation. NEXT_PUBLIC_BASE_URL fixed to https://postduty.in, redeployed, and confirmed added to the Cloudflare Workers Builds build-time environment variables (Settings > Build, not the runtime Variables and secrets screen) -- future git push auto-deploys will now bake the correct domain in. Resend has NOT been verified for postduty.in yet (checked DNS directly -- no DKIM/send-subdomain records exist on the zone).",
   "children": {
     "pd-whatsapp": {
       "progress": 100,
@@ -10,9 +10,9 @@
       "note": "order_confirmation, admin_order_alert, order_shipped -- all 3 templates approved and delivering."
     },
     "pd-domain": {
-      "progress": 90,
+      "progress": 95,
       "status": "active",
-      "note": "Purchased + connected to Cloudflare + attached to Worker + NEXT_PUBLIC_BASE_URL fixed and redeployed -- all verified live at https://postduty.in. Still open: verify domain on Resend (no DNS records yet), and add NEXT_PUBLIC_BASE_URL to the Cloudflare Workers Builds dashboard config so the next GitHub-triggered auto-deploy doesn't revert it."
+      "note": "Purchased + connected to Cloudflare + attached to Worker + NEXT_PUBLIC_BASE_URL fixed, redeployed, and added to Workers Builds build-time config -- all verified live at https://postduty.in, durable across future auto-deploys. Only remaining piece: verify domain on Resend (no DNS records yet)."
     },
     "pd-compliance": {
       "progress": 10,
