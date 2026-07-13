@@ -18,8 +18,8 @@
 | **WhatsApp API** | All 3 templates approved: `order_confirmation`, `admin_order_alert`, `order_shipped`. Still on Meta test number — needs a real SIM for production. |
 | **Email** | Working via Resend sandbox — **postduty.in domain NOT yet verified on Resend** (checked DNS directly: no DKIM/send-subdomain records on the zone) |
 | **Database** | Supabase (Mumbai region) — live and working |
-| **Known gap** | ⚠️ `NEXT_PUBLIC_BASE_URL` is still hardcoded to the old `postduty.jijo925.workers.dev` in `.env.local`/build config. SEO JSON-LD, sitemap, email links, and WhatsApp links all still point at the workers.dev URL, not postduty.in, until this is changed and rebuilt/redeployed. |
-| **Overall Status** | 🟢 **Technical spine is 100% complete. Domain is live.** Blocked on: Resend verification, the `NEXT_PUBLIC_BASE_URL` fix above, Razorpay KYC, dedicated WhatsApp SIM, and wiring the external cron scheduler. |
+| **Known gap** | ✅ Fixed 2026-07-14 — `NEXT_PUBLIC_BASE_URL` updated to `https://postduty.in` and redeployed via `npm run deploy`. Verified live: `sitemap.xml` and homepage JSON-LD both now reference postduty.in. ⚠️ Remaining risk: Cloudflare Workers Builds (GitHub auto-deploy) config does NOT have this var set — the next push-triggered CI build will bake the old workers.dev URL back in unless it's added in the Cloudflare dashboard → Workers Builds → environment variables. |
+| **Overall Status** | 🟢 **Technical spine is 100% complete. Domain is live with correct URLs everywhere.** Blocked on: Resend verification, adding `NEXT_PUBLIC_BASE_URL` to the CI build config (so it survives the next auto-deploy), Razorpay KYC, dedicated WhatsApp SIM, and wiring the external cron scheduler. |
 
 ---
 
@@ -134,7 +134,7 @@ Verified live: homepage, cart, all legal pages, `/orders`, `/ref/[code]`, valida
 | Connect to Cloudflare | ✅ Done | Zone active. |
 | Attach as Worker custom domain | ✅ Done | SSL cert issued, `https://postduty.in` returns 200. |
 | Verify domain on Resend | 🔴 **Not done** | Checked DNS directly — no DKIM/send-subdomain records on the zone yet. Emails still going out via Resend sandbox. |
-| Update `NEXT_PUBLIC_BASE_URL` to `https://postduty.in` | 🔴 **Not done** | Still set to the old `postduty.jijo925.workers.dev` in `.env.local` / build config — this is a `NEXT_PUBLIC_` var baked in at build time, so SEO JSON-LD, sitemap, email links, WhatsApp links all still reference the old URL until this is changed and the site is rebuilt + redeployed. |
+| Update `NEXT_PUBLIC_BASE_URL` to `https://postduty.in` | ✅ Done locally, ⚠️ not in CI config | Fixed in `.env.local`, rebuilt + redeployed via `npm run deploy` 2026-07-14 — verified live in sitemap + JSON-LD. Still need to add the same var in Cloudflare dashboard → Workers Builds → environment variables, or the next `git push`-triggered auto-deploy rebuilds without it and reverts the URL. |
 
 ---
 
@@ -269,4 +269,4 @@ Customer visits postduty.in
 | `WHATSAPP_PHONE_NUMBER_ID` | ⚠️ Need real number | Currently test number ID |
 | `WHATSAPP_PERMANENT_TOKEN` | ✅ | |
 | `ADMIN_WHATSAPP_NUMBER` | ✅ | Personal number for receiving alerts |
-| `NEXT_PUBLIC_BASE_URL` | 🔴 Wrong value | Still `postduty.jijo925.workers.dev` — must be changed to `https://postduty.in` in `.env.local` + build config, then rebuild + redeploy |
+| `NEXT_PUBLIC_BASE_URL` | ✅ Fixed locally, ⚠️ not in CI | `.env.local` + last deploy use `https://postduty.in`; still needs adding to Cloudflare Workers Builds dashboard config so future auto-deploys don't revert it |
