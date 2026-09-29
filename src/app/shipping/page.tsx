@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function ShippingPage() {
   return (
     <main className="max-w-3xl mx-auto px-4 py-12 sm:py-16">
@@ -48,7 +50,7 @@ export default function ShippingPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">5. Shipment Tracking</h2>
           <p>
-            Once your package is dispatched, you will receive a WhatsApp message and/or email containing your **Shiprocket AWB tracking number** and a link to trace your delivery status. You can also track your order status directly on our website by visiting the <a href="/orders" className="text-brand hover:underline font-semibold">Track Order</a> page.
+            Once your package is dispatched, you will receive a WhatsApp message and/or email containing your **Shiprocket AWB tracking number** and a link to trace your delivery status. You can also track your order status directly on our website by visiting the <Link href="/orders" className="text-brand hover:underline font-semibold">Track Order</Link> page.
           </p>
         </section>
 

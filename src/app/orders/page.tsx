@@ -15,14 +15,20 @@ export default function OrdersPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const history = localStorage.getItem("postduty_orders");
-      if (history) {
-        setRecentOrders(JSON.parse(history));
+    let cancelled = false;
+    // Keep the server and first client render identical; cancel stale hydration.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        const history = localStorage.getItem("postduty_orders");
+        if (history) {
+          setRecentOrders(JSON.parse(history));
+        }
+      } catch (e) {
+        console.error("Failed to load order history:", e);
       }
-    } catch (e) {
-      console.error("Failed to load order history:", e);
-    }
+    });
+    return () => { cancelled = true; };
   }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -53,7 +59,7 @@ export default function OrdersPage() {
 
       // Successful verification, redirect to details page
       router.push(`/orders/${form.orderId.trim()}`);
-    } catch (err) {
+    } catch {
       setError("An error occurred during lookup.");
       setLoading(false);
     }

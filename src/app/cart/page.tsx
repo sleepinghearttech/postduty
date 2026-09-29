@@ -55,12 +55,18 @@ export default function CartPage() {
 
   // Auto-apply referral code from localStorage
   useEffect(() => {
-    try {
-      const refCode = localStorage.getItem("postduty_referral_code");
-      if (refCode && !couponApplied) {
-        setCouponCode(refCode);
-      }
-    } catch { /* ignore */ }
+    let cancelled = false;
+    // Keep the server and first client render identical; cancel stale hydration.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        const refCode = localStorage.getItem("postduty_referral_code");
+        if (refCode && !couponApplied) {
+          setCouponCode(refCode);
+        }
+      } catch { /* ignore */ }
+    });
+    return () => { cancelled = true; };
   }, [couponApplied]);
 
   const giftCharge = isGift ? 2000 : 0; // ₹20 in paise
@@ -154,7 +160,7 @@ export default function CartPage() {
       if (!loaded) throw new Error("Payment gateway failed to load. Please try again.");
 
       // 3. Open Razorpay modal
-      const rzp = new (window as any).Razorpay({
+      const rzp = new window.Razorpay({
         key: keyId,
         amount,
         currency: "INR",
@@ -167,7 +173,7 @@ export default function CartPage() {
           contact: form.phone,
         },
         theme: { color: "#0D7C7C" },
-        handler: async (response: any) => {
+        handler: async (response) => {
           // 4. Verify payment and create order
           const verifyRes = await fetch("/api/verify-payment", {
             method: "POST",

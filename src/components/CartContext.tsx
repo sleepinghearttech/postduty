@@ -26,15 +26,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Hydrate from localStorage on client mount
   useEffect(() => {
-    try {
-      const savedCart = localStorage.getItem("postduty_cart");
-      if (savedCart) {
-        setCart(JSON.parse(savedCart));
+    let cancelled = false;
+    // Keep the server and first client render identical; cancel stale hydration.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        const savedCart = localStorage.getItem("postduty_cart");
+        if (savedCart) {
+          setCart(JSON.parse(savedCart));
+        }
+      } catch (e) {
+        console.error("Failed to load cart from localStorage:", e);
       }
-    } catch (e) {
-      console.error("Failed to load cart from localStorage:", e);
-    }
-    setIsHydrated(true);
+      setIsHydrated(true);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   // Save to localStorage on change, but only after hydration to avoid resetting cart

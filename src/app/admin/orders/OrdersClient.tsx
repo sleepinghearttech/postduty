@@ -209,7 +209,7 @@ function OrderCard({
             <p className="text-xs text-green-600 mt-0.5">Discount: -{formatRupees(order.discount_amount)}</p>
           )}
           {order.is_gift && order.gift_message && (
-            <p className="text-xs text-amber-600 mt-1 italic">"{ order.gift_message}"</p>
+            <p className="text-xs text-amber-600 mt-1 italic">&quot;{ order.gift_message}&quot;</p>
           )}
         </div>
       </div>
