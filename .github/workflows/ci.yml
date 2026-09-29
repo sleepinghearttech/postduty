@@ -1,0 +1,41 @@
+name: PostDuty CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://ci.example.invalid
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service
+      RAZORPAY_KEY_ID: rzp_test_ci_placeholder
+      RAZORPAY_KEY_SECRET: ci-placeholder-secret
+      RAZORPAY_WEBHOOK_SECRET: ci-placeholder-webhook
+      ADMIN_SECRET: ci-placeholder-admin
+      ORDER_NOTIFICATIONS_ENABLED: "false"
+      NEXT_PUBLIC_BASE_URL: https://ci.example.invalid
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run safety, type and lint checks
+        run: npm run ci:check
+
+      - name: Production build with non-production placeholders
+        run: npm run build
