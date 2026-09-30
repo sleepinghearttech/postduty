@@ -2,39 +2,40 @@
 
 This local agent is the safe first step toward connecting a Bambu printer to Post Duty.
 
-## What Phase 1 does
+## Current behaviour
 
 - Runs only on the Post Duty Windows PC.
-- Connects to a printer on a private LAN address.
+- Connects only to a private-LAN printer IP.
+- Uses the printer's locally pinned TLS certificate.
 - Subscribes to Bambu MQTT status reports.
-- Prints a small status JSON record when printer state changes.
-- Never sends print/control MQTT messages.
-- Never stores the Bambu access code in GitHub.
+- Emits a compact status record when printer state changes.
+- Never stores the Bambu access code or printer certificate in GitHub.
+- Never sends printer-control MQTT messages.
 
-## What Phase 1 does not do
+## Read-only guarantee
 
-It cannot start, pause, cancel, heat, move axes, unload filament, or upload a print.
-The code overrides MQTT `publish()` so those actions are unavailable.
+The bridge overrides MQTT `publish()` and throws if code attempts to use it.
+Phase 1 therefore cannot start, pause, cancel, heat, move axes, unload filament,
+or upload a print.
 
 ## One-time local setup
 
-1. Power on the printer and connect it to the same trusted Wi-Fi/LAN as this PC.
-2. On the printer, open its network settings and enable LAN-only/local access.
-3. For the first read-only test, leave Developer Mode OFF.
-4. Note the printer's LAN IP, serial number, and LAN access code.
-5. In this folder, copy `.env.example` to `.env`.
-6. Put those three values into `.env`.
-7. Set `BAMBU_ALLOW_UNVERIFIED_TLS=true` only while on your trusted private LAN.
-8. Run `npm install`, then `npm start`.
+1. Keep the printer in normal cloud-connected mode; LAN Only is not required.
+2. Put the PC and printer on the same trusted Wi-Fi/LAN.
+3. Copy `.env.example` to `.env`.
+4. Fill in the printer IP, serial number, and LAN access code.
+5. Run `npm run pin-cert` once to save the printer certificate locally.
+6. Run `npm install`, then `npm start`.
 
-The real `.env` is ignored by Git and must stay on this PC.
+The real `.env` and `printer-ca.pem` are ignored by Git and stay on this PC.
 
-## Security note
+## TLS trust model
 
-Bambu's local MQTT service commonly uses a device/self-signed TLS certificate.
-This first bridge therefore requires an explicit opt-in for unverified local TLS.
-The next hardening step is certificate/fingerprint pinning before enabling any
-printer-control capability.
+The first certificate pin is a trust-on-first-use step performed while the printer
+is on the user's trusted local network. After that, MQTT uses normal certificate
+verification against the pinned printer certificate. If the printer certificate
+changes unexpectedly, the bridge should fail closed until the certificate is
+deliberately pinned again.
 
 ## Planned Phase 2
 
@@ -43,9 +44,9 @@ Once read-only status is stable:
 - Add a Post Duty print queue in Supabase.
 - Map store SKUs to approved local `.gcode.3mf` files.
 - Report printer state back to the Post Duty admin dashboard.
-- Keep the printer behind the home/business LAN; never expose port 8883 publicly.
-- Add a deliberate approval gate before any print-start capability.
-- Prefer Bambu Connect for authorized print handoff where practical.
+- Keep printer services behind the LAN; never expose port 8883 publicly.
+- Add an explicit approval gate before any print-start capability.
+- Prefer Bambu-supported authorization/print handoff where practical.
 
-MakerWorld model licensing is tracked separately from printer connectivity.
-A model is never made sellable merely because the printer can print it.
+MakerWorld licensing is tracked separately from printer connectivity.
+Printer connectivity never makes a model commercially sellable.

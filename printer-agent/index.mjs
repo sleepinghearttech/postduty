@@ -1,10 +1,11 @@
+import fs from "node:fs";
 import mqtt from "mqtt";
 
 const {
   BAMBU_PRINTER_IP: ip,
   BAMBU_PRINTER_SERIAL: serial,
   BAMBU_ACCESS_CODE: accessCode,
-  BAMBU_ALLOW_UNVERIFIED_TLS: allowUnverifiedTls,
+  BAMBU_CA_FILE: caFile = "printer-ca.pem",
 } = process.env;
 
 function isPrivateIPv4(value = "") {
@@ -27,16 +28,16 @@ function requireLocalConfig() {
     throw new Error("BAMBU_PRINTER_IP must be a private LAN IPv4 address.");
   }
 
-  if (allowUnverifiedTls !== "true") {
+  if (!fs.existsSync(caFile)) {
     throw new Error(
-      "Set BAMBU_ALLOW_UNVERIFIED_TLS=true only on a trusted private LAN. " +
-        "Certificate pinning will replace this temporary opt-in."
+      `Pinned printer certificate not found at ${caFile}. Run npm run pin-cert first.`
     );
   }
 }
 
 requireLocalConfig();
 
+const ca = fs.readFileSync(caFile);
 const maskedSerial =
   serial.length > 4 ? `…${serial.slice(-4)}` : "(configured)";
 const topic = `device/${serial}/report`;
@@ -51,7 +52,8 @@ const client = mqtt.connect(`mqtts://${ip}:8883`, {
   protocolVersion: 4,
   reconnectPeriod: 5000,
   connectTimeout: 10000,
-  rejectUnauthorized: false,
+  rejectUnauthorized: true,
+  ca,
 });
 
 client.publish = () => {
