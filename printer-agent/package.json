@@ -1,0 +1,13 @@
+{
+  "name": "postduty-bambu-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env index.mjs",
+    "check": "node --check index.mjs"
+  },
+  "dependencies": {
+    "mqtt": "^5.16.0"
+  }
+}
