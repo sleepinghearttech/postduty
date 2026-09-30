@@ -61,7 +61,8 @@ const maskedSerial =
   serial.length > 4 ? `…${serial.slice(-4)}` : "(configured)";
 const topic = `device/${serial}/report`;
 const state = {};
-let lastStatusJson = "";
+let lastStatusKey = "";
+let lastStatusWriteAt = 0;
 
 const client = mqtt.connect(`mqtts://${ip}:8883`, {
   username: "bblp",
@@ -113,15 +114,34 @@ client.on("message", (_topic, buffer) => {
       jobName: state.subtask_name ?? null,
     };
 
-    const json = JSON.stringify(status);
-    fs.writeFileSync(
-      "bridge-status.json",
-      JSON.stringify(status, null, 2),
-      "utf8"
-    );
-    if (json !== lastStatusJson) {
-      lastStatusJson = json;
-      console.log(json);
+    const statusKey = JSON.stringify({
+      state: status.state,
+      progressPct: status.progressPct,
+      remainingMinutes: status.remainingMinutes,
+      nozzleC: status.nozzleC,
+      nozzleTargetC: status.nozzleTargetC,
+      bedC: status.bedC,
+      bedTargetC: status.bedTargetC,
+      wifiSignal: status.wifiSignal,
+      jobName: status.jobName,
+    });
+
+    const now = Date.now();
+    const changed = statusKey !== lastStatusKey;
+    const heartbeatDue = now - lastStatusWriteAt >= 60000;
+
+    if (changed || heartbeatDue) {
+      fs.writeFileSync(
+        "bridge-status.json",
+        JSON.stringify(status, null, 2),
+        "utf8"
+      );
+      lastStatusWriteAt = now;
+    }
+
+    if (changed) {
+      lastStatusKey = statusKey;
+      console.log(JSON.stringify(status));
     }
   } catch (error) {
     console.error("Ignored malformed status message:", error.message);
