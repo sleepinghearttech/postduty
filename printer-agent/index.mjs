@@ -37,7 +37,26 @@ function requireLocalConfig() {
 
 requireLocalConfig();
 
-const ca = fs.readFileSync(caFile);
+const deviceCa = fs.readFileSync(caFile);
+
+const bambuCaCandidates = [
+  process.env.BAMBU_PRINTER_CA_BUNDLE,
+  "D:/Bambu Lab/Bambu Studio/resources/cert/printer.cer",
+  "C:/Program Files/Bambu Studio/resources/cert/printer.cer",
+].filter(Boolean);
+
+const bambuCaFile = bambuCaCandidates.find((candidate) =>
+  fs.existsSync(candidate)
+);
+
+if (!bambuCaFile) {
+  throw new Error(
+    "Bambu Studio printer.cer not found. Install Bambu Studio or set " +
+      "BAMBU_PRINTER_CA_BUNDLE to its resources/cert/printer.cer path."
+  );
+}
+
+const bambuCa = fs.readFileSync(bambuCaFile);
 const maskedSerial =
   serial.length > 4 ? `…${serial.slice(-4)}` : "(configured)";
 const topic = `device/${serial}/report`;
@@ -53,7 +72,9 @@ const client = mqtt.connect(`mqtts://${ip}:8883`, {
   reconnectPeriod: 5000,
   connectTimeout: 10000,
   rejectUnauthorized: true,
-  ca,
+  ca: [bambuCa, deviceCa],
+  allowPartialTrustChain: true,
+  servername: serial,
 });
 
 client.publish = () => {
@@ -93,6 +114,11 @@ client.on("message", (_topic, buffer) => {
     };
 
     const json = JSON.stringify(status);
+    fs.writeFileSync(
+      "bridge-status.json",
+      JSON.stringify(status, null, 2),
+      "utf8"
+    );
     if (json !== lastStatusJson) {
       lastStatusJson = json;
       console.log(json);
