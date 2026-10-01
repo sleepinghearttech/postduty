@@ -37,16 +37,29 @@ verification against the pinned printer certificate. If the printer certificate
 changes unexpectedly, the bridge should fail closed until the certificate is
 deliberately pinned again.
 
-## Planned Phase 2
+## Permanent scope
 
-Once read-only status is stable:
+This integration is read-only by design and will remain read-only.
 
-- Add a Post Duty print queue in Supabase.
-- Map store SKUs to approved local `.gcode.3mf` files.
+Post Duty may:
+
+- Read printer state, current job, temperatures, progress and remaining time.
+- Maintain a production queue describing what should be printed next.
+- Map approved store SKUs to the corresponding local Bambu project/model name.
+- Show whether a queued item is waiting, printing, finished, or ready for manual bed clearing.
 - Report printer state back to the Post Duty admin dashboard.
 - Keep printer services behind the LAN; never expose port 8883 publicly.
-- Add an explicit approval gate before any print-start capability.
-- Prefer Bambu-supported authorization/print handoff where practical.
+
+Post Duty will never:
+
+- Start a print.
+- Pause, resume or cancel a print.
+- Upload a print job.
+- Change temperatures, motion, filament, AMS state or printer settings.
+- Send any printer-control command.
+
+The operator manually selects and starts every job through Bambu Studio or Bambu Handy.
+A person manually removes each completed object from the build plate before the next job.
 
 MakerWorld licensing is tracked separately from printer connectivity.
 Printer connectivity never makes a model commercially sellable.
