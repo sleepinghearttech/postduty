@@ -1372,3 +1372,52 @@
   .conceptGrid { grid-template-columns: 1fr; }
   .catalogFooter { padding: 36px 24px; }
 }
+
+.decisionRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.decisionButton,
+.decisionActive,
+.decisionApproveActive,
+.decisionRejectActive {
+  min-height: 34px;
+  border-radius: 9px;
+  border: 1px solid #d8cebe;
+  background: #fffaf2;
+  color: #665e54;
+  font-size: 9px;
+  font-weight: 800;
+  transition: .15s ease;
+}
+
+.decisionButton:hover {
+  border-color: #aa8a55;
+  color: #3e382f;
+}
+
+.decisionActive {
+  border-color: #a98543;
+  background: #f3e8cf;
+  color: #6c4b18;
+}
+
+.decisionApproveActive {
+  border-color: #4b8a6d;
+  background: #e2efe7;
+  color: #24553f;
+}
+
+.decisionRejectActive {
+  border-color: #9b5966;
+  background: #f4e3e6;
+  color: #6c2c39;
+}
+
+.decisionRow button:disabled {
+  opacity: .55;
+  cursor: wait;
+}

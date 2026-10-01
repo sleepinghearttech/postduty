@@ -155,9 +155,14 @@ export default async function AdminChristmasPage() {
             production cost, target price and the final make / don’t-make decision.
           </p>
         </div>
-        <Link href="/christmas" className="btn-premium">
-          Open visual storefront preview →
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/christmas/catalog" className="btn-premium">
+            Open private visual catalog →
+          </Link>
+          <Link href="/christmas" className="btn-ghost">
+            View public Christmas store
+          </Link>
+        </div>
       </div>
 
       <section className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-7">
@@ -175,6 +180,15 @@ export default async function AdminChristmasPage() {
             <div className="mt-1 text-lg font-bold text-stone-900">{value}</div>
           </div>
         ))}
+      </section>
+
+      <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 mb-4">
+        <strong className="text-sm text-emerald-900">Printer workflow is permanently manual.</strong>
+        <p className="text-xs text-emerald-800 mt-1">
+          PostDuty may read printer/job status and maintain a production queue, but it will never
+          start, pause, cancel, upload or control a Bambu printer. You start prints in Bambu
+          Studio/Handy and someone clears the bed between jobs.
+        </p>
       </section>
 
       <section className="rounded-2xl border border-stone-200 bg-white p-5 mb-7">

@@ -1,102 +1,171 @@
 import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabase";
-import CatalogClient, { type ChristmasCandidate } from "./CatalogClient";
+import { supabase } from "@/lib/supabase";
 import styles from "./christmas.module.css";
 
+type LiveCandidate = {
+  id: string;
+  product_id: string;
+  is_hero: boolean;
+  priority: number;
+};
+
+type StoreProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  stock: number;
+  is_active: boolean;
+};
+
 export default async function ChristmasPage() {
-  const { data, error } = await supabaseAdmin
+  const { data: liveCandidates } = await supabase
     .from("christmas_product_candidates")
-    .select(
-      "id,slug,name,category,store_role,short_description,source_platform,source_url,source_author,source_license,license_status,attribution_required,commercial_license_required,source_rating,source_rating_count,source_downloads,source_likes,source_reviews,print_time_minutes,filament_grams,recommended_colors,image_url,suggested_price_paise,status,is_hero,priority"
-    )
-    .neq("license_status", "not_sellable")
+    .select("id,product_id,is_hero,priority")
+    .eq("status", "live")
+    .not("product_id", "is", null)
     .order("priority", { ascending: true });
 
-  if (error) {
-    console.error("Failed to load Christmas catalog:", error.message);
+  const candidates = (liveCandidates || []) as LiveCandidate[];
+  const productIds = candidates.map((candidate) => candidate.product_id);
+
+  let products: StoreProduct[] = [];
+  if (productIds.length) {
+    const { data } = await supabase
+      .from("products")
+      .select("id,name,slug,description,price,image_url,stock,is_active")
+      .in("id", productIds)
+      .eq("is_active", true);
+    products = (data || []) as StoreProduct[];
   }
 
-  const candidates = (data || []) as ChristmasCandidate[];
-  const hero = candidates.find((candidate) => candidate.is_hero) || candidates[0];
+  const productMap = new Map(products.map((product) => [product.id, product]));
+  const orderedProducts = candidates
+    .map((candidate) => ({
+      candidate,
+      product: productMap.get(candidate.product_id),
+    }))
+    .filter((item): item is { candidate: LiveCandidate; product: StoreProduct } => !!item.product);
+
+  const hero =
+    orderedProducts.find((item) => item.candidate.is_hero)?.product ||
+    orderedProducts[0]?.product;
+
   return (
     <main className={styles.page}>
       <section className={styles.shopHero}>
         <div className={styles.shopHeroCopy}>
-          <p className={styles.kicker}>Christmas by PostDuty · Product Lab</p>
+          <p className={styles.kicker}>Christmas by PostDuty · 2026</p>
           <h1>
-            A Christmas shop built
-            <span> one print at a time.</span>
+            Small-batch Christmas,
+            <span> made after duty.</span>
           </h1>
           <p>
-            Browse every product we are considering for Christmas 2026.
-            Nothing appears in the live store until it has been test-printed,
-            costed and commercially cleared.
+            A seasonal collection of 3D-printed ornaments, light-up decor,
+            personalised gifts and small festive objects — tested, costed and
+            made in limited batches.
           </p>
-          <div className={styles.shopHeroActions}>
-            <a href="#catalog" className={styles.primaryCta}>
-              Browse all product ideas <span aria-hidden="true">↓</span>
-            </a>
-            <Link href="/admin/christmas" className={styles.secondaryCta}>
-              Open decision dashboard
-            </Link>
-          </div>
-          <div className={styles.shopTrust}>
-            <span>{candidates.length} researched concepts</span>
-            <span>Licence tracked</span>
-            <span>Print economics linked</span>
-          </div>
+          {orderedProducts.length > 0 ? (
+            <div className={styles.shopHeroActions}>
+              <a href="#shop" className={styles.primaryCta}>
+                Shop the collection ↓
+              </a>
+              <Link href="/" className={styles.secondaryCta}>
+                Back to PostDuty
+              </Link>
+            </div>
+          ) : (
+            <div className={styles.shopHeroActions}>
+              <span className={styles.primaryCta}>Collection being prepared</span>
+              <Link href="/" className={styles.secondaryCta}>
+                Back to PostDuty
+              </Link>
+            </div>
+          )}
         </div>
 
-        {hero && (
-          <div className={styles.heroProductPanel}>
-            <div className={styles.heroProductImage}>
-              {hero.image_url ? (
-                <img src={hero.image_url} alt={hero.name} />
-              ) : (
-                <div className={styles.heroProductPlaceholder}>✦</div>
-              )}
-              <span>Hero product</span>
-            </div>
-            <div className={styles.heroProductMeta}>
-              <p>{hero.category}</p>
-              <h2>{hero.name}</h2>
-              <span>{hero.short_description}</span>
-              <div>
-                <strong>
-                  {hero.suggested_price_paise
-                    ? `₹${Math.round(hero.suggested_price_paise / 100)} target`
-                    : "Price TBD"}
-                </strong>
-                <a href={hero.source_url} target="_blank" rel="noreferrer">
-                  Source model ↗
-                </a>
-              </div>
-            </div>
+        <div className={styles.heroProductPanel}>
+          <div className={styles.heroProductImage}>
+            {hero?.image_url ? (
+              <img src={hero.image_url} alt={hero.name} />
+            ) : (
+              <div className={styles.heroProductPlaceholder}>✦</div>
+            )}
+            <span>{hero ? "Seasonal favourite" : "Christmas 2026"}</span>
           </div>
-        )}
+          <div className={styles.heroProductMeta}>
+            <p>{hero ? "Christmas by PostDuty" : "In preparation"}</p>
+            <h2>{hero?.name || "The Christmas collection is being curated."}</h2>
+            <span>
+              {hero?.description ||
+                "Only products that pass our print, finish, licensing and costing checks will appear here."}
+            </span>
+            {hero && (
+              <div>
+                <strong>₹{Math.round(hero.price / 100).toLocaleString("en-IN")}</strong>
+                <Link href={"/products/" + hero.slug}>View product →</Link>
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className={styles.catalogIntro}>
         <div>
-          <p className={styles.sectionKicker}>The product map</p>
-          <h2>See the whole shelf before we manufacture it.</h2>
+          <p className={styles.sectionKicker}>Christmas collection</p>
+          <h2>
+            {orderedProducts.length
+              ? "Made in small batches, ready to gift."
+              : "We are testing the first batch now."}
+          </h2>
         </div>
         <p>
-          Use this page as the visual decision board. The admin dashboard contains
-          the detailed costs, filament choices, licence notes and approval controls.
+          Candidate research, licensing notes and production economics remain
+          private. Customers only see products that are fully approved and live.
         </p>
       </section>
 
-      <section id="catalog" className={styles.catalogSection}>
-        <CatalogClient candidates={candidates} />
-      </section>
-
-      <section className={styles.catalogFooter}>
-        <div>
-          <p className={styles.sectionKicker}>How a concept becomes a product</p>
-          <h2>Research → licence → test print → cost → approve → sell.</h2>
-        </div>
-        <Link href="/admin/christmas">Review economics and approvals →</Link>
+      <section id="shop" className={styles.catalogSection}>
+        {orderedProducts.length === 0 ? (
+          <div className={styles.emptyState}>
+            <span>✦</span>
+            <h3>Nothing is on sale yet.</h3>
+            <p>The first approved Christmas products will appear here automatically.</p>
+          </div>
+        ) : (
+          <div className={styles.productGrid}>
+            {orderedProducts.map(({ product }) => (
+              <Link
+                key={product.id}
+                href={"/products/" + product.slug}
+                className={styles.productCard}
+              >
+                <div className={styles.productImageWrap}>
+                  {product.image_url ? (
+                    <img src={product.image_url} alt={product.name} className={styles.productImage} />
+                  ) : (
+                    <div className={styles.productPlaceholder}>✦</div>
+                  )}
+                </div>
+                <div className={styles.productMeta}>
+                  <div>
+                    <h3>{product.name}</h3>
+                    <p>{product.stock > 0 ? "Available" : "Sold out"}</p>
+                  </div>
+                  <div className={styles.price}>
+                    ₹{Math.round(product.price / 100).toLocaleString("en-IN")}
+                  </div>
+                </div>
+                <div className={styles.cardFooter}>
+                  <span>View product</span>
+                  <span aria-hidden="true">↗</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

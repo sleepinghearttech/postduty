@@ -56,17 +56,19 @@ export default function CatalogClient({
 }: {
   candidates: ChristmasCandidate[];
 }) {
+  const [items, setItems] = useState(candidates);
   const [category, setCategory] = useState("All");
   const [license, setLicense] = useState("All");
   const [query, setQuery] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   const categories = useMemo(
-    () => ["All", ...Array.from(new Set(candidates.map((c) => c.category))).sort()],
-    [candidates]
+    () => ["All", ...Array.from(new Set(items.map((c) => c.category))).sort()],
+    [items]
   );
 
   const visible = useMemo(() => {
-    return candidates.filter((candidate) => {
+    return items.filter((candidate) => {
       const categoryOk = category === "All" || candidate.category === category;
       const licenseOk =
         license === "All" ||
@@ -81,7 +83,28 @@ export default function CatalogClient({
         (candidate.short_description || "").toLowerCase().includes(q);
       return categoryOk && licenseOk && searchOk;
     });
-  }, [candidates, category, license, query]);
+  }, [items, category, license, query]);
+
+  async function setDecision(id: string, status: string) {
+    setSavingId(id);
+    try {
+      const response = await fetch("/api/admin/christmas-candidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error || "Could not save decision");
+      setItems((current) =>
+        current.map((item) => (item.id === id ? { ...item, status } : item))
+      );
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Could not save decision");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   return (
     <>
       <div className={styles.catalogToolbar}>
@@ -196,6 +219,33 @@ export default function CatalogClient({
               >
                 View source model <span aria-hidden="true">↗</span>
               </a>
+
+              <div className={styles.decisionRow}>
+                <button
+                  type="button"
+                  disabled={savingId === candidate.id}
+                  className={candidate.status === "shortlisted" ? styles.decisionActive : styles.decisionButton}
+                  onClick={() => setDecision(candidate.id, "shortlisted")}
+                >
+                  Shortlist
+                </button>
+                <button
+                  type="button"
+                  disabled={savingId === candidate.id}
+                  className={candidate.status === "approved" ? styles.decisionApproveActive : styles.decisionButton}
+                  onClick={() => setDecision(candidate.id, "approved")}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  disabled={savingId === candidate.id}
+                  className={candidate.status === "rejected" ? styles.decisionRejectActive : styles.decisionButton}
+                  onClick={() => setDecision(candidate.id, "rejected")}
+                >
+                  Reject
+                </button>
+              </div>
             </div>
           </article>
         ))}
