@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
     })
 
     if (res.ok) {
-      router.push('/admin/products')
+      router.push('/admin/christmas')
     } else {
       setError('Wrong password. Try again.')
       setLoading(false)

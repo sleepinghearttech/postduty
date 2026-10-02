@@ -16,10 +16,18 @@ export default function Header() {
           PostDuty
         </Link>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-6">
+          <Link
+            href="/christmas"
+            className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-[#651D2E] hover:text-[#8A6A31] tracking-[0.12em] uppercase transition-colors"
+          >
+            <span className="text-[#B68B45]" aria-hidden="true">✦</span>
+            Christmas
+          </Link>
+
           <Link
             href="/orders"
-            className="text-xs font-semibold text-stone-500 hover:text-brand tracking-wider uppercase transition-colors"
+            className="hidden sm:inline text-xs font-semibold text-stone-500 hover:text-brand tracking-wider uppercase transition-colors"
           >
             Track Order
           </Link>

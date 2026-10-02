@@ -39,6 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="font-bold text-brand text-sm mr-4">PostDuty Admin</span>
           <NavLink href="/admin/products" current={pathname}>Products</NavLink>
           <NavLink href="/admin/orders" current={pathname}>Orders</NavLink>
+          <NavLink href="/admin/christmas" current={pathname}>Christmas Lab</NavLink>
         </div>
       </nav>
       {children}
