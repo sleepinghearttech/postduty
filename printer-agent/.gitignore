@@ -1,0 +1,5 @@
+node_modules/
+.env
+printer-ca.pem
+*.log
+bridge-status.json

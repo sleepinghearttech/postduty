@@ -1,0 +1,14 @@
+{
+  "name": "postduty-bambu-bridge",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pin-cert": "node --env-file-if-exists=.env pin-cert.mjs",
+    "start": "node --env-file-if-exists=.env index.mjs",
+    "check": "node --check index.mjs && node --check pin-cert.mjs"
+  },
+  "dependencies": {
+    "mqtt": "^5.16.0"
+  }
+}
