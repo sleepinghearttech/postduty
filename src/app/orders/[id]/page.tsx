@@ -2,6 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 
+type OrderDetailItem = {
+  id: string;
+  quantity: number;
+  unit_price: number;
+  products: { name: string; image_url: string | null } | null;
+};
+
 type Props = {
   params: Promise<{ id: string }>;
 };
@@ -35,7 +42,7 @@ export default async function OrderDetailPage({ params }: Props) {
   }
 
   // 2. Fetch order items
-  const { data: items, error: itemsError } = await supabaseAdmin
+  const { data: items } = await supabaseAdmin
     .from("order_items")
     .select(`
       id,
@@ -46,7 +53,8 @@ export default async function OrderDetailPage({ params }: Props) {
         image_url
       )
     `)
-    .eq("order_id", id);
+    .eq("order_id", id)
+    .returns<OrderDetailItem[]>();
 
   const orderItems = items || [];
 
@@ -155,7 +163,7 @@ export default async function OrderDetailPage({ params }: Props) {
           <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">
             Items Ordered
           </h2>
-          {orderItems.map((item: any, i: number) => (
+          {orderItems.map((item, i) => (
             <div key={i} className="flex items-center gap-4 text-sm">
               <div className="w-12 h-12 bg-brand-light rounded-lg overflow-hidden flex-shrink-0">
                 {item.products?.image_url ? (

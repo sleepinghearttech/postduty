@@ -11,6 +11,13 @@ function formatPaise(paise: number): string {
   });
 }
 
+async function loadCoupons(): Promise<Coupon[]> {
+  const res = await fetch("/api/admin/coupons");
+  if (!res.ok) throw new Error("Failed to load coupons");
+  const data = await res.json() as { coupons: Coupon[] };
+  return data.coupons;
+}
+
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,10 +38,7 @@ export default function AdminCouponsPage() {
   async function fetchCoupons() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/coupons");
-      if (!res.ok) throw new Error("Failed to load coupons");
-      const data = await res.json() as { coupons: Coupon[] };
-      setCoupons(data.coupons);
+      setCoupons(await loadCoupons());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load");
     }
@@ -42,7 +46,20 @@ export default function AdminCouponsPage() {
   }
 
   useEffect(() => {
-    fetchCoupons();
+    let cancelled = false;
+    loadCoupons().then(
+      (data) => {
+        if (cancelled) return;
+        setCoupons(data);
+        setLoading(false);
+      },
+      (err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Failed to load");
+        setLoading(false);
+      },
+    );
+    return () => { cancelled = true; };
   }, []);
 
   async function handleCreate(e: React.FormEvent) {

@@ -83,12 +83,18 @@ export default function CheckoutForm({ product }: { product: Product }) {
 
   // Auto-apply referral code from localStorage
   useEffect(() => {
-    try {
-      const refCode = localStorage.getItem("postduty_referral_code");
-      if (refCode && !couponApplied) {
-        setCouponCode(refCode);
-      }
-    } catch { /* ignore */ }
+    let cancelled = false;
+    // Keep the server and first client render identical; cancel stale hydration.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        const refCode = localStorage.getItem("postduty_referral_code");
+        if (refCode && !couponApplied) {
+          setCouponCode(refCode);
+        }
+      } catch { /* ignore */ }
+    });
+    return () => { cancelled = true; };
   }, [couponApplied]);
 
   const giftCharge = isGift ? 2000 : 0; // ₹20 in paise
