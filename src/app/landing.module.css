@@ -390,3 +390,251 @@
   .page a, .projectCard, .projectArt svg { transition: none; }
   .page { scroll-behavior: auto; }
 }
+
+
+/* Cinematic movement: composited transforms, low-frequency luminous surfaces.
+   All nonessential motion is disabled for reduced-motion users. */
+.aboutNav {
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .19em;
+  color: #b2c9c2;
+  text-decoration: none;
+  transition: color .25s ease;
+}
+.aboutNav:hover { color: #b8ffdf; }
+
+.heroCopy { animation: entranceRise 950ms cubic-bezier(.2,.8,.2,1) both; }
+.visualWrap { animation: entranceGlow 1300ms cubic-bezier(.2,.8,.2,1) 120ms both; }
+.orbStage {
+  animation: orbitalFloat 10s ease-in-out infinite;
+  will-change: transform;
+}
+.orbStage::after {
+  content: "";
+  position: absolute;
+  width: 84%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: conic-gradient(from 70deg, transparent 0 35%, rgba(171,255,225,.18) 42%, transparent 47% 82%, rgba(146,145,255,.1) 91%, transparent);
+  mask-image: radial-gradient(closest-side, transparent 95%, black 98%);
+  pointer-events: none;
+  animation: ambientOrbit 32s linear infinite;
+}
+.orbStage::before {
+  content: "";
+  position: absolute;
+  width: 42%;
+  height: 42%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(108,255,204,.10), transparent 69%);
+  filter: blur(16px);
+  animation: breathe 6.8s ease-in-out infinite alternate;
+}
+.twinkle {
+  position: absolute;
+  top: 24%;
+  left: 24%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d9fff1;
+  box-shadow: 0 0 16px 5px rgba(129,255,208,.5);
+  animation: satellite 17s ease-in-out infinite alternate, twinkle 3.6s ease-in-out infinite;
+}
+.visualWrap::before, .visualWrap::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  border: 1px solid rgba(180,246,222,.18);
+  border-radius: 50%;
+  animation: ambientOrbit 40s linear infinite;
+}
+.visualWrap::before { inset: 16%; border-style: dashed; }
+.visualWrap::after { inset: 25%; border-style: dotted; animation-direction: reverse; animation-duration: 55s; }
+.projectArt svg { animation: sculptureBreathe 8.2s ease-in-out infinite; }
+.projectCard:nth-child(2) .projectArt svg { animation-delay: -2.4s; }
+.projectCard:nth-child(3) .projectArt svg { animation-delay: -5s; }
+.projectCard::after {
+  content: "";
+  position: absolute;
+  width: 120%;
+  height: 100%;
+  top: 0;
+  left: -155%;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(112deg, transparent 34%, rgba(255,255,255,.03) 50%, transparent 64%);
+  animation: cardLight 13s ease-in-out infinite;
+}
+.projectCard:nth-child(2)::after { animation-delay: -4s; }
+.projectCard:nth-child(3)::after { animation-delay: -8s; }
+.exploreButton span, .portfolioLink span { transition: transform .23s ease; }
+.exploreButton:hover span, .portfolioLink:hover span { transform: translate(3px, -3px); }
+
+.creator {
+  max-width: 1320px;
+  margin: 0 auto 110px;
+  padding: 30px clamp(24px, 4.5vw, 74px);
+  display: grid;
+  grid-template-columns: .87fr 1.13fr;
+  align-items: center;
+  gap: clamp(32px, 6vw, 90px);
+  scroll-margin-top: 48px;
+}
+.creatorVisual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  min-height: 340px;
+  aspect-ratio: 1.23 / 1;
+  overflow: hidden;
+  border: 1px solid rgba(179, 230, 214, .15);
+  border-radius: 9px;
+  background: radial-gradient(ellipse at 51% 40%, rgba(74,139,131,.22), transparent 56%), linear-gradient(140deg, #17272c, #10151d 72%);
+}
+.creatorVisual::before {
+  content: "";
+  position: absolute;
+  inset: 14%;
+  border: 1px solid rgba(167,243,208,.15);
+  transform: rotate(45deg);
+  animation: ambientOrbit 45s linear infinite;
+}
+.creatorOrbit, .creatorOrbitInner {
+  position: absolute;
+  width: 66%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(165,243,208,.23);
+  border-radius: 50%;
+  transform: rotate(-24deg) scaleY(.56);
+  animation: portraitOrbit 15s ease-in-out infinite alternate;
+}
+.creatorOrbitInner {
+  width: 44%;
+  border-color: rgba(191,174,250,.38);
+  transform: rotate(35deg) scaleY(.64);
+  animation-delay: -8s;
+  animation-duration: 13s;
+}
+.creatorMonogram {
+  z-index: 1;
+  font-size: clamp(72px, 10vw, 122px);
+  color: #f0fff9;
+  font-weight: 750;
+  letter-spacing: -.12em;
+  text-shadow: 0 0 38px rgba(165,243,208,.23);
+}
+.creatorMonogram span { color: #a7f3d0; }
+.creatorVisualTag {
+  position: absolute;
+  bottom: 27px;
+  left: 28px;
+  color: #91aea9;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .22em;
+}
+.creatorText h2 {
+  margin: 0 0 23px;
+  font-size: clamp(43px, 4.6vw, 71px);
+  line-height: 1.06;
+  letter-spacing: -.07em;
+  color: #eaf5ef;
+}
+.creatorText h2 em { font-family: var(--font-fraunces), Georgia, serif; font-weight: 500; color: #b0d5c9; }
+.creatorName { color: #e6f6ed; letter-spacing: .17em; font-size: 11px; font-weight: 800; }
+.creatorRole { margin: 8px 0 23px; font-size: 13px; font-weight: 600; color: #adcbc0; line-height: 1.65; }
+.creatorIntro { max-width: 490px; font-size: 16px; color: #a3b9b4; line-height: 1.85; }
+.creatorCredentials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 25px 0;
+}
+.creatorCredentials span {
+  border: 1px solid rgba(193,236,218,.21);
+  padding: 9px 11px;
+  border-radius: 3px;
+  color: #b5c9c2;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+.portfolioLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 19px;
+  margin-top: 10px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid rgba(167,243,208,.65);
+  color: #c9f7e2;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-decoration: none;
+  transition: color .2s ease, border-color .2s ease;
+}
+.portfolioLink span { display: inline-block; font-size: 22px; line-height: .8; font-weight: 400; }
+.portfolioLink:hover { color: white; border-color: white; }
+.note { color: #91aaa9; }
+
+@keyframes entranceRise {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes entranceGlow {
+  from { opacity: 0; transform: translateY(23px) scale(.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes orbitalFloat {
+  0%,100% { transform: translate3d(0,0,0) rotate(-1deg); }
+  50% { transform: translate3d(0,-12px,0) rotate(1deg); }
+}
+@keyframes ambientOrbit { to { transform: rotate(360deg); } }
+@keyframes breathe {
+  from { opacity: .35; transform: scale(.85); }
+  to { opacity: .95; transform: scale(1.35); }
+}
+@keyframes twinkle {
+  0%,100% { opacity: .45; }
+  52% { opacity: 1; }
+}
+@keyframes satellite {
+  0% { transform: translate3d(0,0,0); }
+  100% { transform: translate3d(220px,160px,0); }
+}
+@keyframes sculptureBreathe {
+  0%,100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0,-10px,0); }
+}
+@keyframes cardLight {
+  0%,58% { transform: translateX(-24%); }
+  82%,100% { transform: translateX(235%); }
+}
+@keyframes portraitOrbit {
+  from { transform: rotate(-28deg) scaleY(.6); }
+  to { transform: rotate(22deg) scaleY(.7); }
+}
+@media (max-width: 740px) {
+  .creator { grid-template-columns: 1fr; padding: 20px 23px; margin-bottom: 70px; gap: 35px; }
+  .creatorVisual { min-height: 260px; aspect-ratio: 1.35 / 1; }
+  .creatorText h2 { font-size: 48px; }
+  .creatorMonogram { font-size: 92px; }
+  .creatorCredentials { gap: 7px; }
+  .creatorCredentials span { font-size: 8px; }
+}
+@media (max-width: 370px) {
+  .aboutNav { font-size: 9px; letter-spacing: .06em; }
+  .creatorText h2 { font-size: 42px; }
+  .portfolioLink { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .heroCopy, .visualWrap, .orbStage, .orbStage::after, .orbStage::before,
+  .twinkle, .visualWrap::before, .visualWrap::after,
+  .projectArt svg, .projectCard::after, .creatorVisual::before,
+  .creatorOrbit, .creatorOrbitInner {
+    animation: none !important;
+  }
+}

@@ -262,7 +262,7 @@ export default function CartPage() {
         <p className="mt-3 text-ink-400 text-sm max-w-xs mx-auto leading-relaxed">
           Looks like you haven&apos;t added anything to your cart yet. Find the perfect gift for your healthcare hero.
         </p>
-        <Link href="/" className="btn-premium mt-8">
+        <Link href="/store" className="btn-premium mt-8">
           Explore Gifts
         </Link>
       </main>
@@ -341,7 +341,7 @@ export default function CartPage() {
           ))}
 
           <Link
-            href="/"
+            href="/store"
             className="inline-flex items-center gap-1 text-xs font-bold text-stone-500 hover:text-brand transition-colors pt-2"
           >
             ← Add more items

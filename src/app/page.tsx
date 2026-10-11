@@ -191,6 +191,7 @@ export default function CreativeHomePage() {
         </Link>
         <div className={styles.headerRight}>
           <span className={styles.locationTag}>INDEPENDENT CREATIVE SPACE / IN</span>
+          <a href="#creator" className={styles.aboutNav}>ABOUT</a>
           <a href="#work" className={styles.indexLink}>EXPLORE <span aria-hidden="true">↘</span></a>
         </div>
       </header>
@@ -211,6 +212,7 @@ export default function CreativeHomePage() {
         <div className={styles.visualWrap}>
           <div className={styles.orbStage}>
             <OrbitalSculpture />
+            <span className={styles.twinkle} aria-hidden="true" />
           </div>
           <div className={styles.orbCalloutA}>PULSE <span>↗</span> FORM</div>
           <div className={styles.orbCalloutB}>ITERATION / ∞</div>
@@ -233,6 +235,28 @@ export default function CreativeHomePage() {
           {projects.map((project) => <ProjectCard key={project.id} project={project} />)}
         </div>
         <p className={styles.note}>A growing collection of things imagined, coded and made after hours.</p>
+      </section>
+
+      <section id="creator" className={styles.creator} aria-labelledby="creator-title">
+        <div className={styles.creatorVisual} aria-hidden="true">
+          <span className={styles.creatorOrbit} />
+          <span className={styles.creatorOrbitInner} />
+          <span className={styles.creatorMonogram}>JF<span>.</span></span>
+          <span className={styles.creatorVisualTag}>WHERE SCIENCE MEETS CURIOSITY</span>
+        </div>
+        <div className={styles.creatorText}>
+          <p className={styles.sectionLabel}>THE PERSON BEHIND THE PROJECTS / 004</p>
+          <h2 id="creator-title">About <em>the creator.</em></h2>
+          <p className={styles.creatorName}>DR. JIJO FRANCIS</p>
+          <p className={styles.creatorRole}>Cardiac Anaesthesiologist · Intensivist · Medical Technology Innovator</p>
+          <p className={styles.creatorIntro}>Somewhere between the operating theatre and the digital workshop, I build things that make work—and life—a little more interesting.</p>
+          <div className={styles.creatorCredentials}>
+            <span>AIIMS NEW DELHI</span><span>PGIMER CHANDIGARH</span><span>JIPMER</span>
+          </div>
+          <a className={styles.portfolioLink} href="https://drjijofrancis.netlify.app/" target="_blank" rel="noopener noreferrer">
+            EXPLORE MY PROFESSIONAL PORTFOLIO <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </section>
 
       <footer className={styles.footer}>
