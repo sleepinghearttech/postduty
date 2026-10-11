@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 import SiteShell from "@/components/SiteShell";
+import { headers } from "next/headers";
 import { CartProvider } from "@/components/CartContext";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -31,9 +32,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const hostname = ((await headers()).get("host") ?? "").split(":")[0].toLowerCase();
+  const isStoreHost = hostname === "store.postduty.in";
   return (
     <html lang="en">
       <head>
@@ -41,7 +44,7 @@ export default function RootLayout({
       </head>
       <body className={`${jakarta.variable} ${fraunces.variable} font-sans antialiased`}>
         <CartProvider>
-          <SiteShell>{children}</SiteShell>
+          <SiteShell isStoreHost={isStoreHost}>{children}</SiteShell>
         </CartProvider>
       </body>
     </html>

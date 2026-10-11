@@ -11,10 +11,11 @@ import Footer from "@/components/Footer";
  */
 export default function SiteShell({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+  isStoreHost,
+}: Readonly<{ children: React.ReactNode; isStoreHost: boolean }>) {
   const pathname = usePathname();
 
-  if (pathname === "/") {
+  if (pathname === "/" && !isStoreHost) {
     return <>{children}</>;
   }
 
