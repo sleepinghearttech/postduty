@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // On the dedicated shop hostname, show the existing catalog at /.
-  // Do not change any /admin authentication or authorization behavior.
+  // The store hostname's root redirects to its catalog path. This keeps
+  // commerce navigation static and leaves /admin authentication unchanged.
   if (pathname === '/') {
     const host = (request.headers.get('host') ?? '').split(':')[0].toLowerCase()
     if (host === 'store.postduty.in') {
       const storeUrl = request.nextUrl.clone()
       storeUrl.pathname = '/store'
-      return NextResponse.rewrite(storeUrl)
+      return NextResponse.redirect(storeUrl)
     }
     return NextResponse.next()
   }
