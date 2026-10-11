@@ -64,7 +64,7 @@ function OrderSuccessContent() {
 
       <div className="pt-8">
         <Link
-          href="/"
+          href="/store"
           className="text-xs font-semibold text-stone-400 hover:text-stone-600 hover:underline"
         >
           Back to shop

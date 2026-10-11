@@ -10,7 +10,7 @@ export default function Header() {
     <header className="bg-white border-b border-warm-border sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link
-          href="/"
+          href="/store"
           className="font-serif text-2xl tracking-tight text-brand"
         >
           PostDuty

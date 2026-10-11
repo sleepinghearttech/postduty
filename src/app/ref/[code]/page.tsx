@@ -21,8 +21,8 @@ export default async function ReferralPage({ params }: PageProps) {
     .maybeSingle();
 
   if (!coupon) {
-    // No valid referral — just redirect to homepage
-    redirect("/");
+    // Invalid referral: keep the visitor in the shopping experience
+    redirect("/store");
   }
 
   const c = coupon as Coupon;
@@ -32,7 +32,7 @@ export default async function ReferralPage({ params }: PageProps) {
   const isMaxed = c.max_uses !== null && c.times_used >= c.max_uses;
 
   if (isExpired || isMaxed) {
-    redirect("/");
+    redirect("/store");
   }
 
   const discountLabel =

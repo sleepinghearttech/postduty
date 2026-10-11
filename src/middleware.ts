@@ -3,6 +3,18 @@ import { NextRequest, NextResponse } from 'next/server'
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // The store hostname's root redirects to its catalog path. This keeps
+  // commerce navigation static and leaves /admin authentication unchanged.
+  if (pathname === '/') {
+    const host = (request.headers.get('host') ?? '').split(':')[0].toLowerCase()
+    if (host === 'store.postduty.in') {
+      const storeUrl = request.nextUrl.clone()
+      storeUrl.pathname = '/store'
+      return NextResponse.redirect(storeUrl)
+    }
+    return NextResponse.next()
+  }
+
   // Let the login page through — otherwise we'd redirect forever
   if (pathname.startsWith('/admin/login')) {
     return NextResponse.next()
@@ -18,7 +30,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-// Only run on /admin/* routes — all other routes skip this middleware entirely
+// Include the root for the shop hostname; preserve the existing admin gate.
 export const config = {
-  matcher: '/admin/:path*',
+  matcher: ['/', '/admin/:path*'],
 }

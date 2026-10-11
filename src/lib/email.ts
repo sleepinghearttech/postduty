@@ -355,6 +355,9 @@ export async function sendWinBackEmail(order: Order, couponCode: string): Promis
 
   const fromEmail = "PostDuty <onboarding@resend.dev>";
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://postduty.in";
+  // The marketing call-to-action must open the retained storefront, not the
+  // new creative homepage at the site root.
+  const shopUrl = new URL("/store", baseUrl).toString();
 
   const payload = {
     from: fromEmail,
@@ -380,7 +383,7 @@ export async function sendWinBackEmail(order: Order, couponCode: string): Promis
         </div>
         
         <p style="text-align: center;">
-          <a href="${baseUrl}" style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+          <a href="${shopUrl}" style="display: inline-block; background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
             Shop New Arrivals →
           </a>
         </p>

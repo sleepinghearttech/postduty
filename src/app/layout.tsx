@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import SiteShell from "@/components/SiteShell";
 import { CartProvider } from "@/components/CartContext";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -19,16 +18,22 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://postduty.in"),
   title: "PostDuty — Gifts for Healthcare Heroes",
   description:
     "Thoughtful gifts for nurses, doctors, and every healthcare hero. Shop accessories and keepsakes to celebrate the caregivers in your life.",
+  openGraph: {
+    title: "PostDuty — Gifts for Healthcare Heroes",
+    description:
+      "Thoughtful accessories, gifts and keepsakes for healthcare professionals.",
+    siteName: "PostDuty",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <head>
@@ -36,11 +41,7 @@ export default function RootLayout({
       </head>
       <body className={`${jakarta.variable} ${fraunces.variable} font-sans antialiased`}>
         <CartProvider>
-          <div className="min-h-screen flex flex-col bg-warm-bg">
-            <Header />
-            <div className="flex-1">{children}</div>
-            <Footer />
-          </div>
+          <SiteShell>{children}</SiteShell>
         </CartProvider>
       </body>
     </html>

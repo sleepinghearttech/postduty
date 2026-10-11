@@ -15,7 +15,7 @@ export default async function OrderStatusPage({ params }: Props) {
   return (
     <main className="max-w-md mx-auto px-4 py-10 sm:py-14">
       <Link
-        href="/"
+        href="/store"
         className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-brand transition-colors mb-8"
       >
         ← Back to shop

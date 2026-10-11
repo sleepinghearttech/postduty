@@ -93,7 +93,7 @@ export default async function ProductPage({ params }: Props) {
       />
     <main className="max-w-5xl mx-auto px-4 py-10 sm:py-14">
       <Link
-        href="/"
+        href="/store"
         className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-brand transition-colors mb-8"
       >
         ← All products
@@ -158,7 +158,7 @@ export default async function ProductPage({ params }: Props) {
           {/* CheckoutForm handles the Buy Now button, form, and payment modal */}
           <CheckoutForm product={product} />
 
-          <Link href="/" className="btn-ghost mt-3 self-start">
+          <Link href="/store" className="btn-ghost mt-3 self-start">
             Continue shopping
           </Link>
 
