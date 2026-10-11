@@ -1,6 +1,20 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import styles from "./landing.module.css";
 import { featuredProjects, type FeaturedProject } from "@/lib/featured-projects";
+
+export const metadata: Metadata = {
+  title: "PostDuty — After the Shift",
+  description:
+    "A creative space at the intersection of medicine, technology, and making. Experiments in cardiac anaesthesia, digital experiences, and 3D printing.",
+  openGraph: {
+    title: "PostDuty — After the Shift",
+    description: "Medicine. Machines. Making.",
+    url: "https://postduty.in",
+    siteName: "PostDuty",
+    type: "website",
+  },
+};
 
 const rings = Array.from({ length: 21 }, (_, index) => index);
 const filaments = Array.from({ length: 15 }, (_, index) => index);

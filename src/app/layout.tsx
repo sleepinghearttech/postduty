@@ -20,13 +20,13 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://postduty.in"),
-  title: "PostDuty — After the Shift",
+  title: "PostDuty — Gifts for Healthcare Heroes",
   description:
-    "A creative space at the intersection of medicine, technology, and making. Experiments in cardiac anaesthesia, digital experiences, and 3D printing.",
+    "Thoughtful gifts for nurses, doctors, and every healthcare hero. Shop accessories and keepsakes to celebrate the caregivers in your life.",
   openGraph: {
-    title: "PostDuty — After the Shift",
-    description: "Medicine. Machines. Making.",
-    url: "https://postduty.in",
+    title: "PostDuty — Gifts for Healthcare Heroes",
+    description:
+      "Thoughtful accessories, gifts and keepsakes for healthcare professionals.",
     siteName: "PostDuty",
     type: "website",
   },
