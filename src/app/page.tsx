@@ -206,7 +206,7 @@ export default function CreativeHomePage() {
           <p className={styles.intro}>Medicine. Machines. Making.<br /><span>Curiosity doesn’t clock out.</span></p>
           <div className={styles.heroBottom}>
             <a href="#work" className={styles.exploreButton}>ENTER THE STUDIO <span aria-hidden="true">↗</span></a>
-            <span className={styles.heroMeta}>CARDIAC ANAESTHESIA <span>×</span> TECHNOLOGY <span>×</span> 3D PRINT</span>
+            <span className={styles.heroMeta}>CARDIAC ANAESTHESIA <span>×</span> TECHNOLOGY</span>
           </div>
         </div>
         <div className={styles.visualWrap}>
