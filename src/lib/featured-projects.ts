@@ -43,7 +43,7 @@ export const featuredProjects: readonly FeaturedProject[] = [
     title: "The PostDuty Store",
     description: "Useful objects, thoughtfully made.",
     status: "live",
-    href: "/store",
+    href: "https://store.postduty.in/",
     featured: true,
   },
 ];
