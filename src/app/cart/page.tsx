@@ -165,7 +165,7 @@ function CartContents() {
       } catch {}
       setPendingPayment(null);
       clearCart(storefront);
-      router.push(`/order-success?orderId=${result.orderId}`);
+      router.push(`/order-success?orderId=${encodeURIComponent(result.orderId)}&storefront=${storefront}`);
     } catch (err) {
       setError((err instanceof Error ? err.message : "Payment confirmation could not be completed.") + " Keep your payment reference and contact support if confirmation remains pending.");
     } finally { setLoading(false); }

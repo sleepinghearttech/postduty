@@ -20,8 +20,9 @@ function formatPrice(paise: number): string {
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Payment pending",
-  paid: "Confirmed — being prepared for shipping",
+  paid: "Payment recorded — check fulfillment updates below",
   shipped: "Shipped",
+  delivered: "Delivered",
 };
 
 export default function OrderStatusClient({ orderId }: { orderId: string }) {

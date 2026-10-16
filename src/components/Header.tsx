@@ -1,15 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { useCart } from "@/components/CartContext";
 
 export default function Header() {
+  return <Suspense fallback={<HeaderView christmas={false} />}><ContextHeader /></Suspense>;
+}
+
+function ContextHeader() {
+  const path = usePathname();
+  const searchParams = useSearchParams();
+  const [christmasHost, setChristmasHost] = useState(false);
+  useEffect(() => { queueMicrotask(() => setChristmasHost(location.hostname === "christmas.postduty.in")); }, []);
+  const christmas = christmasHost || path.startsWith("/christmas") || searchParams.get("storefront") === "christmas";
+  return <HeaderView christmas={christmas} />;
+}
+
+function HeaderView({ christmas }: { christmas: boolean }) {
   const { cart } = useCart();
-  const path=usePathname();
-  const [christmas,setChristmas]=useState(path.startsWith("/christmas"));
-  useEffect(()=>{queueMicrotask(()=>setChristmas(path.startsWith("/christmas") || location.hostname==="christmas.postduty.in" || new URLSearchParams(location.search).get("storefront")==="christmas"));},[path]);
   const totalItems=cart.filter(i=>i.storefront===(christmas?"christmas":"general")).reduce((n,i)=>n+i.quantity,0);
 
   return (
@@ -17,12 +27,12 @@ export default function Header() {
       <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link
           href={christmas?"/christmas":"/store"}
-          className="font-serif text-2xl tracking-tight text-brand"
+          className="font-serif text-lg sm:text-2xl tracking-tight text-brand"
         >
           {christmas?"Christmas by PostDuty":"PostDuty"}
         </Link>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-6">
           <Link
             href="/orders"
             className="text-xs font-semibold text-stone-500 hover:text-brand tracking-wider uppercase transition-colors"
