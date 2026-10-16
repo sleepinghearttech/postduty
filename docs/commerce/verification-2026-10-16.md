@@ -1,5 +1,7 @@
 # Deployed commerce verification — 16 October 2026
 
+**Superseded preview addresses:** the later owner-approved protected deployment and reversible design comparison are documented in [refinement-and-access-2026-10-16.md](refinement-and-access-2026-10-16.md). The version URLs below now return 404. The initial vulnerable preview's retirement is now verified. This report remains the historical checkout evidence for the earlier runtime.
+
 ## Working preview
 
 - [Christmas collection](https://commerce-preview-postduty.jijo925.workers.dev/christmas)
