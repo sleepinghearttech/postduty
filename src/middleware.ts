@@ -14,6 +14,20 @@ async function ownerSession(request: NextRequest): Promise<boolean> {
 }
 export async function middleware(request:NextRequest) {
  const {pathname}=request.nextUrl;
+ // This switch is set only on the isolated commerce preview Worker.
+ // The production Worker keeps its existing routing and authentication behaviour.
+ const restrictedPreview=process.env.COMMERCE_SANDBOX==='true' && process.env.COMMERCE_PREVIEW_ACCESS==='owner';
+ const signInPath=['/admin/login','/api/admin/login','/api/admin/google-session','/api/admin/logout'].includes(pathname);
+ const publicAsset=pathname.startsWith('/_next/static/') || pathname==='/favicon.ico';
+ if(restrictedPreview && !signInPath && !publicAsset && !await ownerSession(request)) {
+  const headers={'Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow, noarchive'};
+  if(pathname.startsWith('/api/')) return NextResponse.json({error:'Sign in as the authorized owner to use this test preview.'},{status:401,headers});
+  const url=new URL('/admin/login',request.url);
+  url.searchParams.set('next',pathname+request.nextUrl.search);
+  const response=NextResponse.redirect(url);
+  Object.entries(headers).forEach(([key,value])=>response.headers.set(key,value));
+  return response;
+ }
  const host=(request.headers.get('host')??'').split(':')[0].toLowerCase();
  if(pathname==='/') {
   const target=host==='store.postduty.in'?'/store':host==='christmas.postduty.in'?'/christmas':null;
@@ -22,7 +36,7 @@ export async function middleware(request:NextRequest) {
  if(pathname.startsWith('/admin') && pathname!=='/admin/login' && !await ownerSession(request)) return NextResponse.redirect(new URL('/admin/login',request.url));
  const response=NextResponse.next();
  if(process.env.COMMERCE_SANDBOX==='true') response.headers.set('X-Robots-Tag','noindex, nofollow, noarchive');
- if(pathname.startsWith('/admin')||pathname.startsWith('/creator')||pathname.startsWith('/api/')) response.headers.set('Cache-Control','private, no-store');
+ if(restrictedPreview||pathname.startsWith('/admin')||pathname.startsWith('/creator')||pathname.startsWith('/api/')) response.headers.set('Cache-Control','private, no-store');
  return response;
 }
-export const config={matcher:['/','/admin/:path*','/creator/:path*','/api/:path*','/christmas/:path*','/store/:path*','/products/:path*']};
+export const config={matcher:['/:path*']};
