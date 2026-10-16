@@ -4,6 +4,7 @@ import { commerceTable } from '@/lib/commerce-db';
 import { supabaseAdmin } from '@/lib/supabase'
 import { OrderWithItems } from '@/lib/types'
 import { OrdersClient } from './OrdersClient'
+import type { OrderCase } from '@/lib/order-cases'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,5 +31,8 @@ export default async function AdminOrdersPage() {
     )
   }
 
-  return <OrdersClient initialOrders={(data as unknown as OrderWithItems[]) ?? []} />
+  const { data: serviceCases, error: casesError } = await supabaseAdmin
+    .from(commerceTable('order_cases')).select('*').order('created_at', { ascending: false }).limit(500);
+
+  return <OrdersClient initialOrders={(data as unknown as OrderWithItems[]) ?? []} initialCases={(serviceCases as OrderCase[]) ?? []} casesUnavailable={Boolean(casesError)} />
 }

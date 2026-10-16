@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { Order, OrderWithItems, OrderStatus } from '@/lib/types'
+import type { OrderCase } from '@/lib/order-cases'
+import { OrderCases } from './OrderCases'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -90,9 +92,13 @@ function StatCard({
 function OrderCard({
   order,
   onUpdate,
+  cases,
+  casesUnavailable,
 }: {
   order: OrderWithItems
   onUpdate: (updated: OrderWithItems) => void
+  cases: OrderCase[]
+  casesUnavailable: boolean
 }) {
   const [saving, setSaving] = useState(false)
   const [flash, setFlash] = useState('')
@@ -278,13 +284,14 @@ function OrderCard({
           </>
         )}
       </div>
+      <OrderCases orderId={order.id} orderTotal={order.total_amount} initialCases={cases} initiallyUnavailable={casesUnavailable} />
     </div>
   )
 }
 
 // ─── main export ─────────────────────────────────────────────────────────────
 
-export function OrdersClient({ initialOrders }: { initialOrders: OrderWithItems[] }) {
+export function OrdersClient({ initialOrders, initialCases = [], casesUnavailable = false }: { initialOrders: OrderWithItems[]; initialCases?: OrderCase[]; casesUnavailable?: boolean }) {
   const [orders, setOrders] = useState<OrderWithItems[]>(initialOrders)
 
   function handleUpdate(updated: OrderWithItems) {
@@ -308,7 +315,7 @@ export function OrdersClient({ initialOrders }: { initialOrders: OrderWithItems[
       ) : (
         <div className="space-y-4">
           {orders.map(order => (
-            <OrderCard key={order.id} order={order} onUpdate={handleUpdate} />
+            <OrderCard key={order.id} order={order} onUpdate={handleUpdate} cases={initialCases.filter(record => record.order_id === order.id)} casesUnavailable={casesUnavailable} />
           ))}
         </div>
       )}
