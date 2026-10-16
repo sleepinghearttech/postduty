@@ -56,3 +56,9 @@ test('sign-in return target rejects external URLs, malformed values, API paths a
  for(const value of [null,'https://evil.example','//evil.example','/\\evil.example','javascript:alert(1)','/api/admin/login','/admin/login','/admin/login/','/store\n//evil.example','/'.padEnd(4100,'a')]) assert.equal(ownerReturnPath(value),'/admin');
  for(const value of ['/christmas?design=classic','/store?design=refined','/admin/products','/cart','/qa/responsive?width=360'])assert.equal(ownerReturnPath(value),value);
 });
+
+test('public sandbox permits customer browsing while owner pages still require authentication',async()=>{
+ const {middleware}=load('../src/middleware.ts',{...env,COMMERCE_PREVIEW_ACCESS:'public'});
+ for(const path of ['/store','/christmas','/cart','/checkout'])assert.equal((await middleware(request(path))).status,200);
+ assert.equal((await middleware(request('/admin/products'))).status,307);
+});

@@ -1,3 +1,5 @@
+> Access correction (2026-10-16): owner requested public customer browsing on both test storefronts. The preview configuration now sets COMMERCE_PREVIEW_ACCESS=public; owner and creator authorization remain enforced separately. Seven access tests pass. Deployment and password retrieval are blocked because the authorized Windows deployment device is offline. Until deployed, the existing preview still requires owner login. No production change has been made.
+
 # Commerce preview handoff — 16 October 2026
 
 **Latest access:** use [the protected owner login](https://postduty-commerce-preview.jijo925.workers.dev/admin/login). Both stores now require owner sign-in and have **Original / Refined** comparison controls. See [the current deployment and remaining Google setup](refinement-and-access-2026-10-16.md). All earlier public preview URLs have been retired; production is unchanged.
