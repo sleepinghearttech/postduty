@@ -1,3 +1,4 @@
+import { commerceTable } from '@/lib/commerce-db';
 import type { MetadataRoute } from "next";
 import { supabase } from "@/lib/supabase";
 
@@ -5,7 +6,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://postduty.in";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { data: products } = await supabase
-    .from("products")
+    .from(commerceTable('products'))
     .select("slug, created_at")
     .eq("is_active", true);
 

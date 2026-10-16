@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCart } from "@/components/CartContext";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCart, cartUnitPrice, cartStock } from "@/components/CartContext";
+import type { Storefront } from "@/components/commerce/types";
 
 function formatPrice(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   });
 }
 
@@ -28,9 +29,22 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 export default function CartPage() {
+  return <Suspense fallback={<main className="p-10 text-center">Loading your bag…</main>}><CartContents /></Suspense>;
+}
+
+type PaymentResponse = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
+
+function CartContents() {
   const router = useRouter();
-  const { cart, updateQuantity, removeFromCart, totalAmount, clearCart } = useCart();
+  const { cart: allItems, updateQuantity, removeFromCart, clearCart } = useCart();
+  const searchParams = useSearchParams();
+  const storefront: Storefront = searchParams.get("storefront") === "christmas" ? "christmas" : "general";
+  const cart = allItems.filter(item => item.storefront === storefront);
+  const totalAmount = cart.reduce((sum,item) => sum + cartUnitPrice(item) * item.quantity, 0);
+  const browseHref = storefront === "christmas" ? "/christmas" : "/store";
   const [loading, setLoading] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<string | null>(null);
+  const [verificationResponse, setVerificationResponse] = useState<PaymentResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
@@ -68,6 +82,10 @@ export default function CartPage() {
     });
     return () => { cancelled = true; };
   }, [couponApplied]);
+
+  useEffect(() => { queueMicrotask(() => setCouponApplied(null)); }, [totalAmount]);
+
+  useEffect(() => { queueMicrotask(() => { try { setPendingPayment(localStorage.getItem(`postduty_pending_payment_${storefront}`)); } catch {} }); }, [storefront]);
 
   const giftCharge = isGift ? 2000 : 0; // ₹20 in paise
   const discountAmount = couponApplied?.discountAmount ?? 0;
@@ -122,9 +140,40 @@ export default function CartPage() {
     try { localStorage.removeItem("postduty_referral_code"); } catch { /* ignore */ }
   }
 
+  async function verifyPayment(response: PaymentResponse) {
+    setLoading(true);
+    setError(null);
+    try {
+      const verifyRes = await fetch("/api/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpayOrderId: response.razorpay_order_id,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpaySignature: response.razorpay_signature,
+        }),
+      });
+      const result = await verifyRes.json() as { orderId?: string; error?: string };
+      if (!verifyRes.ok || !result.orderId) throw new Error(result.error || "Payment confirmation is pending.");
+      try {
+        const saved = JSON.parse(localStorage.getItem("postduty_orders") || "[]");
+        const orders = Array.isArray(saved) ? saved : [];
+        if (!orders.includes(result.orderId)) orders.push(result.orderId);
+        localStorage.setItem("postduty_orders", JSON.stringify(orders));
+        localStorage.removeItem("postduty_referral_code");
+        localStorage.removeItem(`postduty_pending_payment_${storefront}`);
+      } catch {}
+      setPendingPayment(null);
+      clearCart(storefront);
+      router.push(`/order-success?orderId=${result.orderId}`);
+    } catch (err) {
+      setError((err instanceof Error ? err.message : "Payment confirmation could not be completed.") + " Keep your payment reference and contact support if confirmation remains pending.");
+    } finally { setLoading(false); }
+  }
+
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault();
-    if (cart.length === 0) return;
+    if (cart.length === 0 || pendingPayment) return;
     setLoading(true);
     setError(null);
 
@@ -137,7 +186,11 @@ export default function CartPage() {
           items: cart.map((item) => ({
             productId: item.product.id,
             quantity: item.quantity,
+            variantId: item.variantId,
+            personalization: item.personalization,
           })),
+          storefront,
+          customerName: form.name, customerEmail: form.email, customerPhone: form.phone, shippingAddress: form.address,
           couponCode: couponApplied?.code || undefined,
           isGift,
           giftMessage: isGift ? giftMessage : undefined,
@@ -174,55 +227,10 @@ export default function CartPage() {
         },
         theme: { color: "#0D7C7C" },
         handler: async (response) => {
-          // 4. Verify payment and create order
-          const verifyRes = await fetch("/api/verify-payment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-              items: cart.map((item) => ({
-                productId: item.product.id,
-                quantity: item.quantity,
-                unitPrice: item.product.price,
-              })),
-              customerName: form.name,
-              customerEmail: form.email,
-              customerPhone: form.phone,
-              shippingAddress: form.address,
-              totalAmount: amount,
-              couponCode: couponApplied?.code || undefined,
-              discountAmount: couponApplied?.discountAmount ?? 0,
-              isGift,
-              giftMessage: isGift ? giftMessage : undefined,
-            }),
-          });
-
-          if (!verifyRes.ok) {
-            setError("Payment received but verification failed. Please contact support with your payment ID: " + response.razorpay_payment_id);
-            setLoading(false);
-            return;
-          }
-
-          const { orderId } = await verifyRes.json() as { orderId: string };
-
-          // Save order to history
-          try {
-            const history = localStorage.getItem("postduty_orders");
-            const ordersList = history ? JSON.parse(history) : [];
-            if (!ordersList.includes(orderId)) {
-              ordersList.push(orderId);
-              localStorage.setItem("postduty_orders", JSON.stringify(ordersList));
-            }
-            // Clear referral code after successful purchase
-            localStorage.removeItem("postduty_referral_code");
-          } catch (e) {
-            console.error("Failed to save order to history:", e);
-          }
-
-          clearCart();
-          router.push(`/order-success?orderId=${orderId}`);
+          setVerificationResponse(response);
+          setPendingPayment(response.razorpay_payment_id);
+          try { localStorage.setItem(`postduty_pending_payment_${storefront}`, response.razorpay_payment_id); } catch {}
+          await verifyPayment(response);
         },
         modal: {
           ondismiss: () => setLoading(false),
@@ -258,11 +266,12 @@ export default function CartPage() {
             />
           </svg>
         </div>
-        <h1 className="font-serif text-2xl text-ink-900">Your cart is empty</h1>
+        <h1 className="font-serif text-2xl text-ink-900">Your {storefront === "christmas" ? "Christmas" : "PostDuty Store"} bag is empty</h1>
+        {allItems.length > 0 && <Link href={`/cart?storefront=${storefront === "christmas" ? "general" : "christmas"}`} className="block mt-4 text-sm text-brand underline">Open your {storefront === "christmas" ? "PostDuty Store" : "Christmas"} bag →</Link>}
         <p className="mt-3 text-ink-400 text-sm max-w-xs mx-auto leading-relaxed">
-          Looks like you haven&apos;t added anything to your cart yet. Find the perfect gift for your healthcare hero.
+          Looks like you haven&apos;t added anything to your cart yet. Explore the collection to find something that feels personal.
         </p>
-        <Link href="/store" className="btn-premium mt-8">
+        <Link href={browseHref} className="btn-premium mt-8">
           Explore Gifts
         </Link>
       </main>
@@ -271,17 +280,18 @@ export default function CartPage() {
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-10 sm:py-14">
-      <h1 className="text-3xl font-extrabold text-stone-900 mb-8">Shopping Cart</h1>
+      <h1 className="text-3xl font-extrabold text-stone-900 mb-3">Your bag</h1>
+      <div className="flex gap-3 text-xs mb-8"><Link className={storefront === "general" ? "font-bold underline" : "text-stone-500"} href="/cart?storefront=general">PostDuty Store ({allItems.filter(i=>i.storefront==='general').reduce((n,i)=>n+i.quantity,0)})</Link><Link className={storefront === "christmas" ? "font-bold underline" : "text-stone-500"} href="/cart?storefront=christmas">Christmas ({allItems.filter(i=>i.storefront==='christmas').reduce((n,i)=>n+i.quantity,0)})</Link></div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Cart items list */}
         <div className="lg:col-span-2 space-y-4">
           {cart.map((item) => (
             <div
-              key={item.product.id}
-              className="flex items-center gap-4 bg-white border border-warm-border rounded-2xl p-4 shadow-sm"
+              key={item.lineId}
+              className="flex items-start gap-3 bg-white border border-warm-border rounded-2xl p-4 shadow-sm"
             >
-              <div className="w-20 h-20 bg-brand-light rounded-xl overflow-hidden flex-shrink-0">
+              <div className="w-16 h-16 bg-brand-light rounded-xl overflow-hidden flex-shrink-0">
                 {item.product.image_url ? (
                   <img
                     src={item.product.image_url}
@@ -298,17 +308,20 @@ export default function CartPage() {
               </div>
 
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-stone-800 text-sm leading-snug truncate">
-                  {item.product.name}
+                <h3 className="font-bold text-stone-800 text-sm leading-snug">
+                  <Link href={`/products/${item.product.slug}?storefront=${storefront}`}>{item.product.name}</Link>
                 </h3>
+                {item.variantId && <p className="text-xs text-stone-500 mt-1">{item.product.commerce?.variants?.find(v=>v.id===item.variantId)?.name}</p>}
+                {item.personalization && <p className="text-xs text-stone-500 mt-1 break-words">Personalisation: {item.personalization}</p>}
                 <p className="text-xs text-stone-400 mt-0.5">
-                  Unit Price: {formatPrice(item.product.price)}
+                  Unit Price: {formatPrice(cartUnitPrice(item))}
                 </p>
                 <div className="flex items-center gap-3 mt-3">
-                  <div className="flex items-center border border-stone-200 rounded-lg overflow-hidden h-8">
+                  <div className="flex items-center border border-stone-200 rounded-lg overflow-hidden h-11">
                     <button
-                      onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                      className="px-2 bg-stone-50 hover:bg-stone-100 text-stone-600 transition-colors h-full text-xs font-bold"
+                      aria-label={`Decrease quantity of ${item.product.name}`}
+                      onClick={() => updateQuantity(item.lineId, item.quantity - 1)}
+                      className="px-3 bg-stone-50 hover:bg-stone-100 text-stone-600 transition-colors h-full text-xs font-bold"
                     >
                       -
                     </button>
@@ -316,32 +329,33 @@ export default function CartPage() {
                       {item.quantity}
                     </span>
                     <button
-                      onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                      className="px-2 bg-stone-50 hover:bg-stone-100 text-stone-600 transition-colors h-full text-xs font-bold"
-                      disabled={item.quantity >= item.product.stock}
+                      aria-label={`Increase quantity of ${item.product.name}`}
+                      onClick={() => updateQuantity(item.lineId, item.quantity + 1)}
+                      className="px-3 bg-stone-50 hover:bg-stone-100 text-stone-600 transition-colors h-full text-xs font-bold"
+                      disabled={item.quantity >= cartStock(item)}
                     >
                       +
                     </button>
                   </div>
                   <button
-                    onClick={() => removeFromCart(item.product.id)}
-                    className="text-xs text-red-500 hover:text-red-700 hover:underline font-medium"
+                    onClick={() => removeFromCart(item.lineId)}
+                    className="text-xs text-red-500 hover:text-red-700 hover:underline font-medium min-h-11"
                   >
                     Remove
                   </button>
                 </div>
               </div>
 
-              <div className="text-right pl-2">
+              <div className="text-right pl-1">
                 <p className="font-bold text-brand text-sm">
-                  {formatPrice(item.product.price * item.quantity)}
+                  {formatPrice(cartUnitPrice(item) * item.quantity)}
                 </p>
               </div>
             </div>
           ))}
 
           <Link
-            href="/store"
+            href={browseHref}
             className="inline-flex items-center gap-1 text-xs font-bold text-stone-500 hover:text-brand transition-colors pt-2"
           >
             ← Add more items
@@ -349,7 +363,7 @@ export default function CartPage() {
         </div>
 
         {/* Checkout details form */}
-        <div className="bg-white border border-warm-border rounded-2xl p-6 shadow-sm h-fit">
+        <div className="bg-white border border-warm-border rounded-2xl p-5 shadow-sm h-fit">
           <h2 className="text-lg font-bold text-stone-800 border-b border-warm-border pb-3 mb-4">
             Delivery &amp; Checkout
           </h2>
@@ -362,6 +376,7 @@ export default function CartPage() {
               <input
                 id="checkout-name"
                 name="name"
+                autoComplete="name"
                 required
                 placeholder="Full name"
                 value={form.name}
@@ -377,6 +392,7 @@ export default function CartPage() {
               <input
                 id="checkout-email"
                 name="email"
+                autoComplete="email"
                 type="email"
                 required
                 placeholder="Email address"
@@ -393,6 +409,7 @@ export default function CartPage() {
               <input
                 id="checkout-phone"
                 name="phone"
+                autoComplete="tel"
                 type="tel"
                 required
                 placeholder="Phone number"
@@ -409,6 +426,7 @@ export default function CartPage() {
               <textarea
                 id="checkout-address"
                 name="address"
+                autoComplete="street-address"
                 required
                 placeholder="Full shipping address"
                 value={form.address}
@@ -475,7 +493,7 @@ export default function CartPage() {
                     placeholder="Enter code"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    className="flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand font-mono"
+                    className="min-w-0 flex-1 border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand font-mono"
                   />
                   <button
                     type="button"
@@ -512,24 +530,28 @@ export default function CartPage() {
               )}
               <div className="flex items-center justify-between text-xs text-stone-400">
                 <span>Shipping</span>
-                <span>Free Shipping</span>
+                <span>Included in this checkout</span>
               </div>
               <div className="flex items-center justify-between font-bold text-stone-800 text-base">
-                <span>Total Amount</span>
+                <span>Estimated total</span>
                 <span className="text-brand">{formatPrice(finalTotal)}</span>
               </div>
             </div>
+
+            <p className="text-xs leading-relaxed text-stone-500">Price and availability are checked again before payment. Preparation and delivery vary by product and location.</p>
 
             {error && (
               <p className="text-red-500 text-xs leading-relaxed text-center mt-2">{error}</p>
             )}
 
+            {pendingPayment && <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs leading-relaxed text-amber-900"><p>Payment reference: <span className="break-all font-mono">{pendingPayment}</span></p><p className="mt-1">Please do not pay again while we confirm this payment.</p>{verificationResponse && <button type="button" disabled={loading} className="underline min-h-11" onClick={() => verifyPayment(verificationResponse)}>Retry confirmation</button>}<Link href="/contact" className="block underline min-h-11 pt-3">Contact support</Link></div>}
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !!pendingPayment}
               className="btn-premium w-full justify-center disabled:opacity-60 mt-4"
             >
-              {loading ? "Opening payment..." : `Pay ${formatPrice(finalTotal)}`}
+              {loading ? "Processing..." : pendingPayment ? "Payment confirmation pending" : `Continue to payment · ${formatPrice(finalTotal)}`}
             </button>
           </form>
         </div>

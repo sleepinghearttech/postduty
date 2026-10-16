@@ -10,7 +10,8 @@ import { Order } from "@/lib/types";
  * (the email address used to register the Resend account).
  */
 export async function sendOrderEmails(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) {
     console.log("[Email] Order notifications are disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
     return;
@@ -139,7 +140,8 @@ export async function sendOrderEmails(order: Order): Promise<void> {
  * Sends a shipping confirmation email to the customer when the order is marked shipped.
  */
 export async function sendCustomerShippingEmail(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) {
     console.log("[Email] Shipping notifications are disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
     return;
@@ -222,7 +224,8 @@ export async function sendCustomerShippingEmail(order: Order): Promise<void> {
  * Day 1 post-delivery: "Your order reached safely?"
  */
 export async function sendFollowUpDay1Email(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) return;
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -282,7 +285,8 @@ export async function sendFollowUpDay1Email(order: Order): Promise<void> {
  * Day 5 post-delivery: "Share a photo → get 10% off next order"
  */
 export async function sendFollowUpDay5Email(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) return;
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -347,7 +351,8 @@ export async function sendFollowUpDay5Email(order: Order): Promise<void> {
  * 60-day win-back: "We've added new arrivals! Here's ₹50 off"
  */
 export async function sendWinBackEmail(order: Order, couponCode: string): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) return;
 
   const apiKey = process.env.RESEND_API_KEY;

@@ -1,19 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCart } from "@/components/CartContext";
 
 export default function Header() {
-  const { totalItems } = useCart();
+  const { cart } = useCart();
+  const path=usePathname();
+  const [christmas,setChristmas]=useState(path.startsWith("/christmas"));
+  useEffect(()=>{queueMicrotask(()=>setChristmas(path.startsWith("/christmas") || location.hostname==="christmas.postduty.in" || new URLSearchParams(location.search).get("storefront")==="christmas"));},[path]);
+  const totalItems=cart.filter(i=>i.storefront===(christmas?"christmas":"general")).reduce((n,i)=>n+i.quantity,0);
 
   return (
     <header className="bg-white border-b border-warm-border sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link
-          href="/store"
+          href={christmas?"/christmas":"/store"}
           className="font-serif text-2xl tracking-tight text-brand"
         >
-          PostDuty
+          {christmas?"Christmas by PostDuty":"PostDuty"}
         </Link>
 
         <div className="flex items-center gap-6">
@@ -25,7 +31,7 @@ export default function Header() {
           </Link>
           
           <Link
-            href="/cart"
+            href={christmas?"/cart?storefront=christmas":"/cart"}
             className="relative p-1.5 text-stone-600 hover:text-brand transition-colors"
             aria-label="Shopping Cart"
           >

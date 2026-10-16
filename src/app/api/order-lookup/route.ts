@@ -1,3 +1,4 @@
+import { commerceTable } from '@/lib/commerce-db';
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { OrderWithItems } from "@/lib/types";
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   const { data: order, error } = await supabaseAdmin
-    .from("orders")
+    .from(commerceTable('orders'))
     .select(
       `
       id,
@@ -29,11 +30,11 @@ export async function POST(request: Request) {
       total_amount,
       customer_phone,
       created_at,
-      order_items (
+      order_items:${commerceTable("order_items")} (
         id,
         quantity,
         unit_price,
-        products ( name )
+        products:${commerceTable("products")} ( name )
       )
     `
     )

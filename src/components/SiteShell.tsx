@@ -14,7 +14,7 @@ export default function SiteShell({
 }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
 
-  if (pathname === "/") {
+  if (pathname === "/" || pathname.startsWith("/admin") || pathname.startsWith("/creator")) {
     return <>{children}</>;
   }
 

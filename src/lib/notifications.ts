@@ -90,7 +90,7 @@ async function sendAdminFreeformText(adminPhone: string, phoneNumberId: string, 
  * approval — falls back automatically until Meta approves it).
  */
 async function sendAdminAlert(event: string, orderId: string, customerName: string, details: string, fallbackBody: string): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) {
     console.log("[WhatsApp Admin] Notifications disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
     return;
@@ -154,6 +154,7 @@ async function sendAdminAlert(event: string, orderId: string, customerName: stri
  * Sends an alert to the admin about a new order.
  */
 export async function sendAdminWhatsAppAlert(order: Order): Promise<void> {
+  if (order.is_test === true || order.payment_mode === "test") return;
   const amountInRupees = formatRupees(order.total_amount);
   const fallbackBody = `🚨 *New PostDuty Order!*
 Order ID: \`${order.id}\`
@@ -173,7 +174,8 @@ ${order.shipping_address}`;
  * Uses Meta Graph API v25.0.
  */
 export async function sendCustomerWhatsAppConfirmation(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) {
     console.log("[WhatsApp Customer] Notifications disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
     return;
@@ -274,7 +276,8 @@ export async function sendCustomerWhatsAppConfirmation(order: Order): Promise<vo
  * {{4}} -> Tracking Link
  */
 export async function sendCustomerShippedWhatsApp(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) {
     console.log("[WhatsApp Customer] Shipped notifications disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
     return;
@@ -400,6 +403,7 @@ ${trackingLink}`;
  * Sends a WhatsApp notification to the admin when an order is shipped.
  */
 export async function sendAdminShippedWhatsApp(order: Order): Promise<void> {
+  if (order.is_test === true || order.payment_mode === "test") return;
   const fallbackBody = `📦 *PostDuty Order Shipped!*
 Order ID: \`${order.id}\`
 Customer: *${order.customer_name}*
@@ -413,7 +417,8 @@ Tracking Number: *${order.tracking_number || "None"}*`;
  * Sent 1 day after delivery.
  */
 export async function sendFollowUpDay1WhatsApp(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) return;
 
   const token = process.env.WHATSAPP_PERMANENT_TOKEN;
@@ -461,7 +466,8 @@ Thank you for supporting PostDuty! 🙏`;
  * Sent 5 days after delivery.
  */
 export async function sendFollowUpDay5WhatsApp(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) return;
 
   const token = process.env.WHATSAPP_PERMANENT_TOKEN;

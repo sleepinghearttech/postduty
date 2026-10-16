@@ -1,3 +1,4 @@
+import { commerceTable } from '@/lib/commerce-db';
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
@@ -14,7 +15,7 @@ export default async function ReferralPage({ params }: PageProps) {
 
   // Look up the coupon linked to this referrer code
   const { data: coupon } = await supabaseAdmin
-    .from("coupons")
+    .from(commerceTable('coupons'))
     .select("*")
     .eq("referrer_code", code.toLowerCase())
     .eq("is_active", true)
@@ -42,7 +43,7 @@ export default async function ReferralPage({ params }: PageProps) {
 
   // Fetch active products for the grid
   const { data: products } = await supabase
-    .from("products")
+    .from(commerceTable('products'))
     .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending: false });

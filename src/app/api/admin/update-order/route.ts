@@ -1,3 +1,5 @@
+import { requireOwner, isAllowedMutationOrigin } from '@/lib/commerce-auth';
+import { commerceTable } from '@/lib/commerce-db';
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { OrderStatus } from '@/lib/types'
@@ -5,15 +7,14 @@ import { sendCustomerShippedWhatsApp, sendAdminShippedWhatsApp } from '@/lib/not
 import { sendCustomerShippingEmail } from '@/lib/email'
 
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending:   ['paid'],
+  pending:   [],
   paid:      ['shipped'],
   shipped:   ['delivered'],
   delivered: [],
 }
 
 export async function POST(request: NextRequest) {
-  const session = request.cookies.get('admin_session')?.value
-  if (!session || session !== process.env.ADMIN_SECRET) {
+  if (!(await requireOwner(request)) || !isAllowedMutationOrigin(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: currentOrder, error: fetchError } = await supabaseAdmin
-    .from('orders')
+    .from(commerceTable('orders'))
     .select('*')
     .eq('id', body.id)
     .single()
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: updatedOrder, error } = await supabaseAdmin
-    .from('orders')
+    .from(commerceTable('orders'))
     .update(updates)
     .eq('id', body.id)
     .select()

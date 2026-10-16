@@ -1,22 +1,16 @@
+import { requireOwner, isAllowedMutationOrigin } from '@/lib/commerce-auth';
+import { commerceTable } from '@/lib/commerce-db';
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase";
-
-/** Check admin auth cookie — same pattern as other admin routes */
-async function isAdmin(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("admin_session");
-  return session?.value === process.env.ADMIN_SECRET;
-}
 
 /** GET /api/admin/coupons — list all coupons */
 export async function GET() {
-  if (!(await isAdmin())) {
+  if (!(await requireOwner())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { data, error } = await supabaseAdmin
-    .from("coupons")
+    .from(commerceTable('coupons'))
     .select("*")
     .order("created_at", { ascending: false });
 
@@ -29,7 +23,8 @@ export async function GET() {
 
 /** POST /api/admin/coupons — create a new coupon */
 export async function POST(request: NextRequest) {
-  if (!(await isAdmin())) {
+  if (!isAllowedMutationOrigin(request)) return NextResponse.json({error:"Invalid origin"},{status:403});
+  if (!(await requireOwner())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -48,7 +43,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data, error } = await supabaseAdmin
-    .from("coupons")
+    .from(commerceTable('coupons'))
     .insert({
       code: body.code.trim().toUpperCase(),
       discount_type: body.discount_type,
@@ -73,7 +68,8 @@ export async function POST(request: NextRequest) {
 
 /** PATCH /api/admin/coupons — update a coupon (toggle active, change value, etc.) */
 export async function PATCH(request: NextRequest) {
-  if (!(await isAdmin())) {
+  if (!isAllowedMutationOrigin(request)) return NextResponse.json({error:"Invalid origin"},{status:403});
+  if (!(await requireOwner())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -98,7 +94,7 @@ export async function PATCH(request: NextRequest) {
   if (body.expires_at !== undefined) updates.expires_at = body.expires_at;
 
   const { data, error } = await supabaseAdmin
-    .from("coupons")
+    .from(commerceTable('coupons'))
     .update(updates)
     .eq("id", body.id)
     .select()

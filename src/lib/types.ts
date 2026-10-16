@@ -1,3 +1,16 @@
+export type Storefront = "general" | "christmas";
+export type ProductMedia = { url: string; type: "image" | "video"; alt: string; attribution?: string };
+export type ProductVariant = { id: string; name: string; sku?: string; price: number; stock: number };
+export type ProductCommerce = {
+  sku?: string; category?: string; storefronts?: Storefront[]; collections?: string[];
+  short_description?: string; materials?: string; tags?: string[]; media?: ProductMedia[];
+  variants?: ProductVariant[];
+  personalization?: { enabled: boolean; label: string; max_length: number; required: boolean };
+  made_to_order?: boolean; preparation_days?: number; capacity?: number; low_stock_threshold?: number;
+  featured?: boolean; archived?: boolean; seo_title?: string; seo_description?: string;
+  faqs?: { question: string; answer: string }[]; dimensions?: string; weight_grams?: number; shipping_method?: string;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -9,7 +22,12 @@ export type Product = {
   is_active: boolean;
   customisation_note: string | null;
   created_at: string;
+  updated_at?: string;
+  commerce?: ProductCommerce;
+  creator_id?: string | null;
 };
+
+export type OwnerProduct = Product & { operations?: Record<string, unknown> };
 
 export type OrderStatus = "pending" | "paid" | "shipped" | "delivered";
 
@@ -20,6 +38,8 @@ export type Order = {
   customer_phone: string;
   shipping_address: string;
   total_amount: number; // paise
+  is_test?: boolean;
+  payment_mode?: "test" | "live" | null;
   status: OrderStatus;
   razorpay_order_id: string | null;
   razorpay_payment_id: string | null;

@@ -57,7 +57,7 @@ function StatsBar({ orders }: { orders: OrderWithItems[] }) {
         value={String(awaitingShipment)}
         highlight={awaitingShipment > 0}
       />
-      <StatCard label="Total revenue" value={formatRupees(totalRevenuePaise)} />
+      <StatCard label="Recorded order value" value={formatRupees(totalRevenuePaise)} />
     </div>
   )
 }
@@ -165,6 +165,7 @@ function OrderCard({
               🏷️ {order.coupon_code}
             </span>
           )}
+          <span className="text-xs text-gray-500">{order.is_test || order.payment_mode === 'test' ? 'Test order' : order.payment_mode === 'live' ? 'Live payment mode' : 'Historical mode unverified'}</span>
           <StatusBadge status={order.status as OrderStatus} />
         </div>
       </div>
@@ -217,15 +218,7 @@ function OrderCard({
       {/* Actions */}
       <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
         <div className="flex items-center gap-3 flex-wrap">
-          {order.status === 'pending' && (
-            <button
-              onClick={() => handleStatusChange('paid')}
-              disabled={saving}
-              className="text-sm px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {saving ? 'Saving…' : 'Mark as paid'}
-            </button>
-          )}
+          {order.status === 'pending' && <span className="text-xs text-amber-700">Awaiting provider verification. Payment status cannot be set manually.</span>}
           {order.status === 'paid' && (
             <button
               onClick={() => handleStatusChange('shipped')}
@@ -245,7 +238,7 @@ function OrderCard({
             </button>
           )}
           {order.status === 'delivered' && (
-            <span className="text-xs text-emerald-600 italic">Delivered — follow-up messages will be sent automatically</span>
+            <span className="text-xs text-emerald-600 italic">Delivery recorded. Notification delivery is tracked separately.</span>
           )}
           {flash && (
             <span
@@ -308,6 +301,7 @@ export function OrdersClient({ initialOrders }: { initialOrders: OrderWithItems[
       </div>
 
       <StatsBar orders={orders} />
+      <p className="text-xs text-gray-500 mb-5">All loaded orders. Recorded order value includes test and historical records; it is not verified revenue. Use <a className="underline" href="/admin/analytics">Business insights</a> for date-filtered, payment-evidenced metrics.</p>
 
       {orders.length === 0 ? (
         <p className="text-center text-gray-300 py-16 text-sm">No orders yet.</p>
