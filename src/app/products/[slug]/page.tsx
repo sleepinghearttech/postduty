@@ -151,9 +151,14 @@ export default async function ProductPage({ params }: Props) {
           )}
 
           {catalogOnly ? (
-            <p className="mt-6 text-sm text-stone-600">
-              Ordering opens soon. Browse the designs and details here.
-            </p>
+            <div className="mt-4">
+              {product.stock > 0 ? null : (
+                <p className="text-xs text-red-400 font-medium">Out of stock</p>
+              )}
+              <p className="mt-2 text-sm text-stone-600">
+                Ordering opens soon. Browse the designs and details here.
+              </p>
+            </div>
           ) : (
             <>
               {product.stock > 0 ? (
