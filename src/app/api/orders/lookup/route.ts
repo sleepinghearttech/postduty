@@ -1,3 +1,4 @@
+import { commerceTable } from '@/lib/commerce-db';
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Fetch order details using service client to bypass RLS
     const { data: order, error: orderError } = await supabaseAdmin
-      .from("orders")
+      .from(commerceTable('orders'))
       .select("*")
       .eq("id", orderId)
       .single();
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Fetch order items with product details
     const { data: items, error: itemsError } = await supabaseAdmin
-      .from("order_items")
+      .from(commerceTable('order_items'))
       .select(`
         id,
         order_id,
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
         quantity,
         unit_price,
         created_at,
-        products (
+        products:${commerceTable("products")} (
           name,
           image_url
         )

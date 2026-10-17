@@ -24,6 +24,9 @@ Never commit these. Set in `.env.local` locally and in Cloudflare dashboard for 
 | `RAZORPAY_KEY_ID` | Runtime (Cloudflare) + .env.local | Razorpay publishable key |
 | `RAZORPAY_KEY_SECRET` | Runtime secret (Cloudflare) + .env.local | Razorpay secret — server only |
 | `ADMIN_SECRET` | Runtime secret (Cloudflare) + .env.local | Admin panel password — server only. **Rotated 2026-07-06** |
+| `ALLOWED_SHIPPING_STATES` | Runtime (Cloudflare) | Optional. Comma-separated GST state codes served (e.g. `29,32`). Empty/unset = all states. A non-empty list with no valid code serves nothing |
+| `SELLER_STATE_CODE` | Runtime (Cloudflare) | Optional. Seller GST state code for CGST/SGST vs IGST. Default `29` (Karnataka) |
+| `GST_REGISTERED` | Runtime (Cloudflare) | Optional. Exactly `true` shows "Prices include GST" in the cart. Tax breakdown is stored on orders either way |
 
 `NEXT_PUBLIC_` vars are baked into the JS bundle at build time. The others are server-side only and must never have the `NEXT_PUBLIC_` prefix.
 

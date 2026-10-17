@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "postduty-commerce-preview",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-06-21",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "COMMERCE_SANDBOX": "true",
+    "COMMERCE_PREVIEW_ACCESS": "public",
+    "ORDER_NOTIFICATIONS_ENABLED": "false"
+  },
+  "assets": {"binding": "ASSETS", "directory": ".open-next/assets"},
+  "images": {"binding": "IMAGES"},
+  "services": [{"binding": "WORKER_SELF_REFERENCE", "service": "postduty-commerce-preview"}],
+  "observability": {"enabled": true},
+  "upload_source_maps": true
+}

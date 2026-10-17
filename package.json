@@ -12,25 +12,33 @@
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs tests/payments/*.test.mjs tests/creators/*.test.mjs tests/order-cases/*.test.mjs src/lib/business/schema.test.mjs && node scripts/test-business-metrics.mjs"
   },
   "dependencies": {
-    "@opennextjs/cloudflare": "^1.19.9",
+    "@opennextjs/cloudflare": "1.20.12",
     "@supabase/supabase-js": "^2.108.2",
-    "next": "16.2.6",
+    "next": "16.4.2",
     "react": "^19.1.7",
-    "react-dom": "^19.1.7"
+    "react-dom": "^19.1.7",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.43",
     "@types/react": "^19.1.7",
     "@types/react-dom": "^19.1.7",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
     "typescript": "^5.7.4",
-    "wrangler": "^4.103.0"
+    "wrangler": "4.151.1"
+  },
+  "overrides": {
+    "@node-minify/core": {
+      "glob": "10.5.0"
+    }
   }
 }

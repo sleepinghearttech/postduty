@@ -1,8 +1,8 @@
+import { commerceTable } from '@/lib/commerce-db';
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import type { Product, Coupon } from "@/lib/types";
-import { isHiddenProduct, PUBLIC_PRODUCT_COLUMNS } from "@/lib/hidden-products";
 import Link from "next/link";
 import ReferralBanner from "./ReferralBanner";
 
@@ -20,7 +20,7 @@ export default async function ReferralPage({ params }: PageProps) {
 
   // Look up the coupon linked to this referrer code
   const { data: coupon } = await supabaseAdmin
-    .from("coupons")
+    .from(commerceTable('coupons'))
     .select("*")
     .eq("referrer_code", code.toLowerCase())
     .eq("is_active", true)
@@ -47,12 +47,11 @@ export default async function ReferralPage({ params }: PageProps) {
       : `₹${(c.discount_value / 100).toFixed(0)} off`;
 
   // Fetch active products for the grid
-  const { data: allProducts } = await supabase
-    .from("products")
-    .select(PUBLIC_PRODUCT_COLUMNS)
+  const { data: products } = await supabase
+    .from(commerceTable('products'))
+    .select("id,name,slug,description,price,image_url,stock,is_active,created_at,commerce,creator_id")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
-  const products = allProducts?.filter((product: Product) => !isHiddenProduct(product.slug));
 
   return (
     <main>

@@ -1,3 +1,4 @@
+import { commerceTable } from '@/lib/commerce-db';
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { Coupon } from "@/lib/types";
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   // Look up the coupon
   const { data: coupon, error } = await supabaseAdmin
-    .from("coupons")
+    .from(commerceTable('coupons'))
     .select("*")
     .eq("code", code)
     .single();

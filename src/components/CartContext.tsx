@@ -1,137 +1,25 @@
-"use client";
-
-import React, { createContext, useContext, useState, useEffect } from "react";
-import type { Product } from "@/lib/types";
-
-export type CartItem = {
-  product: Product;
-  quantity: number;
-};
-
-type CartContextType = {
-  cart: CartItem[];
-  addToCart: (product: Product, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
-  totalItems: number;
-  totalAmount: number;
-};
-
-const CartContext = createContext<CartContextType | undefined>(undefined);
-
-export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Hydrate from localStorage on client mount
-  useEffect(() => {
-    let cancelled = false;
-    // Keep the server and first client render identical; cancel stale hydration.
-    queueMicrotask(() => {
-      if (cancelled) return;
-      try {
-        const savedCart = localStorage.getItem("postduty_cart");
-        if (savedCart) {
-          setCart(JSON.parse(savedCart));
-        }
-      } catch (e) {
-        console.error("Failed to load cart from localStorage:", e);
-      }
-      setIsHydrated(true);
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  // Save to localStorage on change, but only after hydration to avoid resetting cart
-  useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      localStorage.setItem("postduty_cart", JSON.stringify(cart));
-    } catch (e) {
-      console.error("Failed to save cart to localStorage:", e);
-    }
-  }, [cart, isHydrated]);
-
-  const addToCart = (product: Product, quantity = 1) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        // Enforce stock limit
-        const newQuantity = Math.min(existing.quantity + quantity, product.stock);
-        return prev.map((item) =>
-          item.product.id === product.id ? { ...item, quantity: newQuantity } : item
-        );
-      }
-      return [...prev, { product, quantity: Math.min(quantity, product.stock) }];
-    });
-  };
-
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
-  };
-
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCart((prev) =>
-      prev.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: Math.min(quantity, item.product.stock) }
-          : item
-      )
-    );
-  };
-
-  const clearCart = () => {
-    setCart([]);
-  };
-
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalAmount = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-
-  // Return empty layout placeholder until hydration completes to prevent server-client HTML mismatch
-  if (!isHydrated) {
-    return (
-      <CartContext.Provider
-        value={{
-          cart: [],
-          addToCart: () => {},
-          removeFromCart: () => {},
-          updateQuantity: () => {},
-          clearCart: () => {},
-          totalItems: 0,
-          totalAmount: 0,
-        }}
-      >
-        {children}
-      </CartContext.Provider>
-    );
+'use client';
+import React,{createContext,useContext,useState,useEffect} from 'react';
+import type {StoreProduct,Storefront} from '@/components/commerce/types';
+export type CartSelection={variantId?:string;personalization?:string;storefront?:Storefront};
+export type CartItem={product:StoreProduct;quantity:number;lineId:string;storefront:Storefront;variantId?:string;personalization?:string};
+export function cartUnitPrice(item:CartItem){return item.product.commerce?.variants?.find(v=>v.id===item.variantId)?.price??item.product.price;}
+export function cartStock(item:CartItem){return item.product.commerce?.variants?.find(v=>v.id===item.variantId)?.stock??item.product.stock;}
+const keyFor=(productId:string,options:CartSelection)=>JSON.stringify([productId,options.variantId??'',options.personalization??'',options.storefront??'general']);
+type CartContextType={cart:CartItem[];addToCart:(product:StoreProduct,quantity?:number,options?:CartSelection)=>void;removeFromCart:(lineId:string)=>void;updateQuantity:(lineId:string,quantity:number)=>void;clearCart:(storefront?:Storefront)=>void;totalItems:number;totalAmount:number};
+const CartContext=createContext<CartContextType|undefined>(undefined);
+export function CartProvider({children}:{children:React.ReactNode}){
+  const [cart,setCart]=useState<CartItem[]>([]);const [hydrated,setHydrated]=useState(false);
+  useEffect(()=>{let cancelled=false;queueMicrotask(()=>{if(cancelled)return;try{const saved=JSON.parse(localStorage.getItem('postduty_cart')||'[]');if(Array.isArray(saved)){setCart(saved.filter(item=>item&&typeof item.product?.id==='string'&&typeof item.product?.slug==='string'&&Number.isSafeInteger(item.quantity)&&item.quantity>0&&Number.isSafeInteger(item.product.price)&&item.product.price>=0).map(item=>{const options={variantId:typeof item.variantId==='string'?item.variantId:undefined,personalization:typeof item.personalization==='string'?item.personalization:undefined,storefront:item.storefront==='christmas'?'christmas' as const:'general' as const};return{product:item.product,quantity:item.quantity,...options,lineId:keyFor(item.product.id,options)};}));}}catch{}setHydrated(true);});return()=>{cancelled=true;};},[]);
+  useEffect(()=>{if(hydrated){try{localStorage.setItem('postduty_cart',JSON.stringify(cart));}catch{}}},[cart,hydrated]);
+  function addToCart(product:StoreProduct,quantity=1,options:CartSelection={}){
+    const storefront=options.storefront??'general';const lineId=keyFor(product.id,{...options,storefront});const stock=product.commerce?.variants?.find(v=>v.id===options.variantId)?.stock??product.stock;if(stock<1)return;
+    setCart(prev=>{const existing=prev.find(i=>i.lineId===lineId);return existing?prev.map(i=>i.lineId===lineId?{...i,product,quantity:Math.min(i.quantity+quantity,stock)}:i):[...prev,{product,quantity:Math.min(quantity,stock),lineId,storefront,variantId:options.variantId,personalization:options.personalization}];});
   }
-
-  return (
-    <CartContext.Provider
-      value={{
-        cart,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        totalItems,
-        totalAmount,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
-  );
+  function removeFromCart(lineId:string){setCart(prev=>prev.filter(item=>item.lineId!==lineId));}
+  function updateQuantity(lineId:string,quantity:number){if(quantity<=0){removeFromCart(lineId);return;}setCart(prev=>prev.map(item=>item.lineId===lineId?{...item,quantity:Math.min(Math.max(1,quantity),cartStock(item))}:item));}
+  function clearCart(storefront?:Storefront){setCart(prev=>storefront?prev.filter(item=>item.storefront!==storefront):[]);}
+  const totalItems=cart.reduce((sum,i)=>sum+i.quantity,0);const totalAmount=cart.reduce((sum,i)=>sum+cartUnitPrice(i)*i.quantity,0);
+  return <CartContext.Provider value={{cart,addToCart,removeFromCart,updateQuantity,clearCart,totalItems,totalAmount}}>{children}</CartContext.Provider>;
 }
-
-export function useCart() {
-  const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error("useCart must be used within a CartProvider");
-  }
-  return context;
-}
+export function useCart(){const context=useContext(CartContext);if(!context)throw new Error('useCart must be used within a CartProvider');return context;}

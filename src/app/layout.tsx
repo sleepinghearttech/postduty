@@ -19,11 +19,12 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://postduty.in"),
-  title: "PostDuty — Gifts for Healthcare Heroes",
+  robots: process.env.COMMERCE_SANDBOX === "true" ? { index: false, follow: false } : undefined,
+  title: "PostDuty — Considered gifts & independent makers",
   description:
-    "Thoughtful gifts for nurses, doctors, and every healthcare hero. Shop accessories and keepsakes to celebrate the caregivers in your life.",
+    "Healthcare gifts, handmade pieces and personalised objects from PostDuty and approved independent makers.",
   openGraph: {
-    title: "PostDuty — Gifts for Healthcare Heroes",
+    title: "PostDuty — Considered gifts & independent makers",
     description:
       "Thoughtful accessories, gifts and keepsakes for healthcare professionals.",
     siteName: "PostDuty",
@@ -41,6 +42,7 @@ export default function RootLayout({
       </head>
       <body className={`${jakarta.variable} ${fraunces.variable} font-sans antialiased`}>
         <CartProvider>
+          {process.env.COMMERCE_SANDBOX === "true" && <div role="note" style={{background:"#243e32",color:"#fff7df",padding:"8px 16px",textAlign:"center",fontSize:12}}>Owner preview · fictional test products · no real orders or payments</div>}
           {process.env.COMMERCE_CATALOG_ONLY === "true" && <div role="note" style={{background:"#243e32",color:"#fff7df",padding:"8px 16px",textAlign:"center",fontSize:12}}>Explore the PostDuty collection · Ordering opens soon</div>}
           <SiteShell>{children}</SiteShell>
         </CartProvider>

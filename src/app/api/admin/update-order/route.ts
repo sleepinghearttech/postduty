@@ -1,34 +1,33 @@
+import { requireOwner, isAllowedMutationOrigin } from '@/lib/commerce-auth';
+import { commerceTable } from '@/lib/commerce-db';
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { OrderStatus } from '@/lib/types'
+import { OrderUpdateError, planOrderUpdate } from '@/lib/order-status'
 import { sendCustomerShippedWhatsApp, sendAdminShippedWhatsApp } from '@/lib/notifications'
 import { sendCustomerShippingEmail } from '@/lib/email'
+import type { Order } from '@/lib/types'
 
-const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending:   ['paid'],
-  paid:      ['shipped'],
-  shipped:   ['delivered'],
-  delivered: [],
-}
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function POST(request: NextRequest) {
-  const session = request.cookies.get('admin_session')?.value
-  if (!session || session !== process.env.ADMIN_SECRET) {
+  if (!(await requireOwner(request)) || !isAllowedMutationOrigin(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json() as {
-    id: string
-    status?: OrderStatus
-    tracking_number?: string
+  let body: Record<string, unknown>
+  try {
+    const raw = await request.text()
+    if (raw.length > 4000) return NextResponse.json({ error: 'Request is too large.' }, { status: 413 })
+    body = JSON.parse(raw) as Record<string, unknown>
+  } catch {
+    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   }
-
-  if (!body.id) {
+  if (!body || typeof body.id !== 'string' || !uuid.test(body.id)) {
     return NextResponse.json({ error: 'id is required' }, { status: 400 })
   }
 
   const { data: currentOrder, error: fetchError } = await supabaseAdmin
-    .from('orders')
+    .from(commerceTable('orders'))
     .select('*')
     .eq('id', body.id)
     .single()
@@ -37,58 +36,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
 
-  const updates: Record<string, unknown> = {}
-  let triggerShippedNotifications = false
+  try {
+    const plan = planOrderUpdate(currentOrder as Order, body)
 
-  if (body.status !== undefined) {
-    const allowed = VALID_TRANSITIONS[currentOrder.status as OrderStatus] ?? []
-    if (!allowed.includes(body.status)) {
-      return NextResponse.json(
-        { error: `Invalid status transition: ${currentOrder.status} → ${body.status}` },
-        { status: 400 }
-      )
+    if (plan.kind === 'cancel') {
+      // One transaction: status check, stock (and variant stock) restoration and the status change.
+      const { data, error } = await supabaseAdmin.rpc(commerceTable('cancel_paid_order'), { p_order_id: body.id })
+      if (error || !data) {
+        const conflict = error?.message?.includes('invalid_status_transition')
+        return NextResponse.json({ error: conflict ? 'This order changed and can no longer be cancelled. Reload the page.' : 'The order could not be cancelled. Nothing was changed.' }, { status: conflict ? 409 : 500 })
+      }
+      return NextResponse.json({ order: data })
     }
 
-    updates.status = body.status
-    if (body.status === 'shipped' && currentOrder.status !== 'shipped') {
-      triggerShippedNotifications = true
+    // Conditional update: a concurrent change (or a double-click) cannot apply twice.
+    let query = supabaseAdmin
+      .from(commerceTable('orders'))
+      .update(plan.updates)
+      .eq('id', body.id)
+      .eq('status', (currentOrder as Order).status)
+    if (plan.firstTracking) query = query.or('tracking_number.is.null,tracking_number.eq.')
+    const { data: updatedOrder, error } = await query.select().maybeSingle()
+
+    if (error) return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+    if (!updatedOrder) return NextResponse.json({ error: 'This order changed while you were editing. Reload the page.' }, { status: 409 })
+
+    // Sent once: only when tracking is first saved on a shipped order.
+    if (plan.notifyShipped) {
+      await Promise.allSettled([
+        sendCustomerShippedWhatsApp(updatedOrder as Order),
+        sendAdminShippedWhatsApp(updatedOrder as Order),
+        sendCustomerShippingEmail(updatedOrder as Order),
+      ])
     }
-    if (body.status === 'delivered') {
-      updates.delivered_at = new Date().toISOString()
-    }
+
+    return NextResponse.json({ order: updatedOrder })
+  } catch (error) {
+    if (error instanceof OrderUpdateError) return NextResponse.json({ error: error.message }, { status: error.status })
+    return NextResponse.json({ error: 'Update failed' }, { status: 500 })
   }
-
-  if (body.tracking_number !== undefined) {
-    updates.tracking_number = body.tracking_number
-    // If tracking number is updated/added on a shipped order, trigger notification
-    if (currentOrder.status === 'shipped' && currentOrder.tracking_number !== body.tracking_number) {
-      triggerShippedNotifications = true;
-    }
-  }
-
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
-  }
-
-  const { data: updatedOrder, error } = await supabaseAdmin
-    .from('orders')
-    .update(updates)
-    .eq('id', body.id)
-    .select()
-    .single()
-
-  if (error || !updatedOrder) {
-    return NextResponse.json({ error: error?.message || 'Update failed' }, { status: 500 })
-  }
-
-  // Trigger shipped notifications in parallel if requested
-  if (triggerShippedNotifications) {
-    await Promise.allSettled([
-      sendCustomerShippedWhatsApp(updatedOrder),
-      sendAdminShippedWhatsApp(updatedOrder),
-      sendCustomerShippingEmail(updatedOrder)
-    ])
-  }
-
-  return NextResponse.json({ order: updatedOrder })
 }

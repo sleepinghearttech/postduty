@@ -1,47 +1,9 @@
-'use client'
-
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-
-function NavLink({
-  href,
-  current,
-  children,
-}: {
-  href: string
-  current: string
-  children: React.ReactNode
-}) {
-  const active = current.startsWith(href)
-  return (
-    <Link
-      href={href}
-      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-        active
-          ? 'text-brand bg-brand-light'
-          : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100'
-      }`}
-    >
-      {children}
-    </Link>
-  )
-}
-
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-
-  if (pathname === '/admin/login') return <>{children}</>
-
-  return (
-    <>
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 h-11 flex items-center gap-1">
-          <span className="font-bold text-brand text-sm mr-4">PostDuty Admin</span>
-          <NavLink href="/admin/products" current={pathname}>Products</NavLink>
-          <NavLink href="/admin/orders" current={pathname}>Orders</NavLink>
-        </div>
-      </nav>
-      {children}
-    </>
-  )
+'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import './commerce-admin.css';
+const links=[['/admin','Overview','◫'],['/admin/products','Products','◇'],['/admin/orders','Orders','▤'],['/admin/creators','Creators','♧'],['/admin/analytics','Insights','↗']] as const;
+export default function AdminLayout({children}:{children:React.ReactNode}) {
+ const path=usePathname(); if(path==='/admin/login') return <>{children}</>;
+ return <div className="commerce-admin"><header className="commerce-top"><Link href="/admin" className="commerce-brand">PostDuty <span>studio</span></Link><div><Link href="/christmas">View stores ↗</Link><form action="/api/admin/logout" method="post"><button>Sign out</button></form></div></header><div className="commerce-subnav"><Link href="/admin/research">Research notebook</Link><Link href="/admin/christmas">Christmas Lab</Link><Link href="/admin/coupons">Promotions</Link><Link href="https://command.postduty.in">Command Centre ↗</Link></div>{children}<nav className="commerce-bottom" aria-label="Business navigation">{links.map(([href,label,icon])=><Link key={href} href={href} aria-current={(href==='/admin'?path===href:path.startsWith(href))?'page':undefined}><span aria-hidden>{icon}</span>{label}</Link>)}</nav></div>;
 }

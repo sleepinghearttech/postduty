@@ -1,67 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')  // strip special chars
-    .trim()
-    .replace(/\s+/g, '-')          // spaces → hyphens
-}
-
-async function uniqueSlug(base: string): Promise<string> {
-  const { data } = await supabaseAdmin
-    .from('products')
-    .select('slug')
-    .like('slug', `${base}%`)
-
-  const existing = new Set((data ?? []).map((r) => r.slug))
-  if (!existing.has(base)) return base
-
-  let i = 2
-  while (existing.has(`${base}-${i}`)) i++
-  return `${base}-${i}`
-}
+import { NextRequest, NextResponse } from 'next/server';
+import { isAllowedMutationOrigin, requireOwner } from '@/lib/commerce-auth';
+import { saveOwnerProduct } from '@/lib/product-admin';
+import { ProductValidationError } from '@/lib/product-validation';
 
 export async function POST(request: NextRequest) {
-  const session = request.cookies.get('admin_session')?.value
-  if (!session || session !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!await requireOwner(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAllowedMutationOrigin(request)) return NextResponse.json({ error: 'Invalid request origin' }, { status: 403 });
+  if (Number(request.headers.get('content-length') ?? 0) > 100000) return NextResponse.json({ error: 'Product information is too large.' }, { status: 413 });
+  try {
+    const product = await saveOwnerProduct(await request.json(),'create');
+    return NextResponse.json({ product }, { status: 201 });
+  } catch (error) {
+    const validation = error instanceof ProductValidationError || error instanceof SyntaxError;
+    return NextResponse.json({ error: validation ? error.message : 'Unable to save product. Please try again.' }, { status: validation ? 400 : 500 });
   }
-
-  const body = await request.json() as {
-    name: string
-    price: number       // rupees from form — converted to paise below
-    description?: string
-    stock?: number
-    image_url?: string
-    is_active?: boolean
-  }
-
-  if (!body.name || body.price == null) {
-    return NextResponse.json({ error: 'name and price are required' }, { status: 400 })
-  }
-
-  const slug = await uniqueSlug(toSlug(body.name))
-  const priceInPaise = Math.round(body.price * 100)
-
-  const { data, error } = await supabaseAdmin
-    .from('products')
-    .insert({
-      name: body.name,
-      slug,
-      price: priceInPaise,
-      description: body.description ?? null,
-      stock: body.stock ?? 0,
-      image_url: body.image_url ?? null,
-      is_active: body.is_active ?? false,   // new products default hidden
-    })
-    .select()
-    .single()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ product: data })
 }

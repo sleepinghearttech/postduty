@@ -1,4 +1,18 @@
-import { Order } from "@/lib/types";
+import type { Order, OrderLineSummary } from "@/lib/types";
+
+type OrderWithLines = Order & { order_items?: OrderLineSummary[] };
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch] as string);
+/** Owner email only: each line's option and personalisation (customer-entered text is escaped). */
+function ownerItemsHtml(order: OrderWithLines): string {
+  if (!Array.isArray(order.order_items) || !order.order_items.length) return "";
+  const rows = order.order_items.map(line => {
+    const name = escapeHtml(line.product_name?.trim() || line.products?.name || "Product");
+    const option = line.variant_name?.trim() || line.variant_id?.trim();
+    const text = typeof line.personalization?.text === "string" ? line.personalization.text.trim() : "";
+    return `<li style="margin-bottom: 6px;">${name}${option ? ` (${escapeHtml(option)})` : ""} × ${line.quantity}${text ? `<br><span style="color: #6b7280;">Personalisation: ${escapeHtml(text)}</span>` : ""}</li>`;
+  }).join("");
+  return `        <div style="margin-top: 20px;"><h3 style="margin: 0 0 8px; color: #374151;">Items:</h3><ul style="margin: 0; padding-left: 18px;">${rows}</ul></div>\n`;
+}
 
 /**
  * Sends order notification emails using Resend's API.
@@ -9,8 +23,9 @@ import { Order } from "@/lib/types";
  * Under the sandbox domain, Resend will only deliver emails to the account owner
  * (the email address used to register the Resend account).
  */
-export async function sendOrderEmails(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+export async function sendOrderEmails(order: OrderWithLines): Promise<void> {
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) {
     console.log("[Email] Order notifications are disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
     return;
@@ -60,7 +75,7 @@ export async function sendOrderEmails(order: Order): Promise<void> {
           <h3 style="margin-top: 0; color: #374151;">Shipping Address:</h3>
           <p style="margin: 0; white-space: pre-wrap;">${order.shipping_address}</p>
         </div>
-
+${ownerItemsHtml(order)}
         <div style="margin-top: 30px; font-size: 0.85em; color: #6b7280; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 15px;">
           PostDuty Storefront Admin Notification
         </div>
@@ -139,7 +154,8 @@ export async function sendOrderEmails(order: Order): Promise<void> {
  * Sends a shipping confirmation email to the customer when the order is marked shipped.
  */
 export async function sendCustomerShippingEmail(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) {
     console.log("[Email] Shipping notifications are disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
     return;
@@ -222,7 +238,8 @@ export async function sendCustomerShippingEmail(order: Order): Promise<void> {
  * Day 1 post-delivery: "Your order reached safely?"
  */
 export async function sendFollowUpDay1Email(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) return;
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -282,7 +299,8 @@ export async function sendFollowUpDay1Email(order: Order): Promise<void> {
  * Day 5 post-delivery: "Share a photo → get 10% off next order"
  */
 export async function sendFollowUpDay5Email(order: Order): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) return;
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -347,7 +365,8 @@ export async function sendFollowUpDay5Email(order: Order): Promise<void> {
  * 60-day win-back: "We've added new arrivals! Here's ₹50 off"
  */
 export async function sendWinBackEmail(order: Order, couponCode: string): Promise<void> {
-  const enabled = process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) return;
 
   const apiKey = process.env.RESEND_API_KEY;

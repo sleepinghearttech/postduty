@@ -1,0 +1,46 @@
+{
+  "verified_at": "2026-10-16T12:26:24.609Z",
+  "source_commit": "a2fd0d44f4ff8e8b6e4917c013661f85b62b9f38",
+  "version": "79f14fc7-cb35-45c0-90fe-86ecb64e4299",
+  "origin": "https://postduty-commerce-preview.jijo925.workers.dev",
+  "tests": [
+    {
+      "name": "Unauthenticated page, RSC, cart, tracking and owner access denied",
+      "status": "passed"
+    },
+    {
+      "name": "Unauthenticated API access denied",
+      "status": "passed"
+    },
+    {
+      "name": "Existing owner login produces secure HTTP-only session",
+      "status": "passed"
+    },
+    {
+      "name": "Both storefronts render refined and original appearances with truthful test notice and catalog",
+      "status": "passed"
+    },
+    {
+      "name": "Published styles include animations and reduced-motion rules",
+      "status": "passed"
+    },
+    {
+      "name": "Owner dashboard pages accessible after login",
+      "status": "passed"
+    },
+    {
+      "name": "Google remains truthfully disabled until provider and owner binding are configured",
+      "status": "passed"
+    },
+    {
+      "name": "Logout clears session, blocks automatic restoration marker, rejects foreign origin",
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "HTTP/API checks, not browser or physical Android acceptance.",
+    "Google provider not configured; legacy owner login used.",
+    "Fictional static/media assets are public. No payments or notifications sent."
+  ],
+  "analytics_available": true
+}
