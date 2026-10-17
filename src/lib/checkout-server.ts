@@ -4,7 +4,7 @@ import { commerceTable, isCommerceSandbox } from "@/lib/commerce-db";
 import { CheckoutError, assertCapturedPayment, paymentConfiguration, type CheckoutCustomer } from "@/lib/checkout-contract";
 import { sendAdminWhatsAppAlert, sendCustomerWhatsAppConfirmation } from "@/lib/notifications";
 import { sendOrderEmails } from "@/lib/email";
-import type { Order } from "@/lib/types";
+import type { Order, OrderLineSummary } from "@/lib/types";
 
 export async function razorpayRequest(path: string, init: RequestInit = {}) {
   const config = paymentConfiguration(process.env);
@@ -51,7 +51,10 @@ async function notifyNewOrder(orderId:string,testMode:boolean) {
   if (error || !claimed) return;
   const {data:order} = await supabaseAdmin.from(commerceTable("orders")).select("*").eq("id",orderId).single();
   if (!order) return;
-  const results = await Promise.allSettled([sendAdminWhatsAppAlert(order as Order),sendCustomerWhatsAppConfirmation(order as Order),sendOrderEmails(order as Order)]);
+  // Owner alerts list each line's option and personalisation; customer messages are unchanged.
+  const {data:lines} = await supabaseAdmin.from(commerceTable("order_items")).select("product_name,quantity,variant_id,variant_name,personalization").eq("order_id",orderId);
+  const alertOrder = {...(order as Order),order_items:(lines ?? []) as OrderLineSummary[]};
+  const results = await Promise.allSettled([sendAdminWhatsAppAlert(alertOrder),sendCustomerWhatsAppConfirmation(order as Order),sendOrderEmails(alertOrder)]);
   // Existing transports swallow provider errors; do not mislabel an attempt as delivery.
   await supabaseAdmin.from(commerceTable("payment_notification_jobs")).update({status:results.some(r => r.status === "rejected") ? "failed" : "attempted_unconfirmed"}).eq("order_id",orderId);
 }

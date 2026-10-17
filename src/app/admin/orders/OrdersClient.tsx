@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Order, OrderWithItems, OrderStatus } from '@/lib/types'
 import type { OrderCase } from '@/lib/order-cases'
 import { OrderCases } from './OrderCases'
+import { describeOrderLine } from '@/lib/order-status'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +27,8 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
   paid:      'bg-blue-100 text-blue-700',
   shipped:   'bg-green-100 text-green-700',
   delivered: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-gray-200 text-gray-700',
+  refunded:  'bg-rose-100 text-rose-700',
 }
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -32,12 +36,14 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   paid:      'Paid — ready to ship',
   shipped:   'Shipped',
   delivered: 'Delivered ✓',
+  cancelled: 'Cancelled — stock restored',
+  refunded:  'Refunded',
 }
 
 function StatusBadge({ status }: { status: OrderStatus }) {
   return (
-    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[status]}`}>
-      {STATUS_LABELS[status]}
+    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[status] ?? 'bg-gray-100 text-gray-600'}`}>
+      {STATUS_LABELS[status] ?? status}
     </span>
   )
 }
@@ -111,6 +117,8 @@ function OrderCard({
   }
 
   async function handleStatusChange(newStatus: OrderStatus) {
+    if (newStatus === 'cancelled' && !window.confirm('Cancel this order and return its items to stock? This does not refund the payment.')) return
+    if (newStatus === 'refunded' && !window.confirm('Record this order as refunded? Make the refund in the payment provider dashboard first; this only records it.')) return
     setSaving(true)
     const res = await fetch('/api/admin/update-order', {
       method: 'POST',
@@ -146,9 +154,7 @@ function OrderCard({
     setSavingTracking(false)
   }
 
-  const items = order.order_items.map(
-    i => `${i.products?.name ?? 'Unknown product'} × ${i.quantity}`
-  )
+  const items = order.order_items.map(i => describeOrderLine(i))
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -201,7 +207,7 @@ function OrderCard({
             Items
           </p>
           {items.map((item, i) => (
-            <p key={i} className="text-gray-700">
+            <p key={i} className="text-gray-700 break-words">
               {item}
             </p>
           ))}
@@ -212,6 +218,9 @@ function OrderCard({
             Total
           </p>
           <p className="text-lg font-bold text-gray-900">{formatRupees(order.total_amount)}</p>
+          {(order.shipping_amount ?? 0) > 0 && (
+            <p className="text-xs text-gray-500 mt-0.5">Includes shipping: {formatRupees(order.shipping_amount ?? 0)}</p>
+          )}
           {order.discount_amount > 0 && (
             <p className="text-xs text-green-600 mt-0.5">Discount: -{formatRupees(order.discount_amount)}</p>
           )}
@@ -246,6 +255,29 @@ function OrderCard({
           {order.status === 'delivered' && (
             <span className="text-xs text-emerald-600 italic">Delivery recorded. Notification delivery is tracked separately.</span>
           )}
+          {order.status === 'paid' && (
+            <button
+              onClick={() => handleStatusChange('cancelled')}
+              disabled={saving}
+              className="text-sm px-4 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              Cancel order
+            </button>
+          )}
+          {(order.status === 'paid' || order.status === 'shipped' || order.status === 'delivered') && (
+            <button
+              onClick={() => handleStatusChange('refunded')}
+              disabled={saving}
+              className="text-sm px-4 py-1.5 border border-rose-200 text-rose-700 rounded-lg hover:bg-rose-50 disabled:opacity-50 transition-colors"
+            >
+              Record refund
+            </button>
+          )}
+          {order.status !== 'pending' && (
+            <Link href={`/admin/orders/${order.id}/packing-slip`} target="_blank" rel="noopener" className="text-sm underline text-gray-600">
+              Packing slip
+            </Link>
+          )}
           {flash && (
             <span
               className={`text-xs ${flash.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}
@@ -275,6 +307,9 @@ function OrderCard({
                 {savingTracking ? 'Saving…' : 'Save tracking'}
               </button>
             </div>
+            {!order.tracking_number && order.status === 'shipped' && (
+              <p className="text-xs text-gray-500">The customer is notified once, when the tracking number is first saved.</p>
+            )}
             {order.tracking_number && (
               <p className="text-xs text-gray-400">
                 Saved:{' '}

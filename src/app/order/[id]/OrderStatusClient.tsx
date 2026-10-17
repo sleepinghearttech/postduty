@@ -17,6 +17,8 @@ const STATUS_LABELS: Record<string, string> = {
   paid: "Payment recorded — check fulfillment updates below",
   shipped: "Shipped",
   delivered: "Delivered",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
 };
 
 const FULFILLMENT_LABELS: Record<string, string> = {

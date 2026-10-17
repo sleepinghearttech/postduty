@@ -1,4 +1,16 @@
-import { Order } from "@/lib/types";
+import type { Order, OrderLineSummary } from "@/lib/types";
+
+/** Owner-facing line list (option + personalisation). Kept dependency-free: transports load in isolation. */
+export type OrderWithLines = Order & { order_items?: OrderLineSummary[] };
+function ownerLineSummary(order: OrderWithLines): string {
+  if (!Array.isArray(order.order_items) || !order.order_items.length) return "";
+  return order.order_items.map(line => {
+    const name = line.product_name?.trim() || line.products?.name || "Product";
+    const option = line.variant_name?.trim() || line.variant_id?.trim();
+    const text = typeof line.personalization?.text === "string" ? line.personalization.text.trim() : "";
+    return `• ${name}${option ? ` (${option})` : ""} × ${line.quantity}${text ? `\n  Personalisation: ${text}` : ""}`;
+  }).join("\n");
+}
 
 /**
  * Normalizes a phone number to E.164 format without leading '+' or spaces
@@ -153,9 +165,10 @@ async function sendAdminAlert(event: string, orderId: string, customerName: stri
 /**
  * Sends an alert to the admin about a new order.
  */
-export async function sendAdminWhatsAppAlert(order: Order): Promise<void> {
+export async function sendAdminWhatsAppAlert(order: OrderWithLines): Promise<void> {
   if (order.is_test === true || order.payment_mode === "test") return;
   const amountInRupees = formatRupees(order.total_amount);
+  const lines = ownerLineSummary(order);
   const fallbackBody = `🚨 *New PostDuty Order!*
 Order ID: \`${order.id}\`
 Customer: *${order.customer_name}*
@@ -164,9 +177,14 @@ Phone: ${order.customer_phone}
 Amount: *${amountInRupees}*
 
 *Shipping Address:*
-${order.shipping_address}`;
+${order.shipping_address}${lines ? `
 
-  await sendAdminAlert("New order received", order.id, order.customer_name, `Amount: ${amountInRupees}`, fallbackBody);
+*Items:*
+${lines}` : ""}`;
+
+  // Template parameters cannot contain newlines; keep the item list on one line there.
+  const details = `Amount: ${amountInRupees}${lines ? `. Items: ${lines.replace(/\n\s*/g, "; ").replace(/•\s/g, "")}` : ""}`.slice(0, 900);
+  await sendAdminAlert("New order received", order.id, order.customer_name, details, fallbackBody);
 }
 
 /**
