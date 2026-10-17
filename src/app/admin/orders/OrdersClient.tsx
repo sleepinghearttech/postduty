@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Order, OrderWithItems, OrderStatus } from '@/lib/types'
+import { Order, OrderWithItems, OrderStatus, type CreatorPickup } from '@/lib/types'
 import type { OrderCase } from '@/lib/order-cases'
 import { OrderCases } from './OrderCases'
 import { describeOrderLine } from '@/lib/order-status'
@@ -100,12 +100,30 @@ function OrderCard({
   onUpdate,
   cases,
   casesUnavailable,
+  pickups,
 }: {
   order: OrderWithItems
   onUpdate: (updated: OrderWithItems) => void
   cases: OrderCase[]
   casesUnavailable: boolean
+  pickups: CreatorPickup[]
 }) {
+  const [courierInput, setCourierInput] = useState(order.courier_cost_paise == null ? '' : String(order.courier_cost_paise / 100))
+  const [savingCourier, setSavingCourier] = useState(false)
+  const linePickups = pickups.filter(p => order.order_items.some(i => i.creator_id === p.creator_id))
+  const missingPickup = order.order_items.some(i => i.creator_id && !pickups.some(p => p.creator_id === i.creator_id))
+
+  async function handleSaveCourier() {
+    setSavingCourier(true)
+    const res = await fetch('/api/admin/update-order', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: order.id, courier_cost_rupees: courierInput.trim() === '' ? null : Number(courierInput) }),
+    })
+    const json = await res.json() as { order?: Order; error?: string }
+    if (json.order) { onUpdate({ ...json.order, order_items: order.order_items }); showFlash('Courier cost saved') }
+    else showFlash('Error: ' + (json.error ?? 'unknown'))
+    setSavingCourier(false)
+  }
   const [saving, setSaving] = useState(false)
   const [flash, setFlash] = useState('')
   const [trackingInput, setTrackingInput] = useState(order.tracking_number ?? '')
@@ -278,6 +296,11 @@ function OrderCard({
               Packing slip
             </Link>
           )}
+          {order.invoice_number && (
+            <Link href={`/admin/orders/${order.id}/invoice`} target="_blank" rel="noopener" className="text-sm underline text-gray-600">
+              Invoice {order.invoice_number}
+            </Link>
+          )}
           {flash && (
             <span
               className={`text-xs ${flash.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}
@@ -319,6 +342,25 @@ function OrderCard({
           </>
         )}
       </div>
+      {order.order_items.some(i => i.creator_id) && order.status !== 'pending' && (
+        <div className="mt-4 pt-4 border-t border-gray-100 space-y-3 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Creator pickup (private)</p>
+          {linePickups.map(p => (
+            <div key={p.creator_id} className="text-xs leading-relaxed text-gray-700">
+              <p className="font-medium">{p.display_name ?? 'Creator'} — {p.pickup_name}, {p.phone}</p>
+              <p className="whitespace-pre-wrap">{p.address} - {p.pincode}</p>
+              {p.shiprocket_location && <p>Shiprocket pickup location: <span className="font-mono">{p.shiprocket_location}</span></p>}
+            </div>
+          ))}
+          {missingPickup && <p className="text-xs text-amber-700">A creator on this order has no pickup address. Add it under Creators.</p>}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-600" htmlFor={`courier-${order.id}`}>Actual courier cost (₹)</label>
+            <input id={`courier-${order.id}`} type="number" min="0" step="0.01" inputMode="decimal" value={courierInput} onChange={e => setCourierInput(e.target.value)} placeholder="Not entered" className="w-28 text-sm border border-gray-200 rounded-lg px-2 py-1" />
+            <button onClick={handleSaveCourier} disabled={savingCourier} className="text-sm px-3 py-1 border border-gray-300 rounded-lg disabled:opacity-50">{savingCourier ? 'Saving…' : 'Save'}</button>
+          </div>
+          {order.courier_cost_paise == null && <p className="text-xs text-gray-500">Creator payouts for this order show as pending courier cost until this is entered.</p>}
+        </div>
+      )}
       <OrderCases orderId={order.id} orderTotal={order.total_amount} initialCases={cases} initiallyUnavailable={casesUnavailable} />
     </div>
   )
@@ -326,7 +368,7 @@ function OrderCard({
 
 // ─── main export ─────────────────────────────────────────────────────────────
 
-export function OrdersClient({ initialOrders, initialCases = [], casesUnavailable = false }: { initialOrders: OrderWithItems[]; initialCases?: OrderCase[]; casesUnavailable?: boolean }) {
+export function OrdersClient({ initialOrders, initialCases = [], casesUnavailable = false, pickups = [] }: { initialOrders: OrderWithItems[]; initialCases?: OrderCase[]; casesUnavailable?: boolean; pickups?: CreatorPickup[] }) {
   const [orders, setOrders] = useState<OrderWithItems[]>(initialOrders)
 
   function handleUpdate(updated: OrderWithItems) {
@@ -350,7 +392,7 @@ export function OrdersClient({ initialOrders, initialCases = [], casesUnavailabl
       ) : (
         <div className="space-y-4">
           {orders.map(order => (
-            <OrderCard key={order.id} order={order} onUpdate={handleUpdate} cases={initialCases.filter(record => record.order_id === order.id)} casesUnavailable={casesUnavailable} />
+            <OrderCard key={order.id} order={order} onUpdate={handleUpdate} cases={initialCases.filter(record => record.order_id === order.id)} casesUnavailable={casesUnavailable} pickups={pickups} />
           ))}
         </div>
       )}

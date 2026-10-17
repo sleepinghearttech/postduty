@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import type { CustomerOrderTracking as OrderResult } from "@/lib/order-tracking";
+import type { InvoiceView } from "@/lib/tax-invoice";
+import TaxInvoice from "@/components/commerce/TaxInvoice";
 
 function formatPrice(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
@@ -32,6 +34,19 @@ export default function OrderStatusClient({ orderId }: { orderId: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<OrderResult | null>(null);
+  const [invoice, setInvoice] = useState<InvoiceView | null>(null);
+  const [invoiceMessage, setInvoiceMessage] = useState<string | null>(null);
+
+  async function loadInvoice() {
+    setInvoiceMessage(null);
+    try {
+      // Same order ID + checkout phone verification as the status lookup.
+      const res = await fetch("/api/order-invoice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, phone }) });
+      const data = (await res.json()) as { invoice?: InvoiceView; error?: string };
+      if (!res.ok || !data.invoice) { setInvoiceMessage(data.error ?? "No invoice is available for this order."); return; }
+      setInvoice(data.invoice);
+    } catch { setInvoiceMessage("The invoice could not be loaded. Please try again."); }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -93,6 +108,12 @@ export default function OrderStatusClient({ orderId }: { orderId: string }) {
         <p className="text-sm font-semibold text-stone-800 mb-3">Order total: {formatPrice(order.totalAmount)}</p>
         {order.trackingNumber && <div className="border-t border-warm-border pt-3 mt-4"><p className="text-xs text-stone-500 mb-1">Order-level tracking</p><p className="text-sm font-mono text-stone-700 break-all">{order.trackingNumber}</p></div>}
         {!order.trackingNumber && !order.items.some(item => item.trackingNumber || item.trackingUrl) && <p className="text-xs text-stone-500">Tracking details will appear here when recorded.</p>}
+
+        <div className="border-t border-warm-border pt-3 mt-4">
+          {!invoice && <button type="button" onClick={loadInvoice} className="text-sm text-brand underline underline-offset-4 min-h-11">View invoice</button>}
+          {invoiceMessage && <p className="text-xs text-stone-500">{invoiceMessage}</p>}
+          {invoice && <div className="mt-3"><TaxInvoice invoice={invoice} /><button type="button" onClick={() => window.print()} className="mt-3 text-sm text-brand underline underline-offset-4 min-h-11">Print or save as PDF</button></div>}
+        </div>
 
       </div>
     );

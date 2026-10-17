@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { missingColumn } from '@/lib/business/queries';
 import { packingSlipView, type PackingSlipItem, type PackingSlipOrder } from '@/lib/packing-slip';
 import PrintButton from './PrintButton';
+import { loadCreatorPickups } from '@/lib/creator-pickups';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Packing slip — PostDuty', robots: { index: false, follow: false } };
@@ -15,6 +16,7 @@ const orderProjections = [
   'id,created_at,status,customer_name,customer_phone,shipping_address,is_gift,gift_message',
 ];
 const itemProjections = [
+  'quantity,product_name,variant_id,variant_name,personalization,creator_id',
   'quantity,product_name,variant_id,variant_name,personalization',
   'quantity,product_name,variant_id,personalization',
   'quantity',
@@ -42,6 +44,8 @@ export default async function PackingSlipPage({ params }: { params: Promise<{ id
     supabaseAdmin.from(commerceTable('order_items')).select(`${projection},products:${commerceTable('products')} ( name )`).eq('order_id', id) as unknown as PromiseLike<{ data: PackingSlipItem[] | null; error: { code?: string } | null }>);
   if (items.error) throw new Error('Order items are unavailable.');
   const slip = packingSlipView(order.data, items.data ?? []);
+  // Private: shown to the owner only, for creators who supply lines in this order.
+  const pickups = await loadCreatorPickups((items.data ?? []).map(item => (item as PackingSlipItem & { creator_id?: string | null }).creator_id));
 
   return <main className="packing-slip mx-auto max-w-2xl bg-white p-6 text-stone-900 sm:p-10">
     <style>{'@media print{.commerce-top,.commerce-subnav,.commerce-bottom,.no-print{display:none!important}.commerce-admin{padding:0!important;background:#fff!important}.packing-slip{max-width:none;padding:0}}'}</style>
@@ -59,6 +63,11 @@ export default async function PackingSlipPage({ params }: { params: Promise<{ id
       {slip.addressLines.map((line, index) => <p key={index}>{line}</p>)}
       <p className="mt-1">Phone: {slip.phone}</p>
     </section>
+    {pickups.map(p => <section key={p.creator_id} className="mt-6 rounded border border-stone-300 p-3 text-sm">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-500">Ship from (creator pickup{p.display_name ? ` — ${p.display_name}` : ''})</h2>
+      <p className="font-medium">{p.pickup_name} · {p.phone}</p><p className="whitespace-pre-wrap">{p.address} - {p.pincode}</p>
+      {p.shiprocket_location && <p>Shiprocket pickup location: <span className="font-mono">{p.shiprocket_location}</span></p>}
+    </section>)}
     <table className="mt-8 w-full border-collapse text-sm">
       <thead><tr className="border-b border-stone-300 text-left"><th className="py-2 pr-2">Item</th><th className="py-2 pr-2">Option</th><th className="py-2 text-right">Qty</th><th className="py-2 pl-4 text-center">Packed</th></tr></thead>
       <tbody>

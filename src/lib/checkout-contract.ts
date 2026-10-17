@@ -74,31 +74,67 @@ export function validHsn(value: unknown): value is string { return typeof value 
 function roundDiv(numerator: number, denominator: number): number { return Math.floor((2 * numerator + denominator) / (2 * denominator)); }
 /** Tax contained in a GST-inclusive amount: amount × rate / (100 + rate), half-up to the paisa. */
 export function inclusiveTax(amount: number, rateBps: number): number { return roundDiv(amount * rateBps, 10000 + rateBps); }
-export type TaxLine = { product_id:string; hsn:string|null; gst_rate_bps:number|null; gross:number; taxable_value:number; cgst:number; sgst:number; igst:number };
+export type TaxPart = { taxable_value:number; cgst:number; sgst:number; igst:number };
+export type TaxLine = {
+  line_index:number; product_id:string; hsn:string|null; gst_rate_bps:number|null;
+  /** Goods value after this line's share of the coupon discount (GST-inclusive). */
+  gross:number; taxable_value:number; cgst:number; sgst:number; igst:number;
+  /** Composite-supply shares of the shipping and gift charges, taxed at this line's rate. */
+  shipping_share:number; gift_share:number; shipping:TaxPart; gift:TaxPart;
+};
 export type TaxBreakdown = {
   regime:"intra_state"|"inter_state"; seller_state_code:string; place_of_supply:string; gst_registered:boolean; prices_include_gst:true;
-  lines:TaxLine[]; taxable_value:number; cgst:number; sgst:number; igst:number; total_tax:number; complete:boolean; basis:"merchandise_net_of_discount";
+  lines:TaxLine[]; charges:{shipping:TaxPart & {amount:number}; gift:TaxPart & {amount:number}};
+  taxable_value:number; cgst:number; sgst:number; igst:number; total_tax:number; complete:boolean; basis:"composite_supply_v2";
 };
 /**
- * Same state → CGST and SGST at half the rate each (computed separately so the two are always equal);
- * otherwise IGST at the full rate. Lines without an owner-entered rate carry no tax and mark the breakdown incomplete.
- * Shipping and gift-card charges are deliberately outside this breakdown until their treatment is confirmed.
+ * Largest-remainder split of `total` in proportion to `weights` (integers ≥ 0). Every paisa is allocated;
+ * equal remainders go to the earlier line. Zero weights everywhere fall back to an equal split.
  */
-export function gstBreakdown(lines: Pick<CheckoutLine,"product_id"|"quantity"|"unit_price"|"line_discount_amount"|"hsn"|"gst_rate_bps">[], customerStateCode: string, sellerStateCode: string, gstRegistered: boolean): TaxBreakdown {
+export function allocateByWeight(total: number, weights: number[]): number[] {
+  if (!weights.length) return [];
+  const basis = weights.some(w => w > 0) ? weights : weights.map(() => 1);
+  const sum = basis.reduce((a,b) => a + b,0);
+  const shares = basis.map((w,index) => ({index,paise:Math.floor(total * w / sum),remainder:(total * w) % sum}));
+  const residual = total - shares.reduce((a,s) => a + s.paise,0);
+  [...shares].sort((a,b) => b.remainder - a.remainder || a.index - b.index).slice(0,residual).forEach(s => { shares[s.index].paise++; });
+  return shares.map(s => s.paise);
+}
+function taxPart(amount: number, rate: number | null, intra: boolean): TaxPart {
+  let cgst = 0, sgst = 0, igst = 0;
+  if (rate !== null && rate > 0) {
+    if (intra) { cgst = roundDiv(amount * rate, 2 * (10000 + rate)); sgst = cgst; }
+    else igst = inclusiveTax(amount,rate);
+  }
+  return {taxable_value:amount-cgst-sgst-igst,cgst,sgst,igst};
+}
+/**
+ * Same state → CGST and SGST at half the rate each (computed separately so the two are always equal);
+ * otherwise IGST at the full rate. Shipping and the gift card are a composite supply: each is allocated
+ * across lines in proportion to line value after discount and taxed at that line's goods rate.
+ * Lines without an owner-entered rate carry no tax and mark the breakdown incomplete.
+ */
+export function gstBreakdown(lines: Pick<CheckoutLine,"product_id"|"quantity"|"unit_price"|"line_discount_amount"|"hsn"|"gst_rate_bps">[], customerStateCode: string, sellerStateCode: string, gstRegistered: boolean, charges: {shipping?:number; gift?:number} = {}): TaxBreakdown {
   const intra = customerStateCode === sellerStateCode;
-  const taxLines = lines.map(line => {
-    const gross = line.quantity * line.unit_price - line.line_discount_amount;
-    const rate = line.gst_rate_bps;
-    let cgst = 0, sgst = 0, igst = 0;
-    if (rate !== null && rate > 0) {
-      if (intra) { cgst = roundDiv(gross * rate, 2 * (10000 + rate)); sgst = cgst; }
-      else igst = inclusiveTax(gross,rate);
-    }
-    return {product_id:line.product_id,hsn:line.hsn,gst_rate_bps:rate,gross,taxable_value:gross-cgst-sgst-igst,cgst,sgst,igst};
+  const grossValues = lines.map(line => line.quantity * line.unit_price - line.line_discount_amount);
+  // A fully discounted basket still needs a deterministic split: fall back to pre-discount value.
+  const weights = grossValues.some(v => v > 0) ? grossValues : lines.map(line => line.quantity * line.unit_price);
+  const shippingAmount = charges.shipping ?? 0, giftAmount = charges.gift ?? 0;
+  const shippingShares = allocateByWeight(shippingAmount,weights), giftShares = allocateByWeight(giftAmount,weights);
+  const taxLines: TaxLine[] = lines.map((line,index) => {
+    const gross = grossValues[index], rate = line.gst_rate_bps;
+    const goods = taxPart(gross,rate,intra);
+    return {line_index:index,product_id:line.product_id,hsn:line.hsn,gst_rate_bps:rate,gross,...goods,shipping_share:shippingShares[index],gift_share:giftShares[index],shipping:taxPart(shippingShares[index],rate,intra),gift:taxPart(giftShares[index],rate,intra)};
   });
-  const sum = (key: "taxable_value"|"cgst"|"sgst"|"igst") => taxLines.reduce((total,line) => total + line[key],0);
-  const cgst = sum("cgst"), sgst = sum("sgst"), igst = sum("igst");
-  return {regime:intra?"intra_state":"inter_state",seller_state_code:sellerStateCode,place_of_supply:customerStateCode,gst_registered:gstRegistered,prices_include_gst:true,lines:taxLines,taxable_value:sum("taxable_value"),cgst,sgst,igst,total_tax:cgst+sgst+igst,complete:taxLines.every(line => line.gst_rate_bps !== null),basis:"merchandise_net_of_discount"};
+  const total = (pick: (line: TaxLine) => TaxPart) => {
+    const parts = taxLines.map(pick);
+    return {taxable_value:parts.reduce((a,p)=>a+p.taxable_value,0),cgst:parts.reduce((a,p)=>a+p.cgst,0),sgst:parts.reduce((a,p)=>a+p.sgst,0),igst:parts.reduce((a,p)=>a+p.igst,0)};
+  };
+  const goods = total(line => line), shipping = total(line => line.shipping), gift = total(line => line.gift);
+  const cgst = goods.cgst + shipping.cgst + gift.cgst, sgst = goods.sgst + shipping.sgst + gift.sgst, igst = goods.igst + shipping.igst + gift.igst;
+  return {regime:intra?"intra_state":"inter_state",seller_state_code:sellerStateCode,place_of_supply:customerStateCode,gst_registered:gstRegistered,prices_include_gst:true,lines:taxLines,
+    charges:{shipping:{amount:shippingAmount,...shipping},gift:{amount:giftAmount,...gift}},
+    taxable_value:goods.taxable_value+shipping.taxable_value+gift.taxable_value,cgst,sgst,igst,total_tax:cgst+sgst+igst,complete:taxLines.every(line => line.gst_rate_bps !== null),basis:"composite_supply_v2"};
 }
 export function sellerStateCode(env: Record<string,string|undefined>): string {
   const code = (env.SELLER_STATE_CODE ?? "").trim() || "29";
@@ -222,7 +258,7 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
     line.creator_earning_paise = line.creator_id ? net - line.commission_amount : null;
   }
   const stateCode = request.customer?.state_code;
-  const taxBreakdown = stateCode ? gstBreakdown(lines,stateCode,options.sellerStateCode ?? "29",options.gstRegistered === true) : null;
+  const taxBreakdown = stateCode ? gstBreakdown(lines,stateCode,options.sellerStateCode ?? "29",options.gstRegistered === true,{shipping:shippingCharge,gift:giftCharge}) : null;
   return {lines,subtotal,giftCharge,shippingCharge,discountAmount,totalAmount,couponCode:request.couponCode,taxBreakdown};
 }
 export function paymentConfiguration(env: Record<string,string|undefined>) {

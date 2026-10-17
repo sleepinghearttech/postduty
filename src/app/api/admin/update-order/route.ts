@@ -6,6 +6,7 @@ import { OrderUpdateError, planOrderUpdate } from '@/lib/order-status'
 import { sendCustomerShippedWhatsApp, sendAdminShippedWhatsApp } from '@/lib/notifications'
 import { sendCustomerShippingEmail } from '@/lib/email'
 import type { Order } from '@/lib/types'
+import { parseCourierCost } from '@/lib/creator-payouts'
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -34,6 +35,17 @@ export async function POST(request: NextRequest) {
 
   if (fetchError || !currentOrder) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+  }
+
+  // Actual courier cost (owner-entered) is a separate edit; it feeds creator payouts only.
+  if (body.courier_cost_rupees !== undefined) {
+    if (body.status !== undefined || body.tracking_number !== undefined) return NextResponse.json({ error: 'Save the courier cost separately.' }, { status: 400 })
+    if (['pending'].includes((currentOrder as Order).status)) return NextResponse.json({ error: 'Courier cost can be recorded once the order is paid.' }, { status: 400 })
+    let courier: number | null
+    try { courier = parseCourierCost(body.courier_cost_rupees) } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }) }
+    const { data, error } = await supabaseAdmin.from(commerceTable('orders')).update({ courier_cost_paise: courier }).eq('id', body.id).select().maybeSingle()
+    if (error || !data) return NextResponse.json({ error: 'The courier cost could not be saved.' }, { status: 500 })
+    return NextResponse.json({ order: data })
   }
 
   try {

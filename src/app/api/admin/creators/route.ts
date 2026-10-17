@@ -4,6 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { commerceTable, isCommerceSandbox } from '@/lib/commerce-db';
 import { creatorFulfillment } from '@/lib/creator-data';
 import { creatorAudit, plainText, uuid } from '@/lib/creator-auth';
+import { CreatorProfileError, validateCreatorProfile, validatePickupAddress } from '@/lib/creator-profile';
+import { parseSettlementPayment } from '@/lib/creator-payouts';
+import { loadWeeklyStatement } from '@/lib/creator-statement';
 
 const unavailable = () => NextResponse.json({ error: 'Creator management is not available yet. Check the commerce migration and authentication configuration.' }, { status: 503 });
 export async function GET(request: NextRequest) {
@@ -19,7 +22,9 @@ export async function GET(request: NextRequest) {
   const orders = paidOrders.data?.map(row => row.id) ?? [];
   const items = orders.length ? await supabaseAdmin.from(commerceTable('order_items')).select('id,order_id,product_id,creator_id,quantity').in('order_id', orders).limit(500) : { data: [], error: null };
   if (items.error) return unavailable();
-  return NextResponse.json({ creators: creators.data, submissions: submissions.data, fulfillment: fulfillment.data, settlements: settlements.data, assignable_items: items.data, sandbox: isCommerceSandbox() }, { headers: { 'Cache-Control': 'private, no-store' } });
+  // Private pickup addresses (owner only). Absent before the phase B migration.
+  const pickups = await supabaseAdmin.from(commerceTable('creator_pickup_addresses')).select('*');
+  return NextResponse.json({ creators: creators.data, submissions: submissions.data, fulfillment: fulfillment.data, settlements: settlements.data, assignable_items: items.data, pickups: pickups.error ? [] : pickups.data, sandbox: isCommerceSandbox() }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 export async function POST(request: NextRequest) {
@@ -115,10 +120,56 @@ export async function POST(request: NextRequest) {
     if (body.action === 'settlement_approve') {
       if (!uuid(body.id)) return NextResponse.json({ error: 'Invalid settlement.' }, { status: 400 });
       await creatorAudit('owner', 'settlement_approval_requested', 'settlement', body.id);
-      const { data, error } = await supabaseAdmin.from(commerceTable('settlements')).update({ status: 'approved' }).eq('id', body.id).eq('status', 'pending').select('id').maybeSingle();
+      // Status check, approval timestamp and audit event commit together.
+      let { data, error } = await supabaseAdmin.rpc(commerceTable('approve_settlement'), { p_settlement_id: body.id });
+      // Before the phase B migration the function does not exist: keep the original conditional update.
+      if (error && ['42883', 'PGRST202'].includes(String((error as { code?: string }).code))) {
+        ({ data, error } = await supabaseAdmin.from(commerceTable('settlements')).update({ status: 'approved' }).eq('id', body.id).eq('status', 'pending').select('id').maybeSingle());
+      }
+      if (error?.message?.includes('invalid_settlement_transition') || (!error && !data)) return NextResponse.json({ error: 'Settlement is unavailable or already approved.' }, { status: 409 });
       if (error) throw error;
-      if (!data) return NextResponse.json({ error: 'Settlement is unavailable or already approved.' }, { status: 409 });
       return NextResponse.json({ saved: true, message: 'Settlement approved for manual handling. No transfer has been initiated.' });
+    }
+    if (body.action === 'settlement_from_statement') {
+      if (!uuid(body.creator_id) || typeof body.week !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.week)) return NextResponse.json({ error: 'Choose a creator and a week.' }, { status: 400 });
+      // Recomputed on the server; client-side amounts are never trusted.
+      const statement = await loadWeeklyStatement(body.creator_id, body.week);
+      const ready = statement.lines.filter(line => line.status === 'ready' && line.payout_paise !== null);
+      if (!ready.length) return NextResponse.json({ error: statement.pending_courier_lines ? "Enter the actual courier cost for this week's orders before settling." : 'Nothing is payable for this week.' }, { status: 400 });
+      const note = plainText(body.note, 1000) || `Weekly statement ${statement.period_start} to ${statement.period_end}`;
+      const lines = ready.map(line => ({ order_item_id: line.order_item_id, order_id: line.order_id, product_name: line.product_name, quantity: line.quantity, line_value: line.line_value, shipping_share: line.shipping_share, gst: line.gst, payment_fee: line.payment_fee, courier_cost: line.courier_cost, platform_fee: line.platform_fee, payout_paise: line.payout_paise }));
+      const { data, error } = await supabaseAdmin.rpc(commerceTable('create_creator_settlement'), { p_creator_id: body.creator_id, p_period_start: statement.period_start, p_period_end: statement.period_end, p_lines: lines, p_note: note });
+      if (error?.message?.includes('already_settled')) return NextResponse.json({ error: 'Some lines were settled in the meantime. Refresh the statement.' }, { status: 409 });
+      if (error) throw error;
+      return NextResponse.json({ saved: true, settlement: data, message: 'Pending settlement created from the statement. No money has moved.' });
+    }
+    if (body.action === 'settlement_paid') {
+      if (!uuid(body.id)) return NextResponse.json({ error: 'Invalid settlement.' }, { status: 400 });
+      let payment: { paid_on: string; reference: string };
+      try { payment = parseSettlementPayment(body); } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+      const { data, error } = await supabaseAdmin.rpc(commerceTable('mark_settlement_paid'), { p_settlement_id: body.id, p_paid_on: payment.paid_on, p_reference: payment.reference });
+      if (error?.message?.includes('invalid_settlement_transition')) return NextResponse.json({ error: 'Only an approved settlement can be marked paid.' }, { status: 409 });
+      if (error) throw error;
+      return NextResponse.json({ saved: true, settlement: data, message: 'Recorded as paid. This records your transfer; it does not send money.' });
+    }
+    if (body.action === 'creator_profile') {
+      if (!uuid(body.creator_id)) return NextResponse.json({ error: 'Invalid creator.' }, { status: 400 });
+      let profile;
+      try { profile = validateCreatorProfile(body); } catch (error) { if (error instanceof CreatorProfileError) return NextResponse.json({ error: error.message }, { status: 400 }); throw error; }
+      await creatorAudit('owner', 'creator_profile_update_requested', 'creator', body.creator_id, { profile_published: profile.profile_published });
+      const { data, error } = await supabaseAdmin.from(commerceTable('creators')).update(profile).eq('id', body.creator_id).select('id').maybeSingle();
+      if (error) throw error;
+      if (!data) return NextResponse.json({ error: 'Creator not found.' }, { status: 404 });
+      return NextResponse.json({ saved: true, message: profile.profile_published ? "Profile saved and shown on this creator's product pages." : 'Profile saved. It is not shown publicly.' });
+    }
+    if (body.action === 'pickup_address') {
+      if (!uuid(body.creator_id)) return NextResponse.json({ error: 'Invalid creator.' }, { status: 400 });
+      let pickup;
+      try { pickup = validatePickupAddress(body); } catch (error) { if (error instanceof CreatorProfileError) return NextResponse.json({ error: error.message }, { status: 400 }); throw error; }
+      await creatorAudit('owner', 'pickup_address_update_requested', 'creator', body.creator_id);
+      const { error } = await supabaseAdmin.from(commerceTable('creator_pickup_addresses')).upsert({ creator_id: body.creator_id, ...pickup, updated_at: new Date().toISOString() }, { onConflict: 'creator_id' });
+      if (error) throw error;
+      return NextResponse.json({ saved: true, message: 'Pickup address saved. It is private to you and appears on packing slips.' });
     }
     return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
   } catch { return NextResponse.json({ error: 'The change could not be completed. Refresh the records before retrying.' }, { status: 500 }); }

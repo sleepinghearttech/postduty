@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import ts from 'typescript';
 import * as status from '../src/lib/order-status.ts';
+import * as payouts from '../src/lib/creator-payouts.ts';
 
 const nativeRequire = createRequire(import.meta.url);
 function load(path, deps, env = {}) {
@@ -63,7 +64,7 @@ function routeSetup({ owner = true, order = { id: orderId, status: 'paid', track
     '@/lib/commerce-auth': { requireOwner: async () => owner, isAllowedMutationOrigin: () => true },
     '@/lib/commerce-db': { commerceTable: name => `preview_${name}` },
     '@/lib/supabase': { supabaseAdmin }, '@/lib/order-status': status,
-    '@/lib/notifications': { sendCustomerShippedWhatsApp: send, sendAdminShippedWhatsApp: send }, '@/lib/email': { sendCustomerShippingEmail: send },
+    '@/lib/notifications': { sendCustomerShippedWhatsApp: send, sendAdminShippedWhatsApp: send }, '@/lib/email': { sendCustomerShippingEmail: send }, '@/lib/creator-payouts': payouts,
   });
   const request = body => ({ text: async () => JSON.stringify(body) });
   return { route, calls, request, get notifications() { return notifications; } };
@@ -114,7 +115,7 @@ function slipSetup({ owner = true, order = { id: orderId, created_at: '2026-10-1
   const page = load('../src/app/admin/orders/[id]/packing-slip/page.tsx', {
     'next/link': { default: () => null }, 'next/navigation': navigation,
     '@/lib/commerce-auth': { requireOwner: async () => owner }, '@/lib/commerce-db': { commerceTable: name => `preview_${name}` },
-    '@/lib/supabase': { supabaseAdmin }, '@/lib/business/queries': { missingColumn: () => false }, '@/lib/packing-slip': helpers, './PrintButton': { default: () => null },
+    '@/lib/supabase': { supabaseAdmin }, '@/lib/business/queries': { missingColumn: () => false }, '@/lib/packing-slip': helpers, './PrintButton': { default: () => null }, '@/lib/creator-pickups': { loadCreatorPickups: async ids => { reads.push('pickups'); return ids.filter(Boolean).length ? [{ creator_id: 'c1', pickup_name: 'Fictional Maker', phone: '9000000000', address: 'Fictional workshop', pincode: '560001', shiprocket_location: null }] : []; } },
   });
   return { page: page.default, reads, helpers };
 }
@@ -125,7 +126,7 @@ test('packing slip: owner-only (redirects before any order read), valid IDs only
   const owner = slipSetup();
   await assert.rejects(owner.page({ params: Promise.resolve({ id: '../../etc' }) }), /NEXT_NOT_FOUND/);
   const element = await owner.page({ params: Promise.resolve({ id: orderId }) });
-  assert.ok(element); assert.deepEqual(owner.reads, ['preview_orders', 'preview_order_items']);
+  assert.ok(element); assert.deepEqual(owner.reads, ['preview_orders', 'preview_order_items', 'pickups']);
   const slip = plain(owner.helpers.packingSlipView({ id: orderId, created_at: '2026-10-17T00:00:00Z', status: 'paid', customer_name: 'Fictional Buyer', customer_phone: '9000000000', shipping_address: 'Line one\nLine two', is_gift: false, gift_message: 'hidden' }, [{ quantity: 2, products: { name: 'Legacy item' }, personalization: { text: 'Name' } }]));
   assert.deepEqual(slip.addressLines, ['Line one', 'Line two']); assert.equal(slip.giftMessage, null); assert.equal(slip.totalUnits, 2);
   assert.deepEqual(slip.items, [{ name: 'Legacy item', option: null, quantity: 2, personalization: 'Name' }]);

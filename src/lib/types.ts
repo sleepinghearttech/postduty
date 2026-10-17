@@ -66,6 +66,9 @@ export type Order = {
   shipping_details?: ShippingDetails | null;
   cancelled_at?: string | null;
   refunded_at?: string | null;
+  invoice_number?: string | null;
+  invoice_date?: string | null;
+  courier_cost_paise?: number | null; // owner-entered actual courier cost; null = not entered
   is_gift: boolean;
   gift_message: string | null;
   delivered_at: string | null;
@@ -86,7 +89,11 @@ export type OrderItem = {
   variant_id?: string | null;
   variant_name?: string | null;
   personalization?: { text?: string } | null;
+  creator_id?: string | null;
 };
+
+/** Private creator pickup address (owner only). */
+export type CreatorPickup = { creator_id: string; pickup_name: string; phone: string; address: string; pincode: string; shiprocket_location: string | null; display_name?: string };
 
 export type OrderItemWithProduct = OrderItem & {
   products: { name: string } | null;
