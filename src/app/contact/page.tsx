@@ -39,7 +39,7 @@ export default function ContactPage() {
         <div className="bg-stone-50 rounded-2xl border border-warm-border p-6 md:p-8">
           <h2 className="text-lg font-bold text-stone-800 mb-4">Grievance Officer</h2>
           <p className="text-xs text-stone-500 leading-relaxed mb-6">
-            In accordance with the Information Technology Act 2000 and the Consumer Protection (E-Commerce) Rules 2020, the name and contact details of the Grievance Officer are provided below:
+            Complaints are handled under the Information Technology Act 2000 and the Consumer Protection (E-Commerce) Rules 2020. Write to the email address below; the Grievance Officer&apos;s name will be published here before ordering opens.
           </p>
 
           <div className="space-y-4 text-sm text-stone-600">
