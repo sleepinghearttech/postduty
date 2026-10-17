@@ -9,6 +9,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "postduty",
+	"vars": { "COMMERCE_SANDBOX": "false", "COMMERCE_CATALOG_ONLY": "true", "ORDER_NOTIFICATIONS_ENABLED": "false" },
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-06-21",
 	"compatibility_flags": [

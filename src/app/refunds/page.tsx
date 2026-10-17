@@ -9,7 +9,7 @@ export default function RefundsPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">1. Return &amp; Replacement Window</h2>
           <p>
-            At PostDuty, we want you to love your purchase. We offer a **7-day return and replacement policy** for items that are damaged, defective, or incorrect upon arrival. If 7 days have gone by since the date of delivery, we unfortunately cannot offer you a refund or replacement.
+            At PostDuty, we want you to love your purchase. We offer a <strong>7-day return and replacement policy</strong> for items that are damaged, defective, or incorrect upon arrival. If 7 days have gone by since the date of delivery, we unfortunately cannot offer you a refund or replacement.
           </p>
         </section>
 
@@ -29,7 +29,7 @@ export default function RefundsPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">3. Cancellations</h2>
           <p>
-            You can request to cancel your order within **2 hours of placement**, provided the order has not already been prepared or dispatched. Once an order is processed or shipped, it cannot be cancelled. To cancel, please contact us immediately at <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a> with your Order ID.
+            You can request to cancel your order within <strong>2 hours of placement</strong>, provided the order has not already been prepared or dispatched. Once an order is processed or shipped, it cannot be cancelled. To cancel, please contact us immediately at <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a> with your Order ID.
           </p>
         </section>
 
@@ -39,7 +39,7 @@ export default function RefundsPage() {
             Once your return is received and inspected, we will send you an email or WhatsApp notification to confirm receipt and notify you of the approval or rejection of your refund. 
           </p>
           <p className="mt-2">
-            If approved, your refund will be processed, and the amount will be credited back to your **original payment method (via Razorpay) within 5 to 7 business days** in accordance with standard banking channels.
+            If approved, your refund will be processed, and the amount will be credited back to your <strong>original payment method (via Razorpay) within 5 to 7 business days</strong> in accordance with standard banking channels.
           </p>
         </section>
 

@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 import { supabase } from "@/lib/supabase";
+import { isHiddenProduct } from "@/lib/hidden-products";
+
+export const dynamic = "force-dynamic";
 
 const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://postduty.in";
 
@@ -9,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .select("slug, created_at")
     .eq("is_active", true);
 
-  const productEntries: MetadataRoute.Sitemap = (products ?? []).map((p) => ({
+  const productEntries: MetadataRoute.Sitemap = (products ?? []).filter((p) => !isHiddenProduct(p.slug)).map((p) => ({
     url: `${SITE_URL}/products/${p.slug}`,
     lastModified: p.created_at,
     changeFrequency: "weekly",

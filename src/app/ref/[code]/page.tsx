@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import type { Product, Coupon } from "@/lib/types";
+import { isHiddenProduct } from "@/lib/hidden-products";
 import Link from "next/link";
 import ReferralBanner from "./ReferralBanner";
 
@@ -41,11 +42,12 @@ export default async function ReferralPage({ params }: PageProps) {
       : `₹${(c.discount_value / 100).toFixed(0)} off`;
 
   // Fetch active products for the grid
-  const { data: products } = await supabase
+  const { data: allProducts } = await supabase
     .from("products")
     .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
+  const products = allProducts?.filter((product: Product) => !isHiddenProduct(product.slug));
 
   return (
     <main>

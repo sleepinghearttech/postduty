@@ -22,21 +22,16 @@ export default function ContactPage() {
           </div>
 
           <div>
-            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">WhatsApp / Call</h3>
-            <p className="text-base font-semibold text-stone-800">
-              +91 [PHONE_NUMBER]
-            </p>
-            <p className="text-xs text-stone-400 mt-0.5">Monday to Saturday: 10:00 AM – 6:00 PM</p>
+            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Support hours</h3>
+            <p className="text-xs text-stone-500">Monday to Saturday: 10:00 AM – 6:00 PM</p>
           </div>
 
           <div>
-            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Office / Mailing Address</h3>
-            <p className="text-sm font-medium text-stone-800 leading-normal whitespace-pre-wrap">
-              [BUSINESS_NAME]
-              [REGISTERED_ADDRESS]
-              India
+            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Business details</h3>
+            <p className="text-xs text-stone-500 leading-relaxed">
+              Our registered business name, address and phone number will be
+              published here before ordering opens.
             </p>
-            <p className="text-xs text-stone-400 mt-2">GSTIN: [GSTIN_PLACEHOLDER]</p>
           </div>
         </div>
 
@@ -48,11 +43,6 @@ export default function ContactPage() {
           </p>
 
           <div className="space-y-4 text-sm text-stone-600">
-            <div>
-              <p className="text-xs text-stone-400 font-semibold uppercase tracking-wider">Name</p>
-              <p className="font-semibold text-stone-800">[GRIEVANCE_OFFICER_NAME]</p>
-            </div>
-            
             <div>
               <p className="text-xs text-stone-400 font-semibold uppercase tracking-wider">Designation</p>
               <p className="font-medium text-stone-800">Customer Support Lead &amp; Grievance Officer</p>

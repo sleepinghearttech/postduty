@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import CheckoutForm from "@/components/CheckoutForm";
+import { isHiddenProduct } from "@/lib/hidden-products";
 
 function formatPriceAmount(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
@@ -53,10 +54,26 @@ export default async function ProductPage({ params }: Props) {
     .eq("is_active", true)
     .single();
 
-  if (error || !product) {
+  if (error || !product || isHiddenProduct(product.slug)) {
     notFound();
   }
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://postduty.jijo925.workers.dev";
+  // Catalogue-only mode: show the product and price, but no purchase controls or purchasable Offer data.
+  const catalogOnly = process.env.COMMERCE_CATALOG_ONLY === "true";
+
+  const offers = {
+    "@type": "Offer",
+    price: (product.price / 100).toFixed(2),
+    priceCurrency: "INR",
+    availability: product.stock > 0
+      ? "https://schema.org/InStock"
+      : "https://schema.org/OutOfStock",
+    url: `${baseUrl}/products/${product.slug}`,
+    seller: {
+      "@type": "Organization",
+      name: "PostDuty",
+    },
+  };
 
   // JSON-LD structured data for Google rich snippets
   const jsonLd = {
@@ -70,19 +87,7 @@ export default async function ProductPage({ params }: Props) {
       "@type": "Brand",
       name: "PostDuty",
     },
-    offers: {
-      "@type": "Offer",
-      price: (product.price / 100).toFixed(2),
-      priceCurrency: "INR",
-      availability: product.stock > 0
-        ? "https://schema.org/InStock"
-        : "https://schema.org/OutOfStock",
-      url: `${baseUrl}/products/${product.slug}`,
-      seller: {
-        "@type": "Organization",
-        name: "PostDuty",
-      },
-    },
+    ...(catalogOnly ? {} : { offers }),
   };
 
   return (
@@ -145,24 +150,33 @@ export default async function ProductPage({ params }: Props) {
             </p>
           )}
 
-          {product.stock > 0 ? (
-            <p className="mt-3 text-xs text-green-700 font-semibold">
-              ✓ In stock — ready to ship
+          {catalogOnly ? (
+            <p className="mt-6 text-sm text-stone-600">
+              Ordering opens soon. Browse the designs and details here.
             </p>
           ) : (
-            <p className="mt-3 text-xs text-red-400 font-medium">
-              Out of stock
-            </p>
-          )}
+            <>
+              {product.stock > 0 ? (
+                <p className="mt-3 text-xs text-green-700 font-semibold">
+                  ✓ In stock — ready to ship
+                </p>
+              ) : (
+                <p className="mt-3 text-xs text-red-400 font-medium">
+                  Out of stock
+                </p>
+              )}
 
-          {/* CheckoutForm handles the Buy Now button, form, and payment modal */}
-          <CheckoutForm product={product} />
+              {/* CheckoutForm handles the Buy Now button, form, and payment modal */}
+              <CheckoutForm product={product} />
+            </>
+          )}
 
           <Link href="/store" className="btn-ghost mt-3 self-start">
             Continue shopping
           </Link>
 
           {/* Trust signals */}
+          {!catalogOnly && (
           <div className="mt-6 pt-6 border-t border-warm-border grid grid-cols-3 gap-3 text-center">
             <div className="flex flex-col items-center gap-1">
               <svg className="w-5 h-5 text-brand opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -186,6 +200,7 @@ export default async function ProductPage({ params }: Props) {
               <p className="text-xs text-stone-400 leading-tight">Online payment</p>
             </div>
           </div>
+          )}
         </div>
       </div>
 
@@ -196,12 +211,12 @@ export default async function ProductPage({ params }: Props) {
           <h2 className="text-xl font-bold text-stone-900 mb-6">Frequently Asked Questions</h2>
           <div className="space-y-4">
             <FAQItem
-              question="Can I customize the keychain?"
-              answer="Currently, our Nurse Character Keychain comes as standard. However, we are preparing custom tags and name engraving for bulk orders soon. Contact us for custom queries."
+              question="Can I request a custom or bulk order?"
+              answer="Write to postdutyswag@gmail.com with what you have in mind and we will tell you what is possible."
             />
             <FAQItem
               question="How long does shipping take?"
-              answer="Orders are prepared and shipped within 1-2 business days. Delivery across India typically takes 3 to 7 business days depending on your city and state."
+              answer="Preparation time depends on the product, and made-to-order items take longer. After dispatch, delivery across India typically takes 3 to 7 business days depending on your city and state."
             />
             <FAQItem
               question="What is your return policy?"
@@ -217,29 +232,10 @@ export default async function ProductPage({ params }: Props) {
         {/* Customer Reviews */}
         <div>
           <h2 className="text-xl font-bold text-stone-900 mb-6">Customer Reviews</h2>
-          <div className="space-y-4">
-            <ReviewItem
-              name="Dr. Rahul Mehta"
-              role="Resident Doctor"
-              rating={5}
-              date="2 weeks ago"
-              comment="Bought this keychain for my colleague. The quality is outstanding, and the ampule opener function is actually very neat and works perfectly!"
-            />
-            <ReviewItem
-              name="Jisha Mathew"
-              role="Registered Nurse (ICU)"
-              rating={5}
-              date="3 weeks ago"
-              comment="Super cute keychain! It is lightweight but strong. My fellow nurses in the ward keep asking where I got it from."
-            />
-            <ReviewItem
-              name="Amrit Pal Singh"
-              role="Medical Student"
-              rating={5}
-              date="1 month ago"
-              comment="The shipping was fast, and the packaging was lovely. Really nice token of appreciation for someone in healthcare."
-            />
-          </div>
+          <p className="text-sm text-stone-500 leading-relaxed">
+            No verified customer reviews are available yet. Reviews will appear here
+            only after genuine orders.
+          </p>
         </div>
       </section>
     </main>
@@ -258,39 +254,5 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
         {answer}
       </p>
     </details>
-  );
-}
-
-function ReviewItem({
-  name,
-  role,
-  rating,
-  date,
-  comment,
-}: {
-  name: string;
-  role: string;
-  rating: number;
-  date: string;
-  comment: string;
-}) {
-  return (
-    <div className="bg-white border border-warm-border rounded-xl p-4 shadow-xs">
-      <div className="flex items-center justify-between">
-        <div>
-          <span className="text-sm font-bold text-stone-800">{name}</span>
-          <span className="text-[10px] text-stone-400 block">{role}</span>
-        </div>
-        <span className="text-[10px] text-stone-400">{date}</span>
-      </div>
-      <div className="flex gap-0.5 my-2">
-        {Array.from({ length: rating }).map((_, i) => (
-          <svg key={i} className="w-3 h-3 text-gold" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path d="M10 1.5l2.59 5.25 5.79.84-4.19 4.08.99 5.77L10 14.6l-5.18 2.84.99-5.77-4.19-4.08 5.79-.84L10 1.5z" />
-          </svg>
-        ))}
-      </div>
-      <p className="text-stone-600 text-xs leading-relaxed">{comment}</p>
-    </div>
   );
 }
