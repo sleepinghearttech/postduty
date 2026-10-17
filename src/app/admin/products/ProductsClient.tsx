@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { OwnerProduct, ProductCommerce as Commerce, ProductMedia as Media, ProductVariant as Variant } from '@/lib/types'
 import styles from './ProductsClient.module.css'
+import { GST_RATES_BPS } from '@/lib/product-validation'
 import { useSearchParams } from 'next/navigation'
 
 type VariantField = Omit<Variant, 'price' | 'stock'> & { price: string; stock: string }
@@ -231,6 +232,8 @@ function ProductEditor({ product, sandbox, onSaved, onClose }: {
                 <Field label="Approved selling price (₹)"><input type="number" inputMode="decimal" min="0" step="0.01" value={fields.price} onChange={e => set('price', e.target.value)} placeholder="0.00" /></Field>
                 <Field label="Proposed price (₹)" hint="Private working estimate."><input type="number" inputMode="decimal" min="0" step="0.01" value={op('proposed_price_rupees')} onChange={e => operation('proposed_price_rupees', num(e.target.value))} /></Field>
                 <Field label="Marketplace commission (%)" hint="Recorded for reconciliation; does not transfer money."><input type="number" inputMode="decimal" min="0" max="100" step="0.1" value={op('commission_percent')} onChange={e => operation('commission_percent', num(e.target.value))} /></Field>
+                <Field label="HSN code" hint="4, 6 or 8 digits. Saved on each order line for tax records."><input inputMode="numeric" maxLength={8} pattern="\d{4}|\d{6}|\d{8}" value={fields.commerce.hsn ?? ''} onChange={e => commerce('hsn', e.target.value.replace(/\D/g, '') || undefined)} placeholder="e.g. 7117" /></Field>
+                <Field label="GST rate (%)" hint="Selling prices include GST. Used for the order tax breakdown."><select value={fields.commerce.gst_rate_bps === undefined ? '' : String(fields.commerce.gst_rate_bps)} onChange={e => commerce('gst_rate_bps', e.target.value === '' ? undefined : Number(e.target.value))}><option value="">Not set</option>{GST_RATES_BPS.map(bps => <option key={bps} value={bps}>{bps / 100}%</option>)}</select></Field>
                 <Field label="Tax configuration notes" hint="Record the approved tax treatment; not an automatic tax engine."><input value={op('tax_configuration')} onChange={e => operation('tax_configuration', e.target.value)} /></Field>
               </Section>
               <Section title="Private cost worksheet" note="Enter unit costs. Use zero only when a cost is confirmed not applicable. These values are never shown to customers.">

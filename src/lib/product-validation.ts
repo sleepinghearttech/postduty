@@ -1,6 +1,8 @@
 import type { OwnerProduct, Product, ProductCommerce, ProductMedia, ProductVariant } from './types';
 
 export class ProductValidationError extends Error {}
+/** Mirrors GST_RATE_BPS in checkout-contract (kept local so this module stays dependency-free). */
+export const GST_RATES_BPS: readonly number[] = [0,10,25,150,300,500,1200,1800,2800,4000];
 const bad = (message: string): never => { throw new ProductValidationError(message); };
 const own = (value: object, key: string) => Object.prototype.hasOwnProperty.call(value, key);
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -47,6 +49,16 @@ export function validateCommerce(value: unknown): ProductCommerce {
   }
   for (const key of ['made_to_order','featured','archived','catalog_only'] as const) if (own(value,key)) result[key] = boolean(value[key],key);
   for (const key of ['preparation_days','capacity','low_stock_threshold','weight_grams'] as const) if (own(value,key)) result[key] = integer(value[key],key,1000000);
+  if (own(value,'hsn') && value.hsn !== '') {
+    const hsn = text(value.hsn,'HSN code',8);
+    if (!/^(\d{4}|\d{6}|\d{8})$/.test(hsn)) return bad('HSN code must be 4, 6 or 8 digits.');
+    result.hsn = hsn;
+  }
+  if (own(value,'gst_rate_bps') && value.gst_rate_bps !== null) {
+    // Basis points keep the rate an exact integer (18% = 1800). Standard Indian GST slabs only.
+    if (!GST_RATES_BPS.includes(value.gst_rate_bps as number)) return bad('GST rate must be one of 0, 0.1, 0.25, 1.5, 3, 5, 12, 18, 28 or 40 percent.');
+    result.gst_rate_bps = value.gst_rate_bps as number;
+  }
   if (own(value,'media')) {
     if (!Array.isArray(value.media) || value.media.length > 12) return bad('A product supports up to 12 media files.');
     result.media = value.media.map((item): ProductMedia => {

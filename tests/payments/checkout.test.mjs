@@ -19,7 +19,7 @@ test('aggregates repeated lines and variants against canonical shared stock',()=
  const p={...product,stock:2,commerce:{...product.commerce,variants:[{id:'red',name:'Red',price:30000,stock:2},{id:'green',name:'Green',price:35000,stock:2}]}};
  assert.throws(()=>buildCheckoutSnapshot(request({items:[{productId:id,quantity:2,variantId:'red'},{productId:id,quantity:1,variantId:'green'}]}),[p],null),/stock/);
  const s=buildCheckoutSnapshot(request({items:[{productId:id,quantity:1,variantId:'red'}]}),[p],null);
- assert.equal(s.totalAmount,30000); assert.equal(s.lines[0].variant_id,'red');
+ assert.equal(s.totalAmount,30000+4900); assert.equal(s.lines[0].variant_id,'red'); assert.equal(s.lines[0].variant_name,'Red');
 });
 test('drafts, archived products and wrong storefront assignments cannot be purchased',()=>{
  for(const p of [{...product,commerce:{...product.commerce,catalog_only:true}},{...product,is_active:false},{...product,commerce:{archived:true}},{...product,commerce:{storefronts:['general']}}]) assert.throws(()=>buildCheckoutSnapshot(request(),[p],null),/unavailable/);
@@ -27,7 +27,7 @@ test('drafts, archived products and wrong storefront assignments cannot be purch
 test('legacy products default to general storefront and retain single-product input',()=>{
  const p={...product,commerce:undefined};
  const parsed=parseCheckoutRequest({productId:id,quantity:1});
- assert.equal(buildCheckoutSnapshot(parsed,[p],null).totalAmount,25000);
+ assert.equal(buildCheckoutSnapshot(parsed,[p],null).totalAmount,25000+4900);
  assert.throws(()=>buildCheckoutSnapshot(request(),[p],null),/unavailable/);
 });
 test('variant selection and personalization rules are enforced server-side',()=>{
@@ -41,7 +41,7 @@ test('variant selection and personalization rules are enforced server-side',()=>
 test('coupon discount, gift charge and expiry use server values; invalid coupon is not silently removed',()=>{
  const coupon={code:'TEST',is_active:true,expires_at:null,max_uses:1,times_used:0,min_order:0,discount_type:'percent',discount_value:10};
  const s=buildCheckoutSnapshot(request({couponCode:'test',isGift:true}),[product],coupon);
- assert.equal(s.totalAmount,24500); assert.equal(s.discountAmount,2500);
+ assert.equal(s.totalAmount,24500+4900); assert.equal(s.discountAmount,2500); assert.equal(s.shippingCharge,4900);
  for(const c of [null,{...coupon,times_used:1},{...coupon,expires_at:'2020-01-01'}]) assert.throws(()=>buildCheckoutSnapshot(request({couponCode:'test'}),[product],c),/coupon/);
 });
 test('missing or live sandbox credentials fail closed',()=>{
@@ -75,7 +75,7 @@ test('creator commission is owner-configured, validated active and snapshotted a
  const line=s.lines[0];
  assert.equal(line.commission_bps,1250);assert.equal(line.line_discount_amount,101);assert.equal(line.commission_amount,3112);assert.equal(line.creator_earning_paise,21787);
  assert.equal(line.creator_earning_paise+line.commission_amount,s.subtotal-s.discountAmount);
- assert.equal(s.totalAmount,26899); // Gift card belongs to PostDuty, outside creator proceeds.
+ assert.equal(s.totalAmount,26899+4900); // Gift card and shipping belong to PostDuty, outside creator proceeds.
  creator.commission_bps=9999;assert.equal(line.commission_bps,1250);
  for(const creators of [[],[{...creator,status:'suspended'}],[{...creator,commission_bps:10001}],[{...creator,commission_bps:1.5}]]) assert.throws(()=>buildCheckoutSnapshot(request(),[p],null,Date.now(),creators),/creator product/);
 });

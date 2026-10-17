@@ -9,6 +9,8 @@ export type ProductCommerce = {
   made_to_order?: boolean; preparation_days?: number; capacity?: number; low_stock_threshold?: number;
   featured?: boolean; archived?: boolean; catalog_only?: boolean; seo_title?: string; seo_description?: string;
   faqs?: { question: string; answer: string }[]; dimensions?: string; weight_grams?: number; shipping_method?: string;
+  hsn?: string; // HSN code (4, 6 or 8 digits)
+  gst_rate_bps?: number; // GST rate in basis points (1800 = 18%)
 };
 
 export type Product = {
@@ -29,7 +31,20 @@ export type Product = {
 
 export type OwnerProduct = Product & { operations?: Record<string, unknown> };
 
-export type OrderStatus = "pending" | "paid" | "shipped" | "delivered";
+export type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancelled" | "refunded";
+
+/** Structured delivery address captured at checkout (legacy orders only have `shipping_address`). */
+export type ShippingDetails = {
+  name?: string; phone?: string; email?: string; address?: string;
+  address_line1?: string; address_line2?: string | null; city?: string; state?: string; state_code?: string; pincode?: string; country?: string;
+};
+
+/** Order line as used in owner alerts, the orders view and packing slips. */
+export type OrderLineSummary = {
+  product_name?: string | null; quantity: number; variant_id?: string | null; variant_name?: string | null;
+  personalization?: { text?: string } | null;
+  products?: { name: string } | null;
+};
 
 export type Order = {
   id: string;
@@ -46,6 +61,11 @@ export type Order = {
   tracking_number: string | null;
   coupon_code: string | null;
   discount_amount: number; // paise, 0 if no coupon
+  shipping_amount?: number; // paise; 0 for legacy orders
+  tax_breakdown?: Record<string, unknown> | null;
+  shipping_details?: ShippingDetails | null;
+  cancelled_at?: string | null;
+  refunded_at?: string | null;
   is_gift: boolean;
   gift_message: string | null;
   delivered_at: string | null;
@@ -62,6 +82,10 @@ export type OrderItem = {
   quantity: number;
   unit_price: number; // paise, snapshotted at purchase time
   created_at: string;
+  product_name?: string | null;
+  variant_id?: string | null;
+  variant_name?: string | null;
+  personalization?: { text?: string } | null;
 };
 
 export type OrderItemWithProduct = OrderItem & {
