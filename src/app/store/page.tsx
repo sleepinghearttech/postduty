@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import type { Product } from "@/lib/types";
+import { isHiddenProduct, PUBLIC_PRODUCT_COLUMNS } from "@/lib/hidden-products";
+
+// Render per request so product publish/unpublish changes appear without a rebuild.
+export const dynamic = "force-dynamic";
 
 function formatPriceAmount(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
@@ -30,11 +34,12 @@ function ProductImagePlaceholder() {
 }
 
 export default async function HomePage() {
-  const { data: products, error } = await supabase
+  const { data: allProducts, error } = await supabase
     .from("products")
-    .select("*")
+    .select(PUBLIC_PRODUCT_COLUMNS)
     .eq("is_active", true)
     .order("created_at", { ascending: false });
+  const products = allProducts?.filter((product: Product) => !isHiddenProduct(product.slug));
 
   if (error) {
     console.error("Failed to load products:", error.message);
@@ -91,13 +96,13 @@ export default async function HomePage() {
             <svg className="w-4 h-4 text-brand opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            <b className="text-ink-700">Prepaid</b>&nbsp;· secure checkout
+            <b className="text-ink-700">Curated</b>&nbsp;for caregivers
           </span>
           <span className="flex items-center gap-1.5">
             <svg className="w-4 h-4 text-brand opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
-            <b className="text-ink-700">24–48h</b>&nbsp;dispatch
+            <b className="text-ink-700">Ships</b>&nbsp;across India
           </span>
           <span className="flex items-center gap-1.5">
             <svg className="w-4 h-4 text-brand opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -126,17 +131,12 @@ export default async function HomePage() {
             </h2>
             <hr className="rule-gold mb-8" />
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {products.map((product: Product, index: number) => (
+              {products.map((product: Product) => (
                 <Link
                   key={product.id}
                   href={`/products/${product.slug}`}
                   className="card-premium group flex flex-col relative"
                 >
-                  {index === 0 && (
-                    <span className="absolute top-2 left-2 bg-white text-brand text-[10px] font-bold px-2 py-1 rounded-full shadow-sm z-10">
-                      Bestseller
-                    </span>
-                  )}
                   <div className="aspect-square overflow-hidden">
                     {product.image_url ? (
                       <img

@@ -3,6 +3,7 @@ import { supabase, supabaseAdmin } from "@/lib/supabase";
 import type { Coupon } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
+  if (process.env.COMMERCE_CATALOG_ONLY === "true") return NextResponse.json({error:"The catalogue is open for browsing. Ordering is not open yet."},{status:503,headers:{"Cache-Control":"no-store"}});
   const body = await request.json() as {
     productId?: string;
     quantity?: number;

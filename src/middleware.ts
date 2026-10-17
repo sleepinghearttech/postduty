@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Catalogue-only mode: ordering is closed, so the cart sends visitors back to the store.
+  if (pathname === '/cart') {
+    if (process.env.COMMERCE_CATALOG_ONLY === 'true') {
+      return NextResponse.redirect(new URL('/store', request.url))
+    }
+    return NextResponse.next()
+  }
+
   // The store hostname's root redirects to its catalog path. This keeps
   // commerce navigation static and leaves /admin authentication unchanged.
   if (pathname === '/') {
@@ -32,5 +40,5 @@ export function middleware(request: NextRequest) {
 
 // Include the root for the shop hostname; preserve the existing admin gate.
 export const config = {
-  matcher: ['/', '/admin/:path*'],
+  matcher: ['/', '/cart', '/admin/:path*'],
 }

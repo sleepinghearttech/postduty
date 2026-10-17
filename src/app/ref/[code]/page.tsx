@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import type { Product, Coupon } from "@/lib/types";
+import { isHiddenProduct, PUBLIC_PRODUCT_COLUMNS } from "@/lib/hidden-products";
 import Link from "next/link";
 import ReferralBanner from "./ReferralBanner";
 
@@ -11,6 +12,11 @@ type PageProps = {
 
 export default async function ReferralPage({ params }: PageProps) {
   const { code } = await params;
+
+  // Catalogue-only mode: no checkout, so don't advertise discounts.
+  if (process.env.COMMERCE_CATALOG_ONLY === "true") {
+    redirect("/store");
+  }
 
   // Look up the coupon linked to this referrer code
   const { data: coupon } = await supabaseAdmin
@@ -41,11 +47,12 @@ export default async function ReferralPage({ params }: PageProps) {
       : `₹${(c.discount_value / 100).toFixed(0)} off`;
 
   // Fetch active products for the grid
-  const { data: products } = await supabase
+  const { data: allProducts } = await supabase
     .from("products")
-    .select("*")
+    .select(PUBLIC_PRODUCT_COLUMNS)
     .eq("is_active", true)
     .order("created_at", { ascending: false });
+  const products = allProducts?.filter((product: Product) => !isHiddenProduct(product.slug));
 
   return (
     <main>
