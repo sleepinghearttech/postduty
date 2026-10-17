@@ -83,6 +83,17 @@ export function validateCommerce(value: unknown): ProductCommerce {
     result.personalization = { enabled: boolean(p.enabled,'Personalization'), label: text(p.label,'Personalization label',200), max_length: integer(p.max_length,'Personalization maximum length',1000), required: boolean(p.required,'Personalization required') };
     if (result.personalization.enabled && (!result.personalization.label || result.personalization.max_length < 1)) return bad('Personalization needs a label and a maximum length.');
   }
+  if (own(value,'combo') && value.combo !== null) {
+    // Owner-defined bundle of existing products. Component checks that need the database run in saveOwnerProduct.
+    if (!isRecord(value.combo) || !Array.isArray(value.combo.components)) return bad('A combo needs a list of component products.');
+    const components = value.combo.components;
+    if (components.length < 2 || components.length > 10) return bad('A combo needs between 2 and 10 component products.');
+    result.combo = { components: components.map(item => {
+      if (!isRecord(item) || typeof item.product_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.product_id)) return bad('Choose a valid product for each combo component.');
+      return { product_id: item.product_id, quantity: integer(item.quantity, 'Component quantity', 20) || bad('Each component quantity must be at least 1.') };
+    }) };
+    if (new Set(result.combo.components.map(c => c.product_id)).size !== result.combo.components.length) return bad('Each product can appear only once in a combo; raise its quantity instead.');
+  }
   if (own(value,'faqs')) {
     if (!Array.isArray(value.faqs) || value.faqs.length > 20) return bad('A product supports up to 20 FAQs.');
     result.faqs = value.faqs.map(faq => {

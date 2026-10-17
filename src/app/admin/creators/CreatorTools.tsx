@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import type { Creator, CreatorSettlement } from '@/lib/creator-types';
+import type { Creator, CreatorSettlement, CreatorSubmission } from '@/lib/creator-types';
 import type { CreatorPickup } from '@/lib/types';
 import type { PayoutStatus, WeeklyStatement } from '@/lib/creator-payouts';
 
@@ -90,4 +90,18 @@ export function MarkPaidForm({ settlement, busy, act }: { settlement: CreatorSet
     <label className="block text-xs">UPI / bank reference<input name="reference" required minLength={3} maxLength={80} className={`${input} mt-1`} /></label></div>
     <button className={`${button} w-full`} disabled={busy}>Mark paid</button>
   </form>;
+}
+
+const revisionLabels: Record<string, string> = { name: 'Title', description: 'Description', short_description: 'Short description', materials: 'Materials', dimensions: 'Dimensions', preparation_days: 'Preparation days', media: 'Photos & videos' };
+/** Creator edits to live products. One tap applies only the creator-editable fields; price and publishing stay yours. */
+export function RevisionInbox({ revisions, creatorName, busy, act }: { revisions: CreatorSubmission[]; creatorName: (id: string) => string; busy: boolean; act: Act }) {
+  if (!revisions.length) return null;
+  return <div className="space-y-3"><h3 className="font-semibold">Edits to live products ({revisions.length})</h3>{revisions.map(revision => <article key={revision.id} className={`${card} space-y-2`}>
+    <p className="text-xs text-teal-800">{creatorName(revision.creator_id)} · <a className="underline" href={`/admin/products/${revision.product_id}/preview`} target="_blank" rel="noreferrer">current listing</a></p>
+    <h4 className="font-semibold">{revision.title}</h4>
+    <dl className="space-y-1 text-sm">{Object.entries(revision.details).map(([key, value]) => <div key={key}><dt className="text-xs text-stone-500">{revisionLabels[key] ?? key}</dt><dd className="whitespace-pre-wrap">{key === 'media' && Array.isArray(value) ? (value as { url: string; type: string }[]).map((m, i) => <a key={i} className="mr-2 text-teal-800 underline" href={m.url} target="_blank" rel="noreferrer">{m.type} {i + 1}</a>) : String(value)}</dd></div>)}</dl>
+    {revision.proposed_price > 0 && <p className="text-xs text-stone-500">Proposed price {money(revision.proposed_price)} (recorded privately; the selling price does not change).</p>}
+    <div className="flex gap-2"><button className={button} disabled={busy} onClick={() => void act({ action: 'review_revision', id: revision.id, status: 'approved' })}>Approve edit</button>
+    <button className="min-h-11 rounded-xl border border-stone-300 px-4 py-3 text-sm" disabled={busy} onClick={() => { const note = window.prompt('Feedback for the creator (optional)') ?? ''; void act({ action: 'review_revision', id: revision.id, status: 'rejected', owner_note: note }); }}>Reject</button></div>
+  </article>)}</div>;
 }

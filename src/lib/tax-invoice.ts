@@ -24,7 +24,7 @@ export type InvoiceOrder = {
   shipping_details?: { name?: string; address_line1?: string; address_line2?: string | null; city?: string; state?: string; state_code?: string; pincode?: string } | null;
   tax_breakdown: { regime?: string; place_of_supply?: string; lines?: BreakdownLine[] } | null;
 };
-export type InvoiceItem = { line_index: number | null; quantity: number; product_name?: string | null; variant_name?: string | null };
+export type InvoiceItem = { line_index: number | null; quantity: number; product_name?: string | null; variant_name?: string | null; combo_role?: 'combo' | 'component' | null; combo_parent_line?: number | null };
 export type InvoiceRow = { description: string; hsn: string | null; quantity: number | null; rate_bps: number | null; taxable_value: number; cgst: number; sgst: number; igst: number; total: number };
 export type InvoiceView = {
   kind: 'tax_invoice' | 'bill_of_supply'; title: string; number: string; date: string; orderReference: string; status: string;
@@ -48,9 +48,11 @@ export function buildInvoice(order: InvoiceOrder, items: InvoiceItem[], seller: 
     const total = part.taxable_value + part.cgst + part.sgst + part.igst;
     return taxInvoice ? { description, hsn, quantity, rate_bps: rate, ...part, total } : { description, hsn, quantity, rate_bps: null, taxable_value: total, cgst: 0, sgst: 0, igst: 0, total };
   };
-  const rows: InvoiceRow[] = [...items].filter(item => item.line_index !== null && lines[item.line_index]).sort((a, b) => a.line_index! - b.line_index!).map(item => {
+  // A combo is invoiced as its components (each with its own HSN and rate); the combo line itself carries no value.
+  const parentName = (index: number | null | undefined) => items.find(i => i.line_index === index)?.product_name?.trim() || 'combo';
+  const rows: InvoiceRow[] = [...items].filter(item => item.line_index !== null && lines[item.line_index] && item.combo_role !== 'combo').sort((a, b) => a.line_index! - b.line_index!).map(item => {
     const line = lines[item.line_index!];
-    const name = `${item.product_name?.trim() || 'Item'}${item.variant_name?.trim() ? ` (${item.variant_name.trim()})` : ''}`;
+    const name = `${item.product_name?.trim() || 'Item'}${item.variant_name?.trim() ? ` (${item.variant_name.trim()})` : ''}${item.combo_role === 'component' ? ` — in ${parentName(item.combo_parent_line)}` : ''}`;
     return row(name, line.hsn, item.quantity, line.gst_rate_bps, line);
   });
   // Composite supply: shipping and gift card shares are taxed at each line's goods rate; one row per rate.

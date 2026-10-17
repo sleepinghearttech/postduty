@@ -95,7 +95,7 @@ export default function OrderStatusClient({ orderId }: { orderId: string }) {
             <li key={item.id} className="rounded-lg border border-warm-border bg-white p-3 text-sm">
               <p className="font-semibold text-stone-800">{item.name}</p>
               {item.creatorName && <p className="text-xs text-stone-500 mt-1">Fulfilled by {item.creatorName}</p>}
-              <p className="text-xs text-stone-500 mt-1">Quantity {item.quantity} · {formatPrice(item.unitPrice * item.quantity)}</p>
+              <p className="text-xs text-stone-500 mt-1">Quantity {item.quantity} · {item.unitPrice === 0 ? "Included in your combo" : formatPrice(item.unitPrice * item.quantity)}</p>
               <p className="text-xs font-semibold text-brand mt-3">{FULFILLMENT_LABELS[item.fulfillmentStatus ?? ''] ?? 'Item-level fulfillment update not available'}</p>
               {item.courier && <p className="text-xs text-stone-600 mt-2">Courier: {item.courier}</p>}
               {item.trackingNumber && <p className="text-xs text-stone-600 mt-2">Tracking: <span className="font-mono break-all">{item.trackingNumber}</span></p>}

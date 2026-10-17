@@ -83,9 +83,10 @@ export function personalizationText(value: unknown): string | null {
 }
 
 /** "Name (Option) × 2 — Personalisation: text" for owner views and alerts. */
-export function describeOrderLine(line: { product_name?: string | null; products?: { name: string } | null; quantity: number; variant_id?: string | null; variant_name?: string | null; personalization?: unknown }): string {
+export function describeOrderLine(line: { product_name?: string | null; products?: { name: string } | null; quantity: number; variant_id?: string | null; variant_name?: string | null; personalization?: unknown; combo_role?: string | null }): string {
   const name = line.product_name?.trim() || line.products?.name || 'Product';
   const option = line.variant_name?.trim() || line.variant_id?.trim();
   const text = personalizationText(line.personalization);
-  return `${name}${option ? ` (${option})` : ''} × ${line.quantity}${text ? ` — Personalisation: ${text}` : ''}`;
+  const prefix = line.combo_role === 'component' ? '↳ ' : line.combo_role === 'combo' ? 'Combo: ' : '';
+  return `${prefix}${name}${option ? ` (${option})` : ''} × ${line.quantity}${text ? ` — Personalisation: ${text}` : ''}`;
 }

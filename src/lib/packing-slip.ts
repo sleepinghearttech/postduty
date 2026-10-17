@@ -7,7 +7,7 @@ export type PackingSlipOrder = {
 };
 export type PackingSlipItem = {
   quantity: number; product_name?: string | null; products?: { name: string } | null;
-  variant_id?: string | null; variant_name?: string | null; personalization?: unknown;
+  variant_id?: string | null; variant_name?: string | null; personalization?: unknown; combo_role?: string | null;
 };
 export type PackingSlip = {
   reference: string; orderId: string; placedAt: string; status: string;
@@ -27,12 +27,13 @@ export function packingSlipView(order: PackingSlipOrder, items: PackingSlipItem[
     reference: order.id.slice(0, 8).toUpperCase(), orderId: order.id, placedAt: order.created_at, status: order.status,
     recipient: d?.name?.trim() || order.customer_name, phone: d?.phone?.trim() || order.customer_phone, addressLines,
     items: items.map(item => ({
-      name: item.product_name?.trim() || item.products?.name || 'Product',
+      // Combo components are packed individually and shown under their combo.
+      name: `${item.combo_role === 'component' ? '↳ ' : item.combo_role === 'combo' ? 'Combo: ' : ''}${item.product_name?.trim() || item.products?.name || 'Product'}`,
       option: item.variant_name?.trim() || item.variant_id?.trim() || null,
       quantity: item.quantity,
       personalization: personalizationText(item.personalization),
     })),
-    totalUnits: items.reduce((sum, item) => sum + item.quantity, 0),
+    totalUnits: items.reduce((sum, item) => sum + (item.combo_role === 'combo' ? 0 : item.quantity), 0),
     giftMessage: order.is_gift ? order.gift_message?.trim() || null : null,
   };
 }

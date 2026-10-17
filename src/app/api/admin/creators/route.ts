@@ -87,6 +87,16 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
       return NextResponse.json({ saved: true, product_id: review?.product_id, message: body.status === 'approved' ? 'Unpublished draft created. Review its license, price and details in Products before publishing.' : 'Submission rejected with your feedback.' });
     }
+    if (body.action === 'review_revision') {
+      if (!uuid(body.id) || (body.status !== 'approved' && body.status !== 'rejected')) return NextResponse.json({ error: 'Invalid review.' }, { status: 400 });
+      await creatorAudit('owner', 'revision_review_requested', 'submission', body.id, { status: body.status });
+      // Applies only creator-editable fields through save_commerce_product; price, publishing and storefronts stay unchanged.
+      const { data, error } = await supabaseAdmin.rpc(commerceTable('review_creator_revision'), { p_submission_id: body.id, p_status: body.status, p_note: plainText(body.owner_note, 2000) });
+      if (error?.message?.includes('revision_unavailable')) return NextResponse.json({ error: 'This edit was already reviewed or the product changed owner. Refresh the list.' }, { status: 409 });
+      if (error?.message?.includes('Photo required') || error?.message?.includes('not publishable')) return NextResponse.json({ error: 'Approving this edit would leave the live listing without a photo. Reject it or unpublish first.' }, { status: 409 });
+      if (error) throw error;
+      return NextResponse.json({ saved: true, product_id: (data as { product_id?: string } | null)?.product_id, message: body.status === 'approved' ? 'Edit applied to the live listing. Price and publishing are unchanged.' : 'Edit rejected with your feedback.' });
+    }
     if (body.action === 'assign') {
       if (!uuid(body.order_item_id) || !uuid(body.creator_id)) return NextResponse.json({ error: 'Choose a paid order item and an active creator.' }, { status: 400 });
       const { data: creator } = await supabaseAdmin.from(commerceTable('creators')).select('id').eq('id', body.creator_id).eq('status', 'active').maybeSingle();

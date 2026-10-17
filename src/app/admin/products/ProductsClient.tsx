@@ -47,7 +47,8 @@ function ProductImage({ product }: { product: OwnerProduct }) {
   return photo ? <img className={styles.thumb} src={photo} alt="" /> : <span className={styles.placeholder} aria-hidden="true">P</span> // eslint-disable-line @next/next/no-img-element
 }
 
-function ProductEditor({ product, sandbox, onSaved, onClose }: {
+function ProductEditor({ product, sandbox, onSaved, onClose, catalog = [] }: {
+  catalog?: OwnerProduct[];
   product?: OwnerProduct; sandbox: boolean; onSaved: (product: OwnerProduct) => void; onClose: () => void;
 }) {
   const [saved, setSaved] = useState(product)
@@ -243,6 +244,7 @@ function ProductEditor({ product, sandbox, onSaved, onClose }: {
               <Section title="Promotion planning" note="Private notes only. These fields do not activate discounts or alter the checkout price."><Field label="Discount / bundle pricing notes" wide><textarea rows={3} value={op('promotion_notes')} onChange={e => operation('promotion_notes', e.target.value)} placeholder="Record proposed offers and bundle economics for approval." /></Field></Section>
             </>}
             {tab === 'inventory' && <>
+              <ComboEditor product={product} catalog={catalog} combo={fields.commerce.combo} onChange={combo => commerce('combo', combo)} />
               <Section title="Availability & production" note="Keep availability realistic. Preparation time is an estimate, not a delivery guarantee.">
                 <Field label={fields.commerce.made_to_order ? 'Available production slots' : 'Available stock'} hint={fields.commerce.made_to_order ? 'Units you can currently accept for production. Zero means unavailable.' : undefined}><input type="number" min="0" step="1" inputMode="numeric" value={fields.stock} onChange={e => set('stock', e.target.value)} /></Field>
                 <Field label="Low-stock threshold"><input type="number" min="0" step="1" inputMode="numeric" value={fields.commerce.low_stock_threshold ?? ''} onChange={e => commerce('low_stock_threshold', num(e.target.value))} /></Field>
@@ -321,7 +323,7 @@ export function ProductsClient({ initialProducts, sandbox = false }: { initialPr
   })
   const allCategories = [...new Set(products.map(p => p.commerce?.category).filter((value): value is string => Boolean(value)))].sort()
   function update(product: OwnerProduct) { setProducts(prev => prev.some(p => p.id === product.id) ? prev.map(p => p.id === product.id ? product : p) : [product, ...prev]) }
-  if (selected) return <ProductEditor key={selected === 'new' ? 'new' : selected.id} product={selected === 'new' ? undefined : selected} sandbox={sandbox} onSaved={update} onClose={() => setSelected(null)} />
+  if (selected) return <ProductEditor key={selected === 'new' ? 'new' : selected.id} product={selected === 'new' ? undefined : selected} sandbox={sandbox} catalog={products} onSaved={update} onClose={() => setSelected(null)} />
   return <main className={styles.catalog}>
     <header className={styles.catalogHeader}><div><p className={styles.eyebrow}>PostDuty / Commerce</p><h1>Your product studio</h1><p className={styles.subtitle}>Thoughtful products. One beautifully simple catalog.</p></div><button className={styles.primary} type="button" onClick={() => setSelected('new')}>+ Add product</button></header>
     {sandbox && <div className={styles.sandbox}><strong>Test workspace</strong><span>Fictional catalog and test checkout. No live payments or customer messages.</span></div>}
@@ -334,4 +336,26 @@ export function ProductsClient({ initialProducts, sandbox = false }: { initialPr
       <footer className={styles.listFooter}>{visible.length} product{visible.length !== 1 ? 's' : ''} shown · Updates use one canonical inventory record.</footer>
     </section>
   </main>
+}
+
+/**
+ * Owner-only combo builder: a combo is its own product (title, photos, price) made of existing products.
+ * Its availability is derived from the components' stock; buying it draws down each component.
+ */
+function ComboEditor({ product, catalog, combo, onChange }: { product?: OwnerProduct; catalog: OwnerProduct[]; combo?: Commerce['combo']; onChange: (combo: Commerce['combo'] | undefined) => void }) {
+  const components = combo?.components ?? []
+  const choices = catalog.filter(p => p.id !== product?.id && !p.commerce?.combo?.components?.length && !p.commerce?.variants?.length && !p.commerce?.archived)
+  const set = (next: { product_id: string; quantity: number }[]) => onChange(next.length ? { components: next } : undefined)
+  const available = components.length ? Math.min(...components.map(c => Math.floor((catalog.find(p => p.id === c.product_id)?.stock ?? 0) / Math.max(1, c.quantity)))) : null
+  return <Section title="Combo" note="Optional. Turn this product into a combo of existing products. The combo keeps its own title, photos and price; its stock comes from the components.">
+    {components.map((component, index) => <div key={index} className={styles.wide} style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
+      <Field label={`Component ${index + 1}`}><select value={component.product_id} onChange={e => set(components.map((c, i) => i === index ? { ...c, product_id: e.target.value } : c))}><option value="">Choose a product</option>{choices.map(p => <option key={p.id} value={p.id}>{p.name} · {money(p.price)} · {p.stock} in stock</option>)}</select></Field>
+      <Field label="Quantity per combo"><input type="number" min="1" max="20" step="1" inputMode="numeric" value={component.quantity} onChange={e => set(components.map((c, i) => i === index ? { ...c, quantity: Math.max(1, Math.round(Number(e.target.value) || 1)) } : c))} /></Field>
+      <button type="button" className={styles.dangerText} onClick={() => set(components.filter((_, i) => i !== index))}>Remove</button>
+    </div>)}
+    <div className={styles.wide}>
+      <button type="button" disabled={components.length >= 10} onClick={() => set([...components, { product_id: '', quantity: 1 }])}>+ Add component</button>
+      {available !== null && <p className={styles.note}>Currently available: {available} combo{available === 1 ? '' : 's'}. Products with options, other combos and archived products cannot be components. Components must be published to be sold in a combo.</p>}
+    </div>
+  </Section>
 }

@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic'
 
 // Newest projection first; older ones keep the page working before the additive migrations are applied.
 const itemProjections = [
+  'id,quantity,unit_price,product_name,variant_id,variant_name,personalization,creator_id,combo_role',
   'id,quantity,unit_price,product_name,variant_id,variant_name,personalization,creator_id',
   'id,quantity,unit_price,product_name,variant_id,variant_name,personalization',
   'id,quantity,unit_price,product_name,variant_id,personalization',

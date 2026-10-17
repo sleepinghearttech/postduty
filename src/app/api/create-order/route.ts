@@ -17,8 +17,16 @@ export async function POST(request: NextRequest) {
     const sellerState = sellerStateCode(process.env);
     const config = paymentConfiguration(process.env);
     const ids = [...new Set(body.items.map(item => item.productId))];
-    const {data:products,error} = await supabaseAdmin.from(commerceTable("products")).select("id,name,price,stock,is_active,commerce,creator_id").in("id",ids);
-    if (error || !products) throw new CheckoutError("Catalog is temporarily unavailable. No payment has been taken.",503);
+    const {data:direct,error} = await supabaseAdmin.from(commerceTable("products")).select("id,name,price,stock,is_active,commerce,creator_id").in("id",ids);
+    if (error || !direct) throw new CheckoutError("Catalog is temporarily unavailable. No payment has been taken.",503);
+    // Combo components are priced, taxed and stocked from their own product records.
+    const componentIds = [...new Set((direct as CheckoutProduct[]).flatMap(p => p.commerce?.combo?.components?.map(c => c.product_id) ?? []))].filter(id => !ids.includes(id));
+    let products = direct as CheckoutProduct[];
+    if (componentIds.length) {
+      const result = await supabaseAdmin.from(commerceTable("products")).select("id,name,price,stock,is_active,commerce,creator_id").in("id",componentIds);
+      if (result.error || !result.data) throw new CheckoutError("Catalog is temporarily unavailable. No payment has been taken.",503);
+      products = [...products,...(result.data as CheckoutProduct[])];
+    }
     let coupon:CheckoutCoupon|null = null;
     if (body.couponCode) {
       const result = await supabaseAdmin.from(commerceTable("coupons")).select("*").eq("code",body.couponCode).maybeSingle();
@@ -32,7 +40,7 @@ export async function POST(request: NextRequest) {
       if (result.error) throw new CheckoutError("Creator availability is temporarily unavailable. No payment has been taken.",503);
       creators = (result.data ?? []) as CheckoutCreator[];
     }
-    const snapshot = buildCheckoutSnapshot(body,products as CheckoutProduct[],coupon,Date.now(),creators,{sellerStateCode:sellerState,gstRegistered:gstRegistered(process.env)});
+    const snapshot = buildCheckoutSnapshot(body,products,coupon,Date.now(),creators,{sellerStateCode:sellerState,gstRegistered:gstRegistered(process.env)});
     const id = crypto.randomUUID();
     // Persist authoritative merchandise, price and customer data BEFORE contacting Razorpay.
     const {error:saveError} = await supabaseAdmin.from(commerceTable("checkout_intents")).insert({id,storefront:body.storefront,items:snapshot.lines,subtotal:snapshot.subtotal,gift_charge:snapshot.giftCharge,shipping_charge:snapshot.shippingCharge,discount_amount:snapshot.discountAmount,total_amount:snapshot.totalAmount,currency:"INR",coupon_code:snapshot.couponCode,is_gift:body.isGift,gift_message:body.giftMessage,customer:{...customer,terms_accepted_at:new Date().toISOString()},tax_breakdown:snapshot.taxBreakdown,is_test:config.testMode,status:"created"});

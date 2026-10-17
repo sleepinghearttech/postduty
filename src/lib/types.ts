@@ -10,6 +10,7 @@ export type ProductCommerce = {
   featured?: boolean; archived?: boolean; catalog_only?: boolean; seo_title?: string; seo_description?: string;
   faqs?: { question: string; answer: string }[]; dimensions?: string; weight_grams?: number; shipping_method?: string;
   hsn?: string; // HSN code (4, 6 or 8 digits)
+  combo?: { components: { product_id: string; quantity: number }[] }; // owner-defined bundle of existing products
   gst_rate_bps?: number; // GST rate in basis points (1800 = 18%)
 };
 
@@ -90,6 +91,7 @@ export type OrderItem = {
   variant_name?: string | null;
   personalization?: { text?: string } | null;
   creator_id?: string | null;
+  combo_role?: 'combo' | 'component' | null;
 };
 
 /** Private creator pickup address (owner only). */

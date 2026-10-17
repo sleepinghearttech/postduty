@@ -1,0 +1,17 @@
+/* Scroll-snap carousels: native swipe on touch, no JavaScript layout, fixed aspect ratio from the parent (no layout shift). */
+.track{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.track::-webkit-scrollbar{display:none}
+.track:focus-visible{outline:3px solid #b18b4c;outline-offset:-3px}
+.slide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:start;scroll-snap-stop:always;position:relative}
+.slide img,.slide video{width:100%;height:100%;object-fit:cover;display:block}
+.contain .slide img,.contain .slide video{object-fit:contain}
+.dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:2px;pointer-events:none}
+.dots button{pointer-events:auto;width:24px;height:24px;border:0;padding:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.dots button::before{content:'';width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.65);box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+.dots button[aria-current=true]::before{background:#fff;transform:scale(1.25)}
+.dots button:focus-visible{outline:2px solid #b18b4c;border-radius:50%}
+.galleryTrack{aspect-ratio:1/1.08;background:#e5e4da;border-radius:3px;overflow:hidden;position:relative}
+.thumbs{display:none}
+@media(min-width:641px){.thumbs{display:flex}.galleryTrack .dots{display:none}}
+@media(prefers-reduced-motion:reduce){.track{scroll-behavior:auto}}
+@media(max-width:640px){.galleryTrack{aspect-ratio:1/1}}

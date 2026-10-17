@@ -6,7 +6,7 @@ export type Creator = {
 export type CreatorSubmission = {
   id: string; creator_id: string; product_id: string | null; title: string;
   proposed_price: number; details: Record<string, unknown>;
-  status: 'submitted' | 'approved' | 'rejected'; owner_note: string | null;
+  status: 'submitted' | 'approved' | 'rejected'; owner_note: string | null; kind?: 'new_product' | 'revision';
   created_at: string; updated_at: string;
 };
 export type FulfillmentStatus = 'assigned' | 'accepted' | 'preparing' | 'ready' | 'dispatched';

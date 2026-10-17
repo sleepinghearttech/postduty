@@ -16,6 +16,7 @@ const orderProjections = [
   'id,created_at,status,customer_name,customer_phone,shipping_address,is_gift,gift_message',
 ];
 const itemProjections = [
+  'quantity,product_name,variant_id,variant_name,personalization,creator_id,combo_role',
   'quantity,product_name,variant_id,variant_name,personalization,creator_id',
   'quantity,product_name,variant_id,variant_name,personalization',
   'quantity,product_name,variant_id,personalization',

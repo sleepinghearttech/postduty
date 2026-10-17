@@ -47,6 +47,7 @@ export async function saveOwnerProduct(input: unknown, mode: 'create'|'update'):
     product.is_active = false; product.stock = 0;
     product.commerce = { ...product.commerce, archived: false, variants: product.commerce?.variants?.map(v => ({ ...v, stock: 0 })) };
   }
+  if (product.commerce?.combo?.components?.length) await validateComboComponents(product);
   if (product.is_active) validatePublication(product);
   const { operations, created_at: _createdAt, updated_at: _updatedAt, ...record } = product;
   void _createdAt; void _updatedAt;
@@ -62,4 +63,20 @@ export async function saveOwnerProduct(input: unknown, mode: 'create'|'update'):
     throw new Error('The product could not be saved. Please retry.');
   }
   return data as OwnerProduct;
+}
+
+/** Components must exist, must not be combos themselves, must not be the combo, and must not have options. */
+async function validateComboComponents(product: OwnerProduct): Promise<void> {
+  const components = product.commerce!.combo!.components;
+  if (product.commerce?.variants?.length) throw new ProductValidationError('A combo cannot have its own options. Remove the options or the combo components.');
+  if (components.some(c => c.product_id === product.id)) throw new ProductValidationError('A combo cannot contain itself.');
+  const { data, error } = await supabaseAdmin.from(commerceTable('products')).select('id,name,commerce').in('id', components.map(c => c.product_id));
+  if (error) throw new Error('Products are unavailable.');
+  const found = new Map((data ?? []).map(row => [row.id as string, row as { name: string; commerce: Product['commerce'] }]));
+  for (const component of components) {
+    const row = found.get(component.product_id);
+    if (!row) throw new ProductValidationError('A combo component no longer exists. Choose it again.');
+    if (row.commerce?.combo?.components?.length) throw new ProductValidationError(`${row.name} is itself a combo; combos cannot be nested.`);
+    if (row.commerce?.variants?.length) throw new ProductValidationError(`${row.name} has options; choose a product without options for a combo.`);
+  }
 }

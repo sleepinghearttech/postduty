@@ -5,7 +5,9 @@ export class CheckoutError extends Error {
   constructor(message: string, status = 400) { super(message); this.status = status; }
 }
 export type Storefront = "general" | "christmas";
-export type CheckoutLine = { product_id: string; product_name: string; quantity: number; unit_price: number; variant_id: string | null; variant_name: string | null; personalization: string | null; creator_id: string | null; commission_bps:number; line_discount_amount:number; commission_amount:number; creator_earning_paise:number|null; hsn: string | null; gst_rate_bps: number | null };
+export type CheckoutLine = { product_id: string; product_name: string; quantity: number; unit_price: number; variant_id: string | null; variant_name: string | null; personalization: string | null; creator_id: string | null; commission_bps:number; line_discount_amount:number; commission_amount:number; creator_earning_paise:number|null; hsn: string | null; gst_rate_bps: number | null;
+  /** Combos: the parent line carries the price; its component lines carry stock, tax, fulfilment and payouts. */
+  combo_role?: "combo" | "component"; combo_parent_line?: number | null; stock_tracked?: boolean; component_unit_price?: number; taxable_gross?: number };
 /** Structured fields are present for every new checkout; legacy callers only ever supplied the composed `address`. */
 export type CheckoutCustomer = {
   name: string; email: string; phone: string; address: string;
@@ -14,7 +16,7 @@ export type CheckoutCustomer = {
 };
 export type CheckoutProduct = {
   id: string; name: string; price: number; stock: number; is_active: boolean; creator_id?: string | null;
-  commerce?: { storefronts?: Storefront[]; archived?: boolean; catalog_only?:boolean; made_to_order?:boolean; variants?: {id:string;name:string;price:number;stock:number}[]; personalization?: {enabled:boolean;required:boolean;max_length:number}; hsn?: string; gst_rate_bps?: number } | null;
+  commerce?: { storefronts?: Storefront[]; archived?: boolean; catalog_only?:boolean; made_to_order?:boolean; variants?: {id:string;name:string;price:number;stock:number}[]; personalization?: {enabled:boolean;required:boolean;max_length:number}; hsn?: string; gst_rate_bps?: number; combo?: {components:{product_id:string;quantity:number}[]} } | null;
 };
 export type CheckoutCreator = { id:string; status:string; commission_bps:number };
 export type CheckoutCoupon = { code:string; is_active:boolean; expires_at:string|null; max_uses:number|null; times_used:number; min_order:number; discount_type:string; discount_value:number };
@@ -114,9 +116,10 @@ function taxPart(amount: number, rate: number | null, intra: boolean): TaxPart {
  * across lines in proportion to line value after discount and taxed at that line's goods rate.
  * Lines without an owner-entered rate carry no tax and mark the breakdown incomplete.
  */
-export function gstBreakdown(lines: Pick<CheckoutLine,"product_id"|"quantity"|"unit_price"|"line_discount_amount"|"hsn"|"gst_rate_bps">[], customerStateCode: string, sellerStateCode: string, gstRegistered: boolean, charges: {shipping?:number; gift?:number} = {}): TaxBreakdown {
+export function gstBreakdown(lines: (Pick<CheckoutLine,"product_id"|"quantity"|"unit_price"|"line_discount_amount"|"hsn"|"gst_rate_bps"> & Partial<Pick<CheckoutLine,"combo_role"|"taxable_gross">>)[], customerStateCode: string, sellerStateCode: string, gstRegistered: boolean, charges: {shipping?:number; gift?:number} = {}): TaxBreakdown {
   const intra = customerStateCode === sellerStateCode;
-  const grossValues = lines.map(line => line.quantity * line.unit_price - line.line_discount_amount);
+  // Combo components carry their allocated share of the combo price; the combo parent line itself carries none.
+  const grossValues = lines.map(line => line.combo_role ? line.taxable_gross ?? 0 : line.quantity * line.unit_price - line.line_discount_amount);
   // A fully discounted basket still needs a deterministic split: fall back to pre-discount value.
   const weights = grossValues.some(v => v > 0) ? grossValues : lines.map(line => line.quantity * line.unit_price);
   const shippingAmount = charges.shipping ?? 0, giftAmount = charges.gift ?? 0;
@@ -134,7 +137,7 @@ export function gstBreakdown(lines: Pick<CheckoutLine,"product_id"|"quantity"|"u
   const cgst = goods.cgst + shipping.cgst + gift.cgst, sgst = goods.sgst + shipping.sgst + gift.sgst, igst = goods.igst + shipping.igst + gift.igst;
   return {regime:intra?"intra_state":"inter_state",seller_state_code:sellerStateCode,place_of_supply:customerStateCode,gst_registered:gstRegistered,prices_include_gst:true,lines:taxLines,
     charges:{shipping:{amount:shippingAmount,...shipping},gift:{amount:giftAmount,...gift}},
-    taxable_value:goods.taxable_value+shipping.taxable_value+gift.taxable_value,cgst,sgst,igst,total_tax:cgst+sgst+igst,complete:taxLines.every(line => line.gst_rate_bps !== null),basis:"composite_supply_v2"};
+    taxable_value:goods.taxable_value+shipping.taxable_value+gift.taxable_value,cgst,sgst,igst,total_tax:cgst+sgst+igst,complete:taxLines.every((line,index) => line.gst_rate_bps !== null || lines[index].combo_role === "combo"),basis:"composite_supply_v2"};
 }
 export function gstRegistered(env: Record<string,string|undefined>): boolean { return env.GST_REGISTERED?.trim() === "true"; }
 /**
@@ -206,14 +209,67 @@ export function parseCheckoutRequest(value: unknown): CheckoutRequest {
   if (body.isGift !== undefined && typeof body.isGift !== "boolean") throw new CheckoutError("Invalid gift option.");
   return {items,storefront:(body.storefront ?? "general") as Storefront,isGift:body.isGift === true,giftMessage:body.isGift && body.giftMessage ? boundedText(body.giftMessage,200,"gift message") : null,couponCode:body.couponCode ? boundedText(body.couponCode,40,"coupon").toUpperCase() : null,customer:parseCustomer(body),termsAccepted:body.acceptTerms === true};
 }
-export type SnapshotOptions = { sellerStateCode?: string; gstRegistered?: boolean };
+export type CouponResult = { ok: true; discount: number; label: string } | { ok: false; reason: "missing"|"inactive"|"expired"|"used_up"|"minimum"|"invalid"; message: string };
+/**
+ * The single coupon rule shared by the cart preview (/api/validate-coupon) and checkout.
+ * Minimum order compares merchandise + gift card; the discount applies to merchandise only
+ * (never the gift card or shipping) and never exceeds it.
+ */
+export function couponDiscount(coupon: CheckoutCoupon | null, subtotal: number, giftCharge: number, now = Date.now()): CouponResult {
+  if (!coupon) return {ok:false,reason:"missing",message:"Invalid coupon code."};
+  if (!["percent","flat"].includes(coupon.discount_type) || !Number.isSafeInteger(coupon.discount_value) || coupon.discount_value < 0 || (coupon.discount_type === "percent" && coupon.discount_value > 100)) return {ok:false,reason:"invalid",message:"This coupon needs owner review."};
+  if (!coupon.is_active) return {ok:false,reason:"inactive",message:"This coupon is no longer active."};
+  if (coupon.expires_at && Date.parse(coupon.expires_at) < now) return {ok:false,reason:"expired",message:"This coupon has expired."};
+  if (coupon.max_uses !== null && coupon.times_used >= coupon.max_uses) return {ok:false,reason:"used_up",message:"This coupon has reached its usage limit."};
+  if (subtotal + giftCharge < (coupon.min_order ?? 0)) return {ok:false,reason:"minimum",message:`Minimum order of ₹${Math.ceil((coupon.min_order ?? 0) / 100)} required for this coupon.`};
+  const discount = Math.min(subtotal,coupon.discount_type === "percent" ? Math.round(subtotal * coupon.discount_value / 100) : coupon.discount_value);
+  return {ok:true,discount,label:coupon.discount_type === "percent" ? `${coupon.discount_value}% off` : `₹${(coupon.discount_value / 100).toFixed(0)} off`};
+}
+export type SnapshotOptions ={ sellerStateCode?: string; gstRegistered?: boolean };
 export function buildCheckoutSnapshot(request: CheckoutRequest, products: CheckoutProduct[], coupon: CheckoutCoupon | null, now = Date.now(), creators:CheckoutCreator[] = [], options: SnapshotOptions = {}) {
   const demand = new Map<string,number>();
-  const lines: CheckoutLine[] = request.items.map(item => {
-    const p = products.find(p => p.id === item.productId);
-    if (!p || !p.is_active || p.commerce?.archived || p.commerce?.catalog_only || !(p.commerce?.storefronts ?? ["general"]).includes(request.storefront)) throw new CheckoutError("A cart product is unavailable on this storefront.",409);
+  const unavailable = () => new CheckoutError("A cart product is unavailable on this storefront.",409);
+  const creatorFor = (p: CheckoutProduct) => {
     const creator = p.creator_id ? creators.find(c => c.id === p.creator_id) : null;
     if (p.creator_id && (!creator || creator.status !== "active" || !Number.isSafeInteger(creator.commission_bps) || creator.commission_bps < 0 || creator.commission_bps > 10000)) throw new CheckoutError("A creator product is temporarily unavailable pending owner review.",409);
+    return creator;
+  };
+  const taxFields = (p: CheckoutProduct) => {
+    const rawHsn = p.commerce?.hsn, rawRate = p.commerce?.gst_rate_bps;
+    const hsn = validHsn(rawHsn) ? rawHsn : null;
+    const gstRate = validGstRateBps(rawRate) ? rawRate : null;
+    // A GST-registered seller must never charge an unknown rate: fail closed before any payment.
+    if (options.gstRegistered && gstRate === null) throw new CheckoutError(`${p.name} cannot be ordered yet: the owner must set its GST rate in the product admin. No payment has been taken.`,409);
+    return {hsn,gst_rate_bps:gstRate};
+  };
+  // Parent stock is the shared physical inventory: direct purchases, variants and combo components all draw on it.
+  const reserve = (p: CheckoutProduct, units: number) => {
+    const key = `all:${p.id}`;
+    const total = (demand.get(key) ?? 0) + units;
+    demand.set(key,total);
+    if (!Number.isSafeInteger(p.stock) || p.stock < total) throw new CheckoutError(`Not enough ${p.commerce?.made_to_order ? "production slots" : "stock"} for ${p.name}.`,409);
+  };
+  const lines: CheckoutLine[] = [];
+  for (const item of request.items) {
+    const p = products.find(p => p.id === item.productId);
+    if (!p || !p.is_active || p.commerce?.archived || p.commerce?.catalog_only || !(p.commerce?.storefronts ?? ["general"]).includes(request.storefront)) throw unavailable();
+    const components = p.commerce?.combo?.components;
+    if (components?.length) {
+      // A combo is sold as one line at its own price; its components carry stock, tax, fulfilment and payouts.
+      if (item.variantId || item.personalization) throw new CheckoutError(`Options and personalisation are unavailable for ${p.name}.`);
+      if (!Number.isSafeInteger(p.price) || p.price < 100) throw new CheckoutError("Product pricing needs owner review.",409);
+      const parentIndex = lines.length;
+      lines.push({product_id:p.id,product_name:p.name,quantity:item.quantity,unit_price:p.price,variant_id:null,variant_name:null,personalization:null,creator_id:null,commission_bps:0,line_discount_amount:0,commission_amount:0,creator_earning_paise:null,hsn:null,gst_rate_bps:null,combo_role:"combo",combo_parent_line:null,stock_tracked:false});
+      for (const component of components) {
+        const cp = products.find(x => x.id === component.product_id);
+        if (!cp || !cp.is_active || cp.commerce?.archived || cp.commerce?.catalog_only || cp.commerce?.combo?.components?.length || (cp.commerce?.variants?.length ?? 0) > 0 || !Number.isSafeInteger(component.quantity) || component.quantity < 1) throw new CheckoutError(`${p.name} is temporarily unavailable pending owner review.`,409);
+        const creator = creatorFor(cp);
+        reserve(cp,item.quantity * component.quantity);
+        lines.push({product_id:cp.id,product_name:cp.name,quantity:item.quantity * component.quantity,unit_price:0,variant_id:null,variant_name:null,personalization:null,creator_id:cp.creator_id ?? null,commission_bps:creator?.commission_bps ?? 0,line_discount_amount:0,commission_amount:0,creator_earning_paise:null,...taxFields(cp),combo_role:"component",combo_parent_line:parentIndex,stock_tracked:true,component_unit_price:cp.price,taxable_gross:0});
+      }
+      continue;
+    }
+    const creator = creatorFor(p);
     const variants = p.commerce?.variants ?? [];
     const variant = variants.find(v => v.id === item.variantId);
     if ((variants.length > 0 && !variant) || (item.variantId && !variant)) throw new CheckoutError(`Choose an available option for ${p.name}.`);
@@ -223,36 +279,28 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
     const quantity = (demand.get(key) ?? 0) + item.quantity;
     demand.set(key,quantity);
     if (!Number.isSafeInteger(variant?.stock ?? p.stock) || (variant?.stock ?? p.stock) < quantity) throw new CheckoutError(`Not enough ${p.commerce?.made_to_order ? "production slots" : "stock"} for ${p.name}.`,409);
-    // Parent stock is the shared physical inventory; variants cannot bypass it.
-    const parentKey = `all:${p.id}`;
-    const allQuantity = (demand.get(parentKey) ?? 0) + item.quantity;
-    demand.set(parentKey,allQuantity);
-    if (p.stock < allQuantity) throw new CheckoutError(`Not enough ${p.commerce?.made_to_order ? "production slots" : "stock"} for ${p.name}.`,409);
+    reserve(p,item.quantity);
     const personalization = item.personalization || null;
     const rules = p.commerce?.personalization;
     if (personalization && !rules?.enabled) throw new CheckoutError(`Personalization is unavailable for ${p.name}.`);
     if (rules?.enabled && ((rules.required && !personalization) || (personalization && personalization.length > Math.min(rules.max_length,500)))) throw new CheckoutError(`Check the personalization for ${p.name}.`);
-    const rawHsn = p.commerce?.hsn, rawRate = p.commerce?.gst_rate_bps;
-    const hsn = validHsn(rawHsn) ? rawHsn : null;
-    const gstRate = validGstRateBps(rawRate) ? rawRate : null;
-    // A GST-registered seller must never charge an unknown rate: fail closed before any payment.
-    if (options.gstRegistered && gstRate === null) throw new CheckoutError(`${p.name} cannot be ordered yet: the owner must set its GST rate in the product admin. No payment has been taken.`,409);
-    return {product_id:p.id,product_name:p.name,quantity:item.quantity,unit_price:price,variant_id:variant?.id ?? null,variant_name:variant?.name ?? null,personalization,creator_id:p.creator_id ?? null,commission_bps:creator?.commission_bps ?? 0,line_discount_amount:0,commission_amount:0,creator_earning_paise:null,hsn,gst_rate_bps:gstRate};
-  });
+    lines.push({product_id:p.id,product_name:p.name,quantity:item.quantity,unit_price:price,variant_id:variant?.id ?? null,variant_name:variant?.name ?? null,personalization,creator_id:p.creator_id ?? null,commission_bps:creator?.commission_bps ?? 0,line_discount_amount:0,commission_amount:0,creator_earning_paise:null,...taxFields(p)});
+  }
   const subtotal = lines.reduce((sum,line) => sum + line.unit_price * line.quantity,0);
   if (!Number.isSafeInteger(subtotal) || subtotal < 100 || subtotal > 50_000_000) throw new CheckoutError("Merchandise total is outside the supported payment range.");
   const giftCharge = request.isGift ? 2000 : 0;
   let discountAmount = 0;
   if (request.couponCode) {
-    if (!coupon || !coupon.is_active || (coupon.expires_at && Date.parse(coupon.expires_at) < now) || (coupon.max_uses !== null && coupon.times_used >= coupon.max_uses) || subtotal + giftCharge < coupon.min_order || !Number.isSafeInteger(coupon.discount_value) || coupon.discount_value < 0 || !["percent","flat"].includes(coupon.discount_type)) throw new CheckoutError("That coupon is no longer available. Remove it or use another code.",409);
-    // Coupons discount merchandise only: never the gift card or shipping.
-    discountAmount = Math.min(subtotal,coupon.discount_type === "percent" ? Math.round(subtotal * coupon.discount_value / 100) : coupon.discount_value);
+    const result = couponDiscount(coupon,subtotal,giftCharge,now);
+    if (!result.ok) throw new CheckoutError("That coupon is no longer available. Remove it or use another code.",409);
+    discountAmount = result.discount;
   }
-  const shippingCharge = shippingChargeFor(lines.reduce((sum,line) => sum + line.quantity,0));
+  // A combo counts as one item for shipping, whatever it contains.
+  const shippingCharge = shippingChargeFor(lines.reduce((sum,line) => sum + (line.combo_role === "component" ? 0 : line.quantity),0));
   const totalAmount = subtotal + giftCharge + shippingCharge - discountAmount;
   if (!Number.isSafeInteger(totalAmount) || totalAmount < 100 || totalAmount > 50_000_000) throw new CheckoutError("Order total is outside the supported payment range.");
   // Allocate the exact order discount across merchandise only (never the gift card).
-  // Largest remainder keeps every paise accounted for; input order breaks equal ties.
+  // Largest remainder keeps every paise accounted for; input order breaks equal ties. Components have no price of their own.
   const allocation = lines.map((line,index) => {
     const numerator = discountAmount * line.quantity * line.unit_price;
     return {index,paise:Math.floor(numerator / subtotal),remainder:numerator % subtotal};
@@ -260,9 +308,17 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
   const residual = discountAmount - allocation.reduce((sum,a) => sum + a.paise,0);
   const priority = [...allocation].sort((a,b) => b.remainder-a.remainder || a.index-b.index);
   for (let i=0;i<residual;i++) allocation[priority[i].index].paise++;
+  for (const [index,line] of lines.entries()) line.line_discount_amount = allocation[index].paise;
+  // A combo's net price is split across its components in proportion to their unit prices × quantity per combo.
   for (const [index,line] of lines.entries()) {
-    line.line_discount_amount = allocation[index].paise;
-    const net = line.quantity * line.unit_price - line.line_discount_amount;
+    if (line.combo_role !== "combo") continue;
+    const parts = lines.filter(l => l.combo_parent_line === index);
+    const shares = allocateByWeight(line.quantity * line.unit_price - line.line_discount_amount,parts.map(part => (part.component_unit_price ?? 0) * (part.quantity / line.quantity)));
+    parts.forEach((part,i) => { part.taxable_gross = shares[i]; });
+    line.taxable_gross = 0;
+  }
+  for (const line of lines) {
+    const net = line.combo_role ? line.taxable_gross ?? 0 : line.quantity * line.unit_price - line.line_discount_amount;
     line.commission_amount = line.creator_id ? Math.round(net * line.commission_bps / 10000) : 0;
     line.creator_earning_paise = line.creator_id ? net - line.commission_amount : null;
   }
@@ -288,4 +344,10 @@ export function assertCapturedPayment(value: unknown, expected: {paymentId:strin
   const p = record(value);
   if (p.id !== expected.paymentId || p.order_id !== expected.orderId || p.amount !== expected.amount || p.currency !== expected.currency || p.status !== "captured" || p.captured !== true || (typeof p.amount_refunded === "number" && p.amount_refunded !== 0)) throw new CheckoutError("Payment is not a matching captured payment. Order has not been confirmed.",409);
   return p as CapturedPayment;
+}
+
+/** A combo is available as many times as its scarcest component allows (component stock ÷ quantity per combo). */
+export function comboAvailability(components: {product_id:string;quantity:number}[], stockById: Map<string, number>): number {
+  if (!components.length) return 0;
+  return Math.max(0, Math.min(...components.map(c => Number.isSafeInteger(c.quantity) && c.quantity > 0 ? Math.floor((stockById.get(c.product_id) ?? 0) / c.quantity) : 0)));
 }

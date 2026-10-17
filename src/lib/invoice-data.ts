@@ -24,7 +24,10 @@ export async function loadInvoice(orderId: string): Promise<LoadedInvoice | null
   const typed = order as unknown as InvoiceOrder & { customer_phone: string };
   const seller = sellerFromEnv(process.env);
   if (!typed.invoice_number) return { invoice: null, customerPhone: typed.customer_phone, sellerConfigured: seller.configured };
-  const { data: items, error: itemError } = await supabaseAdmin.from(commerceTable('order_items')).select('line_index,quantity,product_name,variant_name').eq('order_id', orderId);
+  let itemResult = await supabaseAdmin.from(commerceTable('order_items')).select('line_index,quantity,product_name,variant_name,combo_role,combo_parent_line').eq('order_id', orderId);
+  // Before the phase C migration there are no combo columns (and no combos).
+  if (itemResult.error?.code === '42703') itemResult = await supabaseAdmin.from(commerceTable('order_items')).select('line_index,quantity,product_name,variant_name').eq('order_id', orderId) as typeof itemResult;
+  const { data: items, error: itemError } = itemResult;
   if (itemError) throw new Error('Order items unavailable');
   return { invoice: buildInvoice(typed, (items ?? []) as InvoiceItem[], seller, stateName), customerPhone: typed.customer_phone, sellerConfigured: seller.configured };
 }

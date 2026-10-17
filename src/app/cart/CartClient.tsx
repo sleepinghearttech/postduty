@@ -115,7 +115,8 @@ export default function CartClient({ states, allStatesServed, singleItemShipping
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: couponCode.trim(),
-          cartTotal: totalAmount + giftCharge,
+          subtotal: totalAmount,
+          giftCharge,
         }),
       });
 
