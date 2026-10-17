@@ -18,7 +18,7 @@ export default function ShippingPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">2. Processing Time</h2>
           <p>
-            All orders are processed and prepared for shipping within **1 to 2 business days** of receiving your payment. Orders are not processed or shipped on Sundays or national holidays. 
+            All orders are processed and prepared for shipping within <strong>1 to 2 business days</strong> of receiving your payment. Orders are not processed or shipped on Sundays or national holidays. 
           </p>
           <p className="mt-2">
             If we experience a high volume of orders, shipments may be delayed by a few days. If there is a significant delay in the shipment of your order, we will contact you via email or WhatsApp.
@@ -28,7 +28,7 @@ export default function ShippingPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">3. Delivery Timelines</h2>
           <p>
-            Once shipped, the estimated delivery time is **3 to 7 business days** depending on your location:
+            Once shipped, the estimated delivery time is <strong>3 to 7 business days</strong> depending on your location:
           </p>
           <ul className="list-disc pl-5 mt-2 space-y-1">
             <li><strong>Metro Cities:</strong> 3 to 4 business days.</li>
@@ -50,7 +50,7 @@ export default function ShippingPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">5. Shipment Tracking</h2>
           <p>
-            Once your package is dispatched, you will receive a WhatsApp message and/or email containing your **Shiprocket AWB tracking number** and a link to trace your delivery status. You can also track your order status directly on our website by visiting the <Link href="/orders" className="text-brand hover:underline font-semibold">Track Order</Link> page.
+            Once your package is dispatched, you will receive a WhatsApp message and/or email containing your <strong>Shiprocket AWB tracking number</strong> and a link to trace your delivery status. You can also track your order status directly on our website by visiting the <Link href="/orders" className="text-brand hover:underline font-semibold">Track Order</Link> page.
           </p>
         </section>
 

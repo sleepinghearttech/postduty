@@ -13,6 +13,11 @@ type PageProps = {
 export default async function ReferralPage({ params }: PageProps) {
   const { code } = await params;
 
+  // Catalogue-only mode: no checkout, so don't advertise discounts.
+  if (process.env.COMMERCE_CATALOG_ONLY === "true") {
+    redirect("/store");
+  }
+
   // Look up the coupon linked to this referrer code
   const { data: coupon } = await supabaseAdmin
     .from(commerceTable('coupons'))
