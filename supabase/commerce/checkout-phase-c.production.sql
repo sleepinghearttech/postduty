@@ -235,7 +235,8 @@ BEGIN
     RETURN jsonb_build_object('mode','draft_updated','product_id',p_product_id);
   END IF;
   -- Live product: the listing stays unchanged; the edit waits as one pending revision for owner approval.
-  UPDATE public.creator_submissions SET title=COALESCE(v_fields->>'name',v_product.name),proposed_price=COALESCE(p_proposed_price,0),details=v_fields,updated_at=clock_timestamp()
+  -- A later partial edit is merged into the pending one (its fields win), so earlier pending fields are kept.
+  UPDATE public.creator_submissions SET title=COALESCE(v_fields->>'name',details->>'name',v_product.name),proposed_price=COALESCE(p_proposed_price,proposed_price),details=COALESCE(details,'{}'::jsonb)||v_fields,updated_at=clock_timestamp()
     WHERE product_id=p_product_id AND kind='revision' AND status='submitted' RETURNING id INTO v_submission;
   IF v_submission IS NULL THEN
     INSERT INTO public.creator_submissions(creator_id,product_id,title,proposed_price,details,status,kind)

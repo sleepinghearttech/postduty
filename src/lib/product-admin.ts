@@ -78,5 +78,8 @@ async function validateComboComponents(product: OwnerProduct): Promise<void> {
     if (!row) throw new ProductValidationError('A combo component no longer exists. Choose it again.');
     if (row.commerce?.combo?.components?.length) throw new ProductValidationError(`${row.name} is itself a combo; combos cannot be nested.`);
     if (row.commerce?.variants?.length) throw new ProductValidationError(`${row.name} has options; choose a product without options for a combo.`);
+    // A combo can only be offered on a storefront where every component is also offered.
+    const missing = (product.commerce?.storefronts ?? ['general']).filter(store => !(row.commerce?.storefronts ?? ['general']).includes(store));
+    if (missing.length) throw new ProductValidationError(`${row.name} is not assigned to the ${missing.join(' and ')} storefront. Add it there or remove that storefront from the combo.`);
   }
 }

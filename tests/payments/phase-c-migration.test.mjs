@@ -155,7 +155,8 @@ test('edits to a live product wait as one pending revision; the owner approves i
  const after=await productRow(live);
  assert.deepEqual([after.name,after.price,after.is_active,after.stock],['Fictional live v3',20000,true,4]);
  assert.deepEqual(after.commerce.storefronts,['general','christmas']);assert.equal(after.commerce.gst_rate_bps,1200);assert.equal(after.commerce.dimensions,'5 cm');
- assert.equal('short_description' in after.commerce,false); // replaced by the later pending edit
+ assert.equal(after.commerce.short_description,'New words'); // earlier pending fields are kept when a later edit is merged
+ assert.deepEqual(Object.keys((await one('SELECT details FROM preview_creator_submissions WHERE id=$1',[first.submission_id])).details).sort(),['dimensions','name','short_description'])
  assert.equal((await one('SELECT details FROM preview_product_operations WHERE product_id=$1',[live])).details.proposed_price_rupees,320);
  await assert.rejects(db.query("SELECT preview_review_creator_revision($1,'approved','')",[first.submission_id]),/revision_unavailable/);
  const rejected=(await save(makerA,live,{name:'Fictional live v4'})).rows[0].r;

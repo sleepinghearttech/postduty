@@ -136,3 +136,33 @@ test('creator input keeps only creator-editable fields; owner-only fields are dr
   assert.equal(validateCreatorProductInput({ product_id: A, dimensions: '5 cm' }, prefix).product_id, A);
   assert.throws(() => validateCreatorProductInput({ name: 'Fine name', media: [{ url: `${prefix}a.jpg`, type: 'image' }] }, ''), /upload button/); // no configured bucket: no media accepted
 });
+
+// ─── combo storefront rule ──────────────────────────────────────────────────
+test('checkout refuses a combo on a storefront where any component is not offered', () => {
+  const christmasCombo = { ...combo, commerce: { ...combo.commerce, storefronts: ['general', 'christmas'] } };
+  const christmasA = { ...a, commerce: { ...a.commerce, storefronts: ['general', 'christmas'] } };
+  const xmas = items => parseCheckoutRequest({ items, storefront: 'christmas', ...customer });
+  assert.throws(() => buildCheckoutSnapshot(xmas([{ productId: C, quantity: 1 }]), [christmasCombo, christmasA, b], null, Date.now(), creators), /unavailable pending owner review/);
+  const both = { ...b, commerce: { ...b.commerce, storefronts: ['general', 'christmas'] } };
+  assert.equal(buildCheckoutSnapshot(xmas([{ productId: C, quantity: 1 }]), [christmasCombo, christmasA, both], null, Date.now(), creators).lines.length, 3);
+});
+test('saving a combo requires every component to be assigned to each of the combo storefronts', async () => {
+  const { createRequire } = await import('node:module');
+  const nativeRequire = createRequire(import.meta.url);
+  const validation = await import('../../src/lib/product-validation.ts');
+  const rows = [{ id: A, name: 'Fictional mug', commerce: { storefronts: ['general', 'christmas'] } }, { id: B, name: 'Fictional pouch', commerce: { storefronts: ['general'] } }];
+  let saved = 0;
+  const supabaseAdmin = {
+    from: () => { const q = { select() { return q; }, async in() { return { data: rows, error: null }; } }; return q; },
+    async rpc() { saved++; return { data: { id: 'saved' }, error: null }; },
+  };
+  const { outputText } = ts.transpileModule(readFileSync(new URL('../../src/lib/product-admin.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
+  const module = { exports: {} };
+  const deps = { 'server-only': {}, 'node:crypto': nativeRequire('node:crypto'), '@/lib/supabase': { supabaseAdmin }, '@/lib/commerce-db': { commerceTable: n => `preview_${n}` }, '@/lib/product-validation': validation };
+  new vm.Script(outputText).runInContext(vm.createContext({ module, exports: module.exports, require: id => { if (!(id in deps)) throw new Error(`Unexpected ${id}`); return deps[id]; } }));
+  const draft = storefronts => ({ name: 'Fictional gift set', price: 450, stock: 0, commerce: { storefronts, combo: { components: [{ product_id: A, quantity: 1 }, { product_id: B, quantity: 2 }] } } });
+  await assert.rejects(module.exports.saveOwnerProduct(draft(['general', 'christmas']), 'create'), /Fictional pouch is not assigned to the christmas storefront/);
+  assert.equal(saved, 0);
+  await module.exports.saveOwnerProduct(draft(['general']), 'create');
+  assert.equal(saved, 1);
+});
