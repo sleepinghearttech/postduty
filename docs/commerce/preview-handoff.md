@@ -1,8 +1,10 @@
-> Access correction (2026-10-16): owner requested public customer browsing on both test storefronts. The preview configuration now sets COMMERCE_PREVIEW_ACCESS=public; owner and creator authorization remain enforced separately. Seven access tests pass. Deployment and password retrieval are blocked because the authorized Windows deployment device is offline. Until deployed, the existing preview still requires owner login. No production change has been made.
+# Commerce preview handoff — 17 October 2026
 
-# Commerce preview handoff — 16 October 2026
+Both test storefronts now allow public browsing. Owner and creator operations remain protected. Deployment c4c8c4a uses dedicated Worker version `105d7400-64c0-4e0e-9a7e-439edb909588`. The owner accepted the refined design on 17 October; preserve it, with Original available for comparison. Google sign-in is not configured yet.
 
-**Latest access:** use [the protected owner login](https://postduty-commerce-preview.jijo925.workers.dev/admin/login). Both stores now require owner sign-in and have **Original / Refined** comparison controls. See [the current deployment and remaining Google setup](refinement-and-access-2026-10-16.md). All earlier public preview URLs have been retired; production is unchanged.
+- Christmas: https://postduty-commerce-preview.jijo925.workers.dev/christmas?design=refined
+- General: https://postduty-commerce-preview.jijo925.workers.dev/store?design=refined
+- Owner: https://postduty-commerce-preview.jijo925.workers.dev/admin/products
 
 This is a working, isolated test release of the existing PostDuty application. It is not a commercial launch. Exactly two storefront experiences share canonical products, inventory, checkout and owner operations. Production remains on its previous worker version.
 

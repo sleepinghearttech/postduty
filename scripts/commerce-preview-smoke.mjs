@@ -25,7 +25,7 @@ function guardedOrigin(value){
  check(typeof value==='string'&&value.length>0,'PREVIEW_URL is required; nothing was contacted.');
  let url;try{url=new URL(value);}catch{throw new Error('PREVIEW_URL is invalid; nothing was contacted.');}
  check(url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&!url.search&&!url.hash&&url.pathname==='/', 'PREVIEW_URL must be a plain HTTPS version-preview origin.');
- check(/^[0-9a-f]{8}(?:-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?-postduty\.jijo925\.workers\.dev$/.test(url.hostname), 'Refusing a non-version or production hostname. Only a version-specific PostDuty workers.dev preview is allowed.');
+ check(url.hostname==='postduty-commerce-preview.jijo925.workers.dev'||/^[0-9a-f]{8}(?:-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?-postduty\.jijo925\.workers\.dev$/.test(url.hostname), 'Refusing a non-version or production hostname. Only the dedicated commerce sandbox or a version-specific PostDuty preview is allowed.');
  return url.origin;
 }
 async function fetchPreview(path,{method='GET',json,form,auth=false,crossOrigin=false,headers={}}={}){
