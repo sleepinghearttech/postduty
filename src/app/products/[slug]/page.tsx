@@ -10,6 +10,7 @@ import {madeByLine} from '@/lib/creator-profile';
 import {productStock,productHref,type Storefront} from '@/components/commerce/types';
 import {isCommerceSandbox} from '@/lib/commerce-db';
 import styles from '@/components/commerce/commerce.module.css';
+import { isCatalogOnly } from '@/lib/catalog-mode';
 export const dynamic='force-dynamic';
 type Props={params:Promise<{slug:string}>;searchParams:Promise<{storefront?:string}>};
 async function context(searchParams:Props['searchParams']):Promise<Storefront|null>{
@@ -27,7 +28,7 @@ export async function generateMetadata({params,searchParams}:Props):Promise<Meta
 }
 export default async function ProductPage({params,searchParams}:Props){
   const {slug}=await params;const storefront=await context(searchParams);if(!storefront)notFound();const product=await getStoreProduct(slug,storefront);if(!product)notFound();
-  const catalogOnly=process.env.COMMERCE_CATALOG_ONLY==='true'||product.commerce?.catalog_only===true;
+  const catalogOnly=isCatalogOnly()||product.commerce?.catalog_only===true;
   const creator=product.creator_id?await getCreatorProfile(product.creator_id):null;
   const c=product.commerce;const base=storefront==='christmas'?'https://christmas.postduty.in':'https://store.postduty.in';
   const variantPrices = c?.variants?.map(v=>v.price) ?? [];

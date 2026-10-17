@@ -3,13 +3,14 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { catalogMode } from './helpers/catalog-mode.mjs';
 
 function load(file,env={},fetch=async()=>({ok:false})) {
  const module={exports:{}};
  const reply=(status,body,headers={})=>({status,body,headers:new Headers(headers)});
  const NextResponse={next:()=>reply(200,null),json:(body,init={})=>reply(init.status??200,body,init.headers),redirect:url=>reply(307,null,{Location:String(url)})};
  const source=ts.transpileModule(readFileSync(new URL(file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
- new vm.Script(source).runInContext(vm.createContext({module,exports:module.exports,process:{env},URL,fetch,require:id=>{assert.equal(id,'next/server');return {NextResponse};}}));
+ new vm.Script(source).runInContext(vm.createContext({module,exports:module.exports,process:{env},URL,fetch,require:id=>{if(id==='@/lib/catalog-mode')return catalogMode(env);assert.equal(id,'next/server');return {NextResponse};}}));
  return module.exports;
 }
 const env={COMMERCE_SANDBOX:'true',COMMERCE_PREVIEW_ACCESS:'owner',ADMIN_SECRET:'fictional-owner-password'};

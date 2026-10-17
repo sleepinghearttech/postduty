@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { catalogMode } from './helpers/catalog-mode.mjs';
 import * as status from '../src/lib/order-status.ts';
 import * as payouts from '../src/lib/creator-payouts.ts';
 
@@ -27,8 +28,15 @@ test('status transitions: paid→shipped/cancelled/refunded, shipped→delivered
   assert.throws(() => status.planOrderUpdate({ status: 'pending', tracking_number: null }, { status: 'paid' }), /Invalid status transition/);
   assert.throws(() => status.planOrderUpdate({ status: 'paid', tracking_number: null }, { status: 'lost' }), /Unknown order status/);
   assert.deepEqual(status.planOrderUpdate({ status: 'paid', tracking_number: null }, { status: 'cancelled' }), { kind: 'cancel' });
-  const refund = status.planOrderUpdate({ status: 'delivered', tracking_number: 'AWB1' }, { status: 'refunded' }, new Date('2026-10-17T00:00:00Z'));
-  assert.deepEqual(refund, { kind: 'update', updates: { status: 'refunded', refunded_at: '2026-10-17T00:00:00.000Z' }, firstTracking: false, notifyShipped: false });
+  // Refunds run in one SQL transaction; only a refund before shipment restocks.
+  assert.deepEqual(status.planOrderUpdate({ status: 'delivered', tracking_number: 'AWB1' }, { status: 'refunded' }), { kind: 'refund', restock: false });
+  assert.deepEqual(status.planOrderUpdate({ status: 'shipped', tracking_number: 'AWB1' }, { status: 'refunded' }), { kind: 'refund', restock: false });
+  assert.deepEqual(status.planOrderUpdate({ status: 'paid', tracking_number: null }, { status: 'refunded' }), { kind: 'refund', restock: true });
+  // Settled creator lines are frozen: cancel and refund need a clawback first.
+  for (const [current, next] of [['paid', 'cancelled'], ['paid', 'refunded'], ['delivered', 'refunded']]) {
+    assert.throws(() => status.planOrderUpdate({ status: current, tracking_number: null }, { status: next }, new Date(), true), error => error.status === 409 && /clawback/.test(error.message));
+  }
+  assert.deepEqual(status.planOrderUpdate({ status: 'paid', tracking_number: null }, { status: 'shipped' }, new Date(), true).kind, 'update');
   assert.throws(() => status.planOrderUpdate({ status: 'paid', tracking_number: null }, { tracking_number: 'AWB1' }), /once the order is shipped/);
   assert.throws(() => status.planOrderUpdate({ status: 'cancelled', tracking_number: null }, { tracking_number: 'AWB1' }), /once the order is shipped/);
   for (const tracking_number of ['', '   ', 'x'.repeat(101), '<script>', 42]) assert.throws(() => status.planOrderUpdate({ status: 'shipped', tracking_number: null }, { tracking_number }), /tracking number/);
@@ -45,11 +53,12 @@ test('shipped notification is planned once: never on mark-shipped, only when tra
   assert.equal(status.planOrderUpdate({ status: 'paid', tracking_number: null }, { status: 'shipped', tracking_number: 'AWB1' }).notifyShipped, true);
 });
 
-function routeSetup({ owner = true, order = { id: orderId, status: 'paid', tracking_number: null, is_test: false }, rpcResult = { id: orderId, status: 'cancelled' }, rpcError = null, updateRow = undefined } = {}) {
+function routeSetup({ settled = [], owner = true, order = { id: orderId, status: 'paid', tracking_number: null, is_test: false }, rpcResult = { id: orderId, status: 'cancelled' }, rpcError = null, updateRow = undefined } = {}) {
   const calls = []; let notifications = 0;
   const builder = (table) => {
     const state = { table, filters: [], updates: null };
     const q = {
+      not(column, op, value) { state.filters.push(['not', column, op, value]); return q; }, async limit() { calls.push({ type: 'settled-check', table }); return { data: settled, error: null }; },
       select() { return q; }, eq(column, value) { state.filters.push(['eq', column, value]); return q; }, or(expr) { state.filters.push(['or', expr]); return q; },
       update(values) { state.updates = values; calls.push({ type: 'update', state }); return q; },
       async single() { return { data: order, error: order ? null : { message: 'missing' } }; },
@@ -89,12 +98,25 @@ test('update-order route: cancel uses the transactional stock-restoring function
   const cancel = routeSetup();
   const result = await cancel.route.POST(cancel.request({ id: orderId, status: 'cancelled' }));
   assert.equal(result.status, 200); assert.equal(result.body.order.status, 'cancelled');
-  assert.deepEqual(plain(cancel.calls), [{ type: 'rpc', name: 'preview_cancel_paid_order', args: { p_order_id: orderId } }]);
+  assert.deepEqual(plain(cancel.calls.filter(c => c.type === 'rpc')), [{ type: 'rpc', name: 'preview_cancel_paid_order', args: { p_order_id: orderId } }]);
   const stale = routeSetup({ rpcError: { message: 'invalid_status_transition' } });
   assert.equal((await stale.route.POST(stale.request({ id: orderId, status: 'cancelled' }))).status, 409);
   const shipped = routeSetup({ order: { id: orderId, status: 'shipped', tracking_number: 'AWB1' } });
   const bad = await shipped.route.POST(shipped.request({ id: orderId, status: 'cancelled' }));
-  assert.equal(bad.status, 400); assert.equal(shipped.calls.length, 0);
+  assert.equal(bad.status, 400); assert.equal(shipped.calls.some(c => c.type === 'rpc' || c.type === 'update'), false);
+  const refund = routeSetup({ order: { id: orderId, status: 'paid', tracking_number: null }, rpcResult: { id: orderId, status: 'refunded' } });
+  const refunded = await refund.route.POST(refund.request({ id: orderId, status: 'refunded' }));
+  assert.equal(refunded.status, 200);
+  assert.deepEqual(plain(refund.calls.filter(c => c.type === 'rpc')), [{ type: 'rpc', name: 'preview_refund_order', args: { p_order_id: orderId } }]);
+  for (const next of ['cancelled', 'refunded']) {
+    const frozen = routeSetup({ settled: [{ id: 'line-1' }] });
+    const result = await frozen.route.POST(frozen.request({ id: orderId, status: next }));
+    assert.equal(result.status, 409); assert.match(result.body.error, /clawback/);
+    assert.equal(frozen.calls.some(c => c.type === 'rpc' || c.type === 'update'), false);
+  }
+  const sqlGuard = routeSetup({ rpcError: { message: 'settled_lines_require_clawback' } });
+  const guarded = await sqlGuard.route.POST(sqlGuard.request({ id: orderId, status: 'cancelled' }));
+  assert.equal(guarded.status, 409); assert.match(guarded.body.error, /clawback/);
   const outsider = routeSetup({ owner: false });
   assert.equal((await outsider.route.POST(outsider.request({ id: orderId, status: 'cancelled' }))).status, 401);
   assert.equal(outsider.calls.length, 0);
@@ -134,7 +156,7 @@ test('packing slip: owner-only (redirects before any order read), valid IDs only
 });
 test('middleware keeps /admin packing slips behind the owner session', async () => {
   const reply = (s, headers = {}) => ({ status: s, headers: new Headers(headers) });
-  const { middleware } = load('../src/middleware.ts', { 'next/server': { NextResponse: { next: () => reply(200), json: (b, i = {}) => reply(i.status ?? 200), redirect: url => reply(307, { Location: String(url) }) } } }, { ADMIN_SECRET: 'fictional-owner-password' });
+  const { middleware } = load('../src/middleware.ts', { '@/lib/catalog-mode': catalogMode({ ADMIN_SECRET: 'fictional-owner-password' }), 'next/server': { NextResponse: { next: () => reply(200), json: (b, i = {}) => reply(i.status ?? 200), redirect: url => reply(307, { Location: String(url) }) } } }, { ADMIN_SECRET: 'fictional-owner-password' });
   const request = cookies => { const url = new URL(`https://postduty.example/admin/orders/${orderId}/packing-slip`); url.clone = () => new URL(url); return { url: String(url), nextUrl: url, headers: new Headers({ host: url.host }), cookies: { get: name => cookies[name] ? { value: cookies[name] } : undefined } }; };
   const denied = await middleware(request({ admin_session: 'forged' }));
   assert.equal(denied.status, 307); assert.equal(new URL(denied.headers.get('location')).pathname, '/admin/login');

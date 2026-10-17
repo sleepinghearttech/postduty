@@ -136,9 +136,16 @@ export function gstBreakdown(lines: Pick<CheckoutLine,"product_id"|"quantity"|"u
     charges:{shipping:{amount:shippingAmount,...shipping},gift:{amount:giftAmount,...gift}},
     taxable_value:goods.taxable_value+shipping.taxable_value+gift.taxable_value,cgst,sgst,igst,total_tax:cgst+sgst+igst,complete:taxLines.every(line => line.gst_rate_bps !== null),basis:"composite_supply_v2"};
 }
+export function gstRegistered(env: Record<string,string|undefined>): boolean { return env.GST_REGISTERED?.trim() === "true"; }
+/**
+ * Seller GST state. Unregistered sellers default to Karnataka (29) for the internal breakdown; a GST-registered
+ * seller must configure a valid code explicitly, so checkout fails closed rather than guessing the tax regime.
+ */
 export function sellerStateCode(env: Record<string,string|undefined>): string {
-  const code = (env.SELLER_STATE_CODE ?? "").trim() || "29";
-  if (!stateByCode.has(code)) throw new CheckoutError("Seller tax configuration needs owner review. No payment has been taken.",503);
+  const raw = (env.SELLER_STATE_CODE ?? "").trim();
+  if (!raw && gstRegistered(env)) throw new CheckoutError("Seller tax configuration needs owner review (SELLER_STATE_CODE is not set). No payment has been taken.",503);
+  const code = raw || "29";
+  if (!stateByCode.has(code)) throw new CheckoutError("Seller tax configuration needs owner review (SELLER_STATE_CODE is invalid). No payment has been taken.",503);
   return code;
 }
 
@@ -228,6 +235,8 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
     const rawHsn = p.commerce?.hsn, rawRate = p.commerce?.gst_rate_bps;
     const hsn = validHsn(rawHsn) ? rawHsn : null;
     const gstRate = validGstRateBps(rawRate) ? rawRate : null;
+    // A GST-registered seller must never charge an unknown rate: fail closed before any payment.
+    if (options.gstRegistered && gstRate === null) throw new CheckoutError(`${p.name} cannot be ordered yet: the owner must set its GST rate in the product admin. No payment has been taken.`,409);
     return {product_id:p.id,product_name:p.name,quantity:item.quantity,unit_price:price,variant_id:variant?.id ?? null,variant_name:variant?.name ?? null,personalization,creator_id:p.creator_id ?? null,commission_bps:creator?.commission_bps ?? 0,line_discount_amount:0,commission_amount:0,creator_earning_paise:null,hsn,gst_rate_bps:gstRate};
   });
   const subtotal = lines.reduce((sum,line) => sum + line.unit_price * line.quantity,0);

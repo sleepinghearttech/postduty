@@ -5,7 +5,7 @@ import { commerceTable, isCommerceSandbox } from '@/lib/commerce-db';
 import { creatorFulfillment } from '@/lib/creator-data';
 import { creatorAudit, plainText, uuid } from '@/lib/creator-auth';
 import { CreatorProfileError, validateCreatorProfile, validatePickupAddress } from '@/lib/creator-profile';
-import { parseSettlementPayment } from '@/lib/creator-payouts';
+import { parseSettlementPayment, payoutConfig } from '@/lib/creator-payouts';
 import { loadWeeklyStatement } from '@/lib/creator-statement';
 
 const unavailable = () => NextResponse.json({ error: 'Creator management is not available yet. Check the commerce migration and authentication configuration.' }, { status: 503 });
@@ -95,11 +95,13 @@ export async function POST(request: NextRequest) {
       const { data: order } = await supabaseAdmin.from(commerceTable('orders')).select('id,customer_name,customer_phone,shipping_address,status,razorpay_payment_id').eq('id', item.order_id).maybeSingle();
       if (!order?.razorpay_payment_id || !['paid', 'shipped', 'delivered'].includes(order.status)) return NextResponse.json({ error: 'Only verified paid order items can be assigned.' }, { status: 400 });
       if (item.fulfillment_status === 'dispatched') return NextResponse.json({ error: 'Dispatched items cannot be reassigned.' }, { status: 409 });
+      // A settled line is frozen to the creator it was paid to.
+      if (item.settlement_id) return NextResponse.json({ error: 'This item is already in a creator settlement and cannot be reassigned.' }, { status: 409 });
       if (item.creator_id === creator.id) return NextResponse.json({ saved: true });
       await creatorAudit('owner', 'fulfillment_assignment_requested', 'order_item', item.id, { creator_id: creator.id, previous_creator_id: item.creator_id || null });
       let assignmentQuery = supabaseAdmin.from(commerceTable('order_items')).update({
         creator_id: creator.id, fulfillment_status: 'awaiting_acceptance', tracking_number: null, tracking_url: null, earnings_review_required: true,
-      }).eq('id', item.id).eq('fulfillment_status', item.fulfillment_status);
+      }).eq('id', item.id).eq('fulfillment_status', item.fulfillment_status).is('settlement_id', null);
       assignmentQuery = item.creator_id ? assignmentQuery.eq('creator_id', item.creator_id) : assignmentQuery.is('creator_id', null);
       const { data: changed, error } = await assignmentQuery.select('id').maybeSingle();
       if (error) throw error;
@@ -138,8 +140,11 @@ export async function POST(request: NextRequest) {
       if (!ready.length) return NextResponse.json({ error: statement.pending_courier_lines ? "Enter the actual courier cost for this week's orders before settling." : 'Nothing is payable for this week.' }, { status: 400 });
       const note = plainText(body.note, 1000) || `Weekly statement ${statement.period_start} to ${statement.period_end}`;
       const lines = ready.map(line => ({ order_item_id: line.order_item_id, order_id: line.order_id, product_name: line.product_name, quantity: line.quantity, line_value: line.line_value, shipping_share: line.shipping_share, gst: line.gst, payment_fee: line.payment_fee, courier_cost: line.courier_cost, platform_fee: line.platform_fee, payout_paise: line.payout_paise }));
-      const { data, error } = await supabaseAdmin.rpc(commerceTable('create_creator_settlement'), { p_creator_id: body.creator_id, p_period_start: statement.period_start, p_period_end: statement.period_end, p_lines: lines, p_note: note });
+      // The database recomputes every line with the same fee configuration and rejects any mismatch.
+      const fees = payoutConfig(process.env);
+      const { data, error } = await supabaseAdmin.rpc(commerceTable('create_creator_settlement'), { p_creator_id: body.creator_id, p_period_start: statement.period_start, p_period_end: statement.period_end, p_lines: lines, p_note: note, p_payment_fee_bps: fees.paymentFeeBps, p_platform_fee_bps: fees.platformFeeBps });
       if (error?.message?.includes('already_settled')) return NextResponse.json({ error: 'Some lines were settled in the meantime. Refresh the statement.' }, { status: 409 });
+      if (error?.message?.includes('payout_mismatch') || error?.message?.includes('order_not_settleable')) return NextResponse.json({ error: 'An order in this statement changed (status, courier cost or fees). Refresh the statement before settling.' }, { status: 409 });
       if (error) throw error;
       return NextResponse.json({ saved: true, settlement: data, message: 'Pending settlement created from the statement. No money has moved.' });
     }

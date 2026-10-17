@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { sendFollowUpDay1WhatsApp, sendFollowUpDay5WhatsApp } from "@/lib/notifications";
 import { sendFollowUpDay1Email, sendFollowUpDay5Email, sendWinBackEmail } from "@/lib/email";
 import type { Order } from "@/lib/types";
+import { isCatalogOnly } from '@/lib/catalog-mode';
 
 // Win-back offer sent after 60 days of inactivity — matches the seeded POSTDUTY50 coupon.
 const WINBACK_COUPON_CODE = "POSTDUTY50";
@@ -22,7 +23,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * hitting this URL with `Authorization: Bearer <CRON_SECRET>`.
  */
 export async function POST(req: NextRequest) {
-  if (process.env.COMMERCE_SANDBOX === "true" || process.env.COMMERCE_CATALOG_ONLY === "true" || process.env.ORDER_NOTIFICATIONS_ENABLED !== "true") return NextResponse.json({ error: "Customer messaging is disabled in the preview" }, { status: 403 });
+  if (process.env.COMMERCE_SANDBOX === "true" || isCatalogOnly() || process.env.ORDER_NOTIFICATIONS_ENABLED !== "true") return NextResponse.json({ error: "Customer messaging is disabled in the preview" }, { status: 403 });
   const auth = req.headers.get("authorization");
   const expected = `Bearer ${process.env.CRON_SECRET}`;
   if (!process.env.CRON_SECRET || auth !== expected) {

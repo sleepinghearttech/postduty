@@ -2,7 +2,7 @@ import { requireOwner, isAllowedMutationOrigin } from '@/lib/commerce-auth';
 import { commerceTable } from '@/lib/commerce-db';
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { OrderUpdateError, planOrderUpdate } from '@/lib/order-status'
+import { CLAWBACK_REQUIRED, OrderUpdateError, planOrderUpdate } from '@/lib/order-status'
 import { sendCustomerShippedWhatsApp, sendAdminShippedWhatsApp } from '@/lib/notifications'
 import { sendCustomerShippingEmail } from '@/lib/email'
 import type { Order } from '@/lib/types'
@@ -49,14 +49,25 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const plan = planOrderUpdate(currentOrder as Order, body)
+    // Settled lines are frozen. The SQL functions re-check this inside their transaction.
+    let settledLines = false
+    if (body.status === 'cancelled' || body.status === 'refunded') {
+      const settled = await supabaseAdmin.from(commerceTable('order_items')).select('id').eq('order_id', body.id).not('settlement_id', 'is', null).limit(1)
+      if (settled.error && settled.error.code !== '42703') return NextResponse.json({ error: 'Order lines are unavailable. Nothing was changed.' }, { status: 503 })
+      settledLines = !settled.error && (settled.data?.length ?? 0) > 0
+    }
+    const plan = planOrderUpdate(currentOrder as Order, body, new Date(), settledLines)
 
-    if (plan.kind === 'cancel') {
-      // One transaction: status check, stock (and variant stock) restoration and the status change.
-      const { data, error } = await supabaseAdmin.rpc(commerceTable('cancel_paid_order'), { p_order_id: body.id })
+    if (plan.kind === 'cancel' || plan.kind === 'refund') {
+      // One transaction: status check, settled-line guard, stock (and variant stock) restoration when not yet
+      // shipped, coupon-use reversal and the status change.
+      const fn = plan.kind === 'cancel' ? 'cancel_paid_order' : 'refund_order'
+      const { data, error } = await supabaseAdmin.rpc(commerceTable(fn), { p_order_id: body.id })
       if (error || !data) {
+        if (error?.message?.includes('settled_lines_require_clawback')) return NextResponse.json({ error: CLAWBACK_REQUIRED }, { status: 409 })
         const conflict = error?.message?.includes('invalid_status_transition')
-        return NextResponse.json({ error: conflict ? 'This order changed and can no longer be cancelled. Reload the page.' : 'The order could not be cancelled. Nothing was changed.' }, { status: conflict ? 409 : 500 })
+        const verb = plan.kind === 'cancel' ? 'cancelled' : 'recorded as refunded'
+        return NextResponse.json({ error: conflict ? `This order changed and can no longer be ${verb}. Reload the page.` : `The order could not be ${verb}. Nothing was changed.` }, { status: conflict ? 409 : 500 })
       }
       return NextResponse.json({ order: data })
     }

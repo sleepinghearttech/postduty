@@ -8,6 +8,7 @@ import { validateCommerce } from '../../src/lib/product-validation.ts';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { catalogMode } from '../helpers/catalog-mode.mjs';
 import * as contract from '../../src/lib/checkout-contract.ts';
 
 const id='10000000-0000-4000-8000-000000000001';
@@ -131,7 +132,7 @@ function createOrderRoute(env) {
   const module = { exports: {} };
   const forbidden = () => { throw new Error('Database or payment access must not occur'); };
   const source = ts.transpileModule(readFileSync(new URL('../../src/app/api/create-order/route.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const deps = { 'next/server': { NextResponse: { json: (body, init = {}) => ({ body, status: init.status ?? 200 }) } }, '@/lib/supabase': { supabaseAdmin: { from: forbidden } }, '@/lib/commerce-db': { commerceTable: forbidden }, '@/lib/checkout-contract': contract, '@/lib/checkout-server': { razorpayRequest: forbidden } };
+  const deps = { '@/lib/catalog-mode': catalogMode(env), 'next/server': { NextResponse: { json: (body, init = {}) => ({ body, status: init.status ?? 200 }) } }, '@/lib/supabase': { supabaseAdmin: { from: forbidden } }, '@/lib/commerce-db': { commerceTable: forbidden }, '@/lib/checkout-contract': contract, '@/lib/checkout-server': { razorpayRequest: forbidden } };
   new vm.Script(source).runInContext(vm.createContext({ module, exports: module.exports, process: { env }, crypto, require: id => deps[id] }));
   return module.exports.POST;
 }
@@ -147,4 +148,20 @@ test('create-order rejects unserved states, missing terms and legacy free-text a
   assert.equal(legacy.status, 400); assert.match(legacy.body.error, /delivery address/);
   const catalogOnly = await createOrderRoute({ ...env, COMMERCE_CATALOG_ONLY: 'true' })(post(base));
   assert.equal(catalogOnly.status, 503); assert.match(catalogOnly.body.error, /Ordering is not open/);
+});
+
+import { isCatalogOnly } from '../../src/lib/catalog-mode.ts';
+import { gstRegistered } from '../../src/lib/checkout-contract.ts';
+test('catalogue-only mode: exactly "true" after trimming enables it; anything else keeps ordering open', () => {
+  for (const value of ['true', ' true', 'true\n', '\ttrue ']) assert.equal(isCatalogOnly({ COMMERCE_CATALOG_ONLY: value }), true, JSON.stringify(value));
+  for (const value of [undefined, '', 'TRUE', 'false', '1', 'yes', 't rue']) assert.equal(isCatalogOnly({ COMMERCE_CATALOG_ONLY: value }), false, JSON.stringify(value));
+});
+test('GST-registered sellers fail closed: unknown product GST rate or missing/invalid seller state blocks checkout', () => {
+  const unrated = { ...product, commerce: { storefronts: ['general'] } };
+  assert.throws(() => buildCheckoutSnapshot(request(), [unrated], null, Date.now(), [], { sellerStateCode: '29', gstRegistered: true }), error => error.status === 409 && /owner must set its GST rate/.test(error.message));
+  assert.equal(buildCheckoutSnapshot(request(), [unrated], null, Date.now(), [], { sellerStateCode: '29', gstRegistered: false }).lines[0].gst_rate_bps, null);
+  assert.equal(gstRegistered({ GST_REGISTERED: ' true ' }), true); assert.equal(gstRegistered({ GST_REGISTERED: 'yes' }), false);
+  for (const env of [{ GST_REGISTERED: 'true' }, { GST_REGISTERED: 'true', SELLER_STATE_CODE: ' ' }, { GST_REGISTERED: 'true', SELLER_STATE_CODE: '99' }]) assert.throws(() => sellerStateCode(env), /SELLER_STATE_CODE/, JSON.stringify(env));
+  assert.equal(sellerStateCode({ GST_REGISTERED: 'true', SELLER_STATE_CODE: '32' }), '32');
+  assert.equal(sellerStateCode({ GST_REGISTERED: 'false' }), '29');
 });

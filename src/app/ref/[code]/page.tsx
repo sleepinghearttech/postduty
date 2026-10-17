@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import type { Product, Coupon } from "@/lib/types";
 import Link from "next/link";
 import ReferralBanner from "./ReferralBanner";
+import { isCatalogOnly } from '@/lib/catalog-mode';
 
 type PageProps = {
   params: Promise<{ code: string }>;
@@ -14,7 +15,7 @@ export default async function ReferralPage({ params }: PageProps) {
   const { code } = await params;
 
   // Catalogue-only mode: no checkout, so don't advertise discounts.
-  if (process.env.COMMERCE_CATALOG_ONLY === "true") {
+  if (isCatalogOnly()) {
     redirect("/store");
   }
 

@@ -3,11 +3,12 @@ import {test} from 'node:test';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { catalogMode } from './helpers/catalog-mode.mjs';
 function route(file,env){
  const module={exports:{}};
  const source=ts.transpileModule(readFileSync(new URL(file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  const forbidden=()=>{throw Error('Database or payment access must not occur');};
- new vm.Script(source).runInContext(vm.createContext({module,exports:module.exports,process:{env},require:id=>id==='next/server'?{NextResponse:{json:(body,init)=>({body,...init})}}:id==='@/lib/supabase'?{supabaseAdmin:{from:forbidden}}:{},fetch:forbidden}));
+ new vm.Script(source).runInContext(vm.createContext({module,exports:module.exports,process:{env},require:id=>id==='@/lib/catalog-mode'?catalogMode(env):id==='next/server'?{NextResponse:{json:(body,init)=>({body,...init})}}:id==='@/lib/supabase'?{supabaseAdmin:{from:forbidden}}:{},fetch:forbidden}));
  return module.exports.POST;
 }
 test('catalog-only order creation rejects before request parsing, persistence or provider access',async()=>{

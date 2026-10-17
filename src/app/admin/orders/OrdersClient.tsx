@@ -135,8 +135,8 @@ function OrderCard({
   }
 
   async function handleStatusChange(newStatus: OrderStatus) {
-    if (newStatus === 'cancelled' && !window.confirm('Cancel this order and return its items to stock? This does not refund the payment.')) return
-    if (newStatus === 'refunded' && !window.confirm('Record this order as refunded? Make the refund in the payment provider dashboard first; this only records it.')) return
+    if (newStatus === 'cancelled' && !window.confirm('Cancel this order, return its items to stock and release any coupon use? This does not refund the payment.')) return
+    if (newStatus === 'refunded' && !window.confirm('Record this order as refunded? Make the refund in the payment provider dashboard first; this only records it. Items not yet shipped return to stock and any coupon use is released.')) return
     setSaving(true)
     const res = await fetch('/api/admin/update-order', {
       method: 'POST',

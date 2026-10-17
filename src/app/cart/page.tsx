@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { parseAllowedStates, servedStates, SINGLE_ITEM_SHIPPING_PAISE } from "@/lib/checkout-contract";
+import { gstRegistered, parseAllowedStates, servedStates, SINGLE_ITEM_SHIPPING_PAISE } from "@/lib/checkout-contract";
 import CartClient from "./CartClient";
 
 // Delivery and tax display read runtime configuration on every request.
@@ -13,7 +13,7 @@ export default function CartPage() {
         states={servedStates(allowed).map(state => ({ ...state }))}
         allStatesServed={allowed === null}
         singleItemShipping={SINGLE_ITEM_SHIPPING_PAISE}
-        gstRegistered={process.env.GST_REGISTERED === "true"}
+        gstRegistered={gstRegistered(process.env)}
       />
     </Suspense>
   );

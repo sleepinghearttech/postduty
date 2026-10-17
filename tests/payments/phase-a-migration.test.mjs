@@ -4,10 +4,9 @@ import {readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 // Runs the PREPARED checkout phase A migration against disposable local Postgres (PGlite); never contacts any real database.
 const {PGlite}=await import(process.env.PGLITE_MODULE ? pathToFileURL(process.env.PGLITE_MODULE).href : '@electric-sql/pglite');
-const migration=await readFile(new URL('../../supabase/commerce/checkout-phase-a.prepared.sql',import.meta.url),'utf8');
-const marker='-- PREVIEW SECTION (public.preview_*)';
-const productionSection=migration.slice(migration.indexOf('-- PRODUCTION SECTION (public.*)'),migration.indexOf(marker));
-const previewSection=migration.slice(migration.indexOf(marker));
+// Production and preview are separate files so they cannot be pasted together by accident.
+const productionSection=await readFile(new URL('../../supabase/commerce/checkout-phase-a.production.sql',import.meta.url),'utf8');
+const previewSection=await readFile(new URL('../../supabase/commerce/checkout-phase-a.preview.sql',import.meta.url),'utf8');
 const db=new PGlite();
 await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
 CREATE SCHEMA storage; CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
@@ -95,10 +94,49 @@ test('anonymous role cannot cancel orders',async()=>{
  await assert.rejects(db.query(`SELECT preview_cancel_paid_order('30000000-0000-4000-8000-000000000001')`),/permission denied/);
  await db.exec('RESET ROLE');
 });
-test('production and preview sections are identical apart from the preview_ prefix and the preview-only live-payment guard',()=>{
- const normalize=s=>s.split('\n').filter(line=>!line.startsWith('-- ')&&!line.includes('preview_rejects_live_payment')).join('\n').replace(/preview_/g,'').trim();
+const code=s=>s.replace(/\r/g,'').split('\n').filter(line=>!line.startsWith('--')).join('\n');
+test('production and preview files are identical apart from the preview_ prefix and the preview-only live-payment guard',()=>{
+ const normalize=s=>code(s).split('\n').filter(line=>!line.includes('preview_rejects_live_payment')).join('\n').replace(/preview_/g,'').trim();
  assert.equal(normalize(previewSection),normalize(productionSection));
- assert.match(productionSection,/catalog_only/);assert.doesNotMatch(productionSection,/preview_/);
+ assert.match(code(productionSection),/catalog_only/);assert.doesNotMatch(code(productionSection),/preview_/);
  assert.match(previewSection,/preview_rejects_live_payment/);
+ assert.match(productionSection,/PRODUCTION ONLY/);assert.match(previewSection,/PREVIEW ONLY/);
+ assert.equal((code(productionSection).match(/^BEGIN;$/gm)??[]).length,1);assert.equal((code(previewSection).match(/^BEGIN;$/gm)??[]).length,1);
+});
+test('cancel and refund-before-shipment restock and release the coupon use (never below zero)',async()=>{
+ await db.query("INSERT INTO preview_coupons(code,max_uses,times_used,discount_value) VALUES('PHASEA',5,1,10)");
+ const f=await fixture({quantity:2});const {order_id}=await finalize(f);
+ await db.query("UPDATE preview_orders SET coupon_code='PHASEA' WHERE id=$1",[order_id]);
+ const refunded=(await db.query('SELECT preview_refund_order($1) AS r',[order_id])).rows[0].r;
+ assert.equal(refunded.status,'refunded');assert.ok(refunded.refunded_at);
+ assert.equal((await db.query('SELECT stock FROM preview_products WHERE id=$1',[f.product])).rows[0].stock,5);
+ assert.equal((await db.query("SELECT times_used FROM preview_coupons WHERE code='PHASEA'")).rows[0].times_used,0);
+ const g=await fixture();const second=await finalize(g);
+ await db.query("UPDATE preview_orders SET coupon_code='PHASEA' WHERE id=$1",[second.order_id]);
+ await cancel(second.order_id); // already 0: stays 0
+ assert.equal((await db.query("SELECT times_used FROM preview_coupons WHERE code='PHASEA'")).rows[0].times_used,0);
+ assert.equal((await db.query("SELECT count(*)::int AS n FROM preview_audit_events WHERE action='order.refunded' AND entity_id=$1",[order_id])).rows[0].n,1);
+});
+test('refund after shipment records the refund only; stock is not returned',async()=>{
+ const f=await fixture({quantity:2});const {order_id}=await finalize(f);
+ await db.query("UPDATE preview_orders SET status='shipped' WHERE id=$1",[order_id]);
+ assert.equal((await db.query('SELECT preview_refund_order($1) AS r',[order_id])).rows[0].r.status,'refunded');
+ assert.equal((await db.query('SELECT stock FROM preview_products WHERE id=$1',[f.product])).rows[0].stock,3);
+ await assert.rejects(db.query('SELECT preview_refund_order($1)',[order_id]),/invalid_status_transition/);
+});
+test('orders with a settled creator line cannot be cancelled or refunded; nothing changes',async()=>{
+ // Simulates the phase B column; the functions read it without depending on phase B being applied.
+ await db.exec('ALTER TABLE preview_order_items ADD COLUMN IF NOT EXISTS settlement_id uuid');
+ const runs=[['paid',id=>cancel(id)],['paid',id=>db.query('SELECT preview_refund_order($1)',[id])],['delivered',id=>db.query('SELECT preview_refund_order($1)',[id])]];
+ for(const [status,run] of runs){
+  const f=await fixture({quantity:2});const {order_id}=await finalize(f);
+  await db.query('UPDATE preview_orders SET status=$1 WHERE id=$2',[status,order_id]);
+  await db.query('UPDATE preview_order_items SET settlement_id=gen_random_uuid() WHERE order_id=$1',[order_id]);
+  await assert.rejects(run(order_id),/settled_lines_require_clawback/);
+  const order=(await db.query('SELECT status,cancelled_at,refunded_at FROM preview_orders WHERE id=$1',[order_id])).rows[0];
+  assert.deepEqual(order,{status,cancelled_at:null,refunded_at:null});
+  assert.equal((await db.query('SELECT stock FROM preview_products WHERE id=$1',[f.product])).rows[0].stock,3);
+ }
+ await db.exec('ALTER TABLE preview_order_items DROP COLUMN settlement_id');
 });
 test.after(async()=>db.close());

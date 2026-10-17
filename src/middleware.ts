@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isCatalogOnly } from '@/lib/catalog-mode';
 
 async function ownerSession(request: NextRequest): Promise<boolean> {
  const secret=process.env.ADMIN_SECRET;
@@ -14,7 +15,7 @@ async function ownerSession(request: NextRequest): Promise<boolean> {
 }
 export async function middleware(request:NextRequest) {
  const {pathname}=request.nextUrl;
- if(process.env.COMMERCE_CATALOG_ONLY==='true' && pathname==='/cart') return NextResponse.redirect(new URL('/store',request.url));
+ if(isCatalogOnly() && pathname==='/cart') return NextResponse.redirect(new URL('/store',request.url));
  // This switch is set only on the isolated commerce preview Worker.
  // The production Worker keeps its existing routing and authentication behaviour.
  const restrictedPreview=process.env.COMMERCE_SANDBOX==='true' && process.env.COMMERCE_PREVIEW_ACCESS==='owner';

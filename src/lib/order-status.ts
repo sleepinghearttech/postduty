@@ -27,15 +27,19 @@ export function canTransition(from: string, to: string): boolean {
 
 const hasText = (value: unknown) => typeof value === 'string' && value.trim().length > 0;
 
+export const CLAWBACK_REQUIRED = 'A creator settlement already includes items from this order. Settled lines are frozen: arrange a clawback with the creator first. Nothing was changed.';
+
 export type OrderUpdatePlan =
   | { kind: 'cancel' }
+  /** Refund recorded in one transaction; restocks (and returns the coupon use) only when not yet shipped. */
+  | { kind: 'refund'; restock: boolean }
   | { kind: 'update'; updates: Record<string, unknown>; notifyShipped: boolean; firstTracking: boolean };
 
 /**
  * Pure planning for /api/admin/update-order. The shipped notification is sent exactly once:
  * when a tracking number is first saved on a shipped order (marking shipped alone sends nothing).
  */
-export function planOrderUpdate(current: { status: string; tracking_number: string | null }, body: unknown, now = new Date()): OrderUpdatePlan {
+export function planOrderUpdate(current: { status: string; tracking_number: string | null }, body: unknown, now = new Date(), settledLines = false): OrderUpdatePlan {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new OrderUpdateError('Invalid request.');
   const input = body as Record<string, unknown>;
   if (input.status !== undefined && !isOrderStatus(input.status)) throw new OrderUpdateError('Unknown order status.');
@@ -51,7 +55,13 @@ export function planOrderUpdate(current: { status: string; tracking_number: stri
   const changesStatus = nextStatus !== undefined && nextStatus !== current.status;
   if (changesStatus && nextStatus === 'cancelled') {
     if (tracking !== undefined) throw new OrderUpdateError('A cancelled order cannot have tracking.');
+    if (settledLines) throw new OrderUpdateError(CLAWBACK_REQUIRED, 409);
     return { kind: 'cancel' };
+  }
+  if (changesStatus && nextStatus === 'refunded') {
+    if (tracking !== undefined) throw new OrderUpdateError('Save tracking separately from a refund.');
+    if (settledLines) throw new OrderUpdateError(CLAWBACK_REQUIRED, 409);
+    return { kind: 'refund', restock: current.status === 'paid' };
   }
   const finalStatus = changesStatus ? nextStatus : current.status;
   if (tracking !== undefined && !['shipped', 'delivered'].includes(finalStatus)) throw new OrderUpdateError('Tracking can be saved once the order is shipped.');
@@ -59,7 +69,6 @@ export function planOrderUpdate(current: { status: string; tracking_number: stri
   if (changesStatus) {
     updates.status = nextStatus;
     if (nextStatus === 'delivered') updates.delivered_at = now.toISOString();
-    if (nextStatus === 'refunded') updates.refunded_at = now.toISOString();
   }
   if (tracking !== undefined && tracking !== current.tracking_number) updates.tracking_number = tracking;
   if (!Object.keys(updates).length) throw new OrderUpdateError('Nothing to update');
