@@ -45,7 +45,7 @@ export function validateCommerce(value: unknown): ProductCommerce {
     if (storefronts.some(x => x !== 'general' && x !== 'christmas')) return bad('Select General store, Christmas, or both.');
     result.storefronts = storefronts as ProductCommerce['storefronts'];
   }
-  for (const key of ['made_to_order','featured','archived'] as const) if (own(value,key)) result[key] = boolean(value[key],key);
+  for (const key of ['made_to_order','featured','archived','catalog_only'] as const) if (own(value,key)) result[key] = boolean(value[key],key);
   for (const key of ['preparation_days','capacity','low_stock_threshold','weight_grams'] as const) if (own(value,key)) result[key] = integer(value[key],key,1000000);
   if (own(value,'media')) {
     if (!Array.isArray(value.media) || value.media.length > 12) return bad('A product supports up to 12 media files.');
@@ -137,7 +137,7 @@ export function validatePublication(product: Pick<OwnerProduct,'name'|'price'|'i
   if (!product.image_url && !product.commerce?.media?.some(m => m.type === 'image')) return bad('Add a product photo before publishing.');
   if (!product.commerce?.storefronts?.length) return bad('Select at least one storefront before publishing.');
   if (product.commerce.archived) return bad('An archived product cannot be published.');
-  if (!['owned','commercial_license','permission_verified','not_required'].includes(String(product.operations?.license_status))) return bad('Confirm commercial design rights before publishing.');
+  if (!(product.commerce.catalog_only === true && product.operations?.catalog_display_approved === true) && !['owned','commercial_license','permission_verified','not_required'].includes(String(product.operations?.license_status))) return bad('Confirm commercial design rights before publishing.');
   if (product.commerce.variants?.some(variant => variant.price <= 0)) return bad('Every variant needs an approved selling price above zero.');
 }
 export function validateMediaFile(type: string, bytes: Uint8Array): { type: 'image'|'video'; extension: string } {

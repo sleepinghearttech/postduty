@@ -43,6 +43,7 @@ export default function RootLayout({
       <body className={`${jakarta.variable} ${fraunces.variable} font-sans antialiased`}>
         <CartProvider>
           {process.env.COMMERCE_SANDBOX === "true" && <div role="note" style={{background:"#243e32",color:"#fff7df",padding:"8px 16px",textAlign:"center",fontSize:12}}>Owner preview · fictional test products · no real orders or payments</div>}
+          {process.env.COMMERCE_CATALOG_ONLY === "true" && <div role="note" style={{background:"#243e32",color:"#fff7df",padding:"8px 16px",textAlign:"center",fontSize:12}}>Explore the PostDuty collection · Ordering opens soon</div>}
           <SiteShell>{children}</SiteShell>
         </CartProvider>
       </body>

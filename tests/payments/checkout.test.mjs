@@ -22,7 +22,7 @@ test('aggregates repeated lines and variants against canonical shared stock',()=
  assert.equal(s.totalAmount,30000); assert.equal(s.lines[0].variant_id,'red');
 });
 test('drafts, archived products and wrong storefront assignments cannot be purchased',()=>{
- for(const p of [{...product,is_active:false},{...product,commerce:{archived:true}},{...product,commerce:{storefronts:['general']}}]) assert.throws(()=>buildCheckoutSnapshot(request(),[p],null),/unavailable/);
+ for(const p of [{...product,commerce:{...product.commerce,catalog_only:true}},{...product,is_active:false},{...product,commerce:{archived:true}},{...product,commerce:{storefronts:['general']}}]) assert.throws(()=>buildCheckoutSnapshot(request(),[p],null),/unavailable/);
 });
 test('legacy products default to general storefront and retain single-product input',()=>{
  const p={...product,commerce:undefined};

@@ -14,6 +14,7 @@ async function ownerSession(request: NextRequest): Promise<boolean> {
 }
 export async function middleware(request:NextRequest) {
  const {pathname}=request.nextUrl;
+ if(process.env.COMMERCE_CATALOG_ONLY==='true' && pathname==='/cart') return NextResponse.redirect(new URL('/store',request.url));
  // This switch is set only on the isolated commerce preview Worker.
  // The production Worker keeps its existing routing and authentication behaviour.
  const restrictedPreview=process.env.COMMERCE_SANDBOX==='true' && process.env.COMMERCE_PREVIEW_ACCESS==='owner';
@@ -29,6 +30,10 @@ export async function middleware(request:NextRequest) {
   return response;
  }
  const host=(request.headers.get('host')??'').split(':')[0].toLowerCase();
+ if(process.env.COMMERCE_SANDBOX!=='true') {
+  const target=pathname==='/christmas' && host!=='christmas.postduty.in' ? 'christmas.postduty.in' : pathname==='/store' && host!=='store.postduty.in' ? 'store.postduty.in' : null;
+  if(target && ['postduty.in','store.postduty.in','christmas.postduty.in'].includes(host)){const url=request.nextUrl.clone();url.hostname=target;return NextResponse.redirect(url);}
+ }
  if(pathname==='/') {
   const target=host==='store.postduty.in'?'/store':host==='christmas.postduty.in'?'/christmas':null;
   if(target){const url=request.nextUrl.clone();url.pathname=target;return NextResponse.redirect(url);}

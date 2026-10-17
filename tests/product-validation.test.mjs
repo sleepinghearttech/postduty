@@ -28,6 +28,13 @@ test('variants require unique IDs, integer stock and exact integer paise prices'
   assert.throws(()=>v.validateCommerce({variants:[{...variant,stock:-1}]}));
   assert.throws(()=>v.validateCommerce({storefronts:['third']}));
 });
+test('catalogue display approval never grants commercial rights or survives removing catalog-only restriction',()=>{
+ const p={name:'Approved display',price:25000,image_url:'https://example.com/clip.jpg',commerce:{storefronts:['general'],catalog_only:true},operations:{license_status:'unverified',catalog_display_approved:true}};
+ assert.doesNotThrow(()=>v.validatePublication(p));
+ assert.throws(()=>v.validatePublication({...p,commerce:{...p.commerce,catalog_only:false}}));
+ assert.throws(()=>v.validatePublication({...p,operations:{license_status:'unverified'}}));
+ assert.throws(()=>v.validatePublication({...p,price:0}));
+});
 test('unsafe media schemes and active upload formats cannot pass', () => {
   for (const url of ['javascript:alert(1)','data:image/svg+xml,<svg/>','//evil.test/a.jpg','http://example.com/a.jpg','/../private','https://user:pass@example.com/a.jpg']) assert.throws(()=>v.safeMediaUrl(url));
   assert.equal(v.safeMediaUrl('https://example.com/a.jpg'),'https://example.com/a.jpg');

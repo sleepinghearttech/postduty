@@ -5,6 +5,7 @@ import { CheckoutError, buildCheckoutSnapshot, parseCheckoutRequest, paymentConf
 import { razorpayRequest } from "@/lib/checkout-server";
 
 export async function POST(request: NextRequest) {
+  if (process.env.COMMERCE_CATALOG_ONLY === "true") return NextResponse.json({error:"The catalogue is open for browsing. Ordering is not open yet."},{status:503,headers:{"Cache-Control":"no-store"}});
   try {
     if (Number(request.headers.get("content-length") ?? 0) > 40_000) throw new CheckoutError("Request is too large.",413);
     const raw = await request.text();

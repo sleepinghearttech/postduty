@@ -105,7 +105,7 @@ BEGIN
   PERFORM id FROM public.products WHERE id IN (SELECT (value->>'product_id')::uuid FROM jsonb_array_elements(v_intent.items)) ORDER BY id FOR UPDATE;
   FOR v_line IN SELECT (value->>'product_id')::uuid AS product_id,SUM((value->>'quantity')::integer)::integer AS quantity FROM jsonb_array_elements(v_intent.items) GROUP BY 1 LOOP
     SELECT * INTO v_product FROM public.products WHERE id=v_line.product_id;
-    IF NOT FOUND OR v_product.is_active IS NOT TRUE OR COALESCE((v_product.commerce->>'archived')::boolean,false) OR v_product.stock IS NULL OR v_product.stock<v_line.quantity THEN v_problem:='inventory_unavailable'; EXIT; END IF;
+    IF NOT FOUND OR v_product.is_active IS NOT TRUE OR COALESCE((v_product.commerce->>'archived')::boolean,false) OR COALESCE((v_product.commerce->>'catalog_only')::boolean,false) OR v_product.stock IS NULL OR v_product.stock<v_line.quantity THEN v_problem:='inventory_unavailable'; EXIT; END IF;
   END LOOP;
   FOR v_line IN SELECT (value->>'product_id')::uuid AS product_id,value->>'variant_id' AS variant_id,SUM((value->>'quantity')::integer)::integer AS quantity FROM jsonb_array_elements(v_intent.items) WHERE value->>'variant_id' IS NOT NULL GROUP BY 1,2 LOOP
     SELECT * INTO v_product FROM public.products WHERE id=v_line.product_id;

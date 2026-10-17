@@ -130,7 +130,7 @@ BEGIN
   IF (p_product->>'price')::integer<=0 OR COALESCE((editor->>'archived')::boolean,false) THEN RAISE EXCEPTION 'Product not publishable'; END IF;
   IF jsonb_typeof(editor->'storefronts') IS DISTINCT FROM 'array' OR jsonb_array_length(editor->'storefronts') NOT BETWEEN 1 AND 2 THEN RAISE EXCEPTION 'Storefront required'; END IF;
   IF EXISTS(SELECT 1 FROM jsonb_array_elements_text(editor->'storefronts') value WHERE value NOT IN ('general','christmas')) THEN RAISE EXCEPTION 'Invalid storefront'; END IF;
-  IF COALESCE(p_operations->>'license_status','unverified') NOT IN ('owned','commercial_license','permission_verified','not_required') THEN RAISE EXCEPTION 'Commercial rights required'; END IF;
+  IF NOT (COALESCE((editor->>'catalog_only')::boolean,false) AND COALESCE((p_operations->>'catalog_display_approved')::boolean,false)) AND COALESCE(p_operations->>'license_status','unverified') NOT IN ('owned','commercial_license','permission_verified','not_required') THEN RAISE EXCEPTION 'Commercial rights required'; END IF;
   IF NULLIF(p_product->>'image_url','') IS NULL THEN RAISE EXCEPTION 'Photo required'; END IF;
  END IF;
  IF p_action IN ('create','duplicate') THEN

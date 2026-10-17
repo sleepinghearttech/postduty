@@ -8,7 +8,7 @@ export type StoreProduct = Product & {
     media?: {url:string;type:'image'|'video';alt:string;attribution?:string}[];
     variants?: {id:string;name:string;sku?:string;price:number;stock:number}[];
     personalization?: {enabled:boolean;label:string;max_length:number;required:boolean};
-    made_to_order?:boolean; preparation_days?:number; capacity?:number; featured?:boolean; archived?:boolean;
+    made_to_order?:boolean; preparation_days?:number; capacity?:number; featured?:boolean; archived?:boolean; catalog_only?:boolean;
     seo_title?:string;seo_description?:string;faqs?:{question:string;answer:string}[];
     dimensions?:string;weight_grams?:number;shipping_method?:string;
   };

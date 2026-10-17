@@ -44,7 +44,7 @@ export default async function ReferralPage({ params }: PageProps) {
   // Fetch active products for the grid
   const { data: products } = await supabase
     .from(commerceTable('products'))
-    .select("*")
+    .select("id,name,slug,description,price,image_url,stock,is_active,created_at,commerce,creator_id")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
 

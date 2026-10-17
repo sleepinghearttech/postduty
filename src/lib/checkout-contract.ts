@@ -9,7 +9,7 @@ export type CheckoutLine = { product_id: string; product_name: string; quantity:
 export type CheckoutCustomer = { name: string; email: string; phone: string; address: string };
 export type CheckoutProduct = {
   id: string; name: string; price: number; stock: number; is_active: boolean; creator_id?: string | null;
-  commerce?: { storefronts?: Storefront[]; archived?: boolean; made_to_order?:boolean; variants?: {id:string;name:string;price:number;stock:number}[]; personalization?: {enabled:boolean;required:boolean;max_length:number}; } | null;
+  commerce?: { storefronts?: Storefront[]; archived?: boolean; catalog_only?:boolean; made_to_order?:boolean; variants?: {id:string;name:string;price:number;stock:number}[]; personalization?: {enabled:boolean;required:boolean;max_length:number}; } | null;
 };
 export type CheckoutCreator = { id:string; status:string; commission_bps:number };
 export type CheckoutCoupon = { code:string; is_active:boolean; expires_at:string|null; max_uses:number|null; times_used:number; min_order:number; discount_type:string; discount_value:number };
@@ -45,7 +45,7 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
   const demand = new Map<string,number>();
   const lines: CheckoutLine[] = request.items.map(item => {
     const p = products.find(p => p.id === item.productId);
-    if (!p || !p.is_active || p.commerce?.archived || !(p.commerce?.storefronts ?? ["general"]).includes(request.storefront)) throw new CheckoutError("A cart product is unavailable on this storefront.",409);
+    if (!p || !p.is_active || p.commerce?.archived || p.commerce?.catalog_only || !(p.commerce?.storefronts ?? ["general"]).includes(request.storefront)) throw new CheckoutError("A cart product is unavailable on this storefront.",409);
     const creator = p.creator_id ? creators.find(c => c.id === p.creator_id) : null;
     if (p.creator_id && (!creator || creator.status !== "active" || !Number.isSafeInteger(creator.commission_bps) || creator.commission_bps < 0 || creator.commission_bps > 10000)) throw new CheckoutError("A creator product is temporarily unavailable pending owner review.",409);
     const variants = p.commerce?.variants ?? [];

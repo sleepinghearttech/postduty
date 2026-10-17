@@ -3,9 +3,10 @@ import styles from './refinement.module.css';
 
 export type StorefrontDesign = 'classic' | 'refined';
 
-/** This visual experiment is confined to the test preview until owner acceptance. */
+/** Owner-approved refined style; ?design=classic remains a reversible fallback. */
 export function storefrontDesign(sandbox: boolean, requested?: string | string[]): StorefrontDesign {
-  return sandbox && requested !== 'classic' ? 'refined' : 'classic';
+  void sandbox;
+  return requested === 'classic' ? 'classic' : 'refined';
 }
 
 export function StorefrontDesignSwitch({ path, design }: { path: '/christmas' | '/store'; design: StorefrontDesign }) {

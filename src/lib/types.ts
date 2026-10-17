@@ -7,7 +7,7 @@ export type ProductCommerce = {
   variants?: ProductVariant[];
   personalization?: { enabled: boolean; label: string; max_length: number; required: boolean };
   made_to_order?: boolean; preparation_days?: number; capacity?: number; low_stock_threshold?: number;
-  featured?: boolean; archived?: boolean; seo_title?: string; seo_description?: string;
+  featured?: boolean; archived?: boolean; catalog_only?: boolean; seo_title?: string; seo_description?: string;
   faqs?: { question: string; answer: string }[]; dimensions?: string; weight_grams?: number; shipping_method?: string;
 };
 
