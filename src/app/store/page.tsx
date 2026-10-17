@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import type { Product } from "@/lib/types";
-import { isHiddenProduct } from "@/lib/hidden-products";
+import { isHiddenProduct, PUBLIC_PRODUCT_COLUMNS } from "@/lib/hidden-products";
 
 // Render per request so product publish/unpublish changes appear without a rebuild.
 export const dynamic = "force-dynamic";
@@ -36,7 +36,7 @@ function ProductImagePlaceholder() {
 export default async function HomePage() {
   const { data: allProducts, error } = await supabase
     .from("products")
-    .select("*")
+    .select(PUBLIC_PRODUCT_COLUMNS)
     .eq("is_active", true)
     .order("created_at", { ascending: false });
   const products = allProducts?.filter((product: Product) => !isHiddenProduct(product.slug));

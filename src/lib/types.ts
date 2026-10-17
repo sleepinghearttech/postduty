@@ -7,7 +7,7 @@ export type Product = {
   image_url: string | null;
   stock: number;
   is_active: boolean;
-  customisation_note: string | null;
+  customisation_note?: string | null; // private supplier note; not read by the public storefront
   created_at: string;
 };
 

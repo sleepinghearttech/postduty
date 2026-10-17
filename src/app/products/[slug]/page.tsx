@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import CheckoutForm from "@/components/CheckoutForm";
-import { isHiddenProduct } from "@/lib/hidden-products";
+import { isHiddenProduct, PUBLIC_PRODUCT_COLUMNS } from "@/lib/hidden-products";
 
 function formatPriceAmount(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
@@ -49,7 +49,7 @@ export default async function ProductPage({ params }: Props) {
 
   const { data: product, error } = await supabase
     .from("products")
-    .select("*")
+    .select(PUBLIC_PRODUCT_COLUMNS)
     .eq("slug", slug)
     .eq("is_active", true)
     .single();
