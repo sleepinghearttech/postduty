@@ -23,7 +23,7 @@ export const featuredProjects: readonly FeaturedProject[] = [
     title: "Christmas Atelier",
     description: "Small objects. A little wonder.",
     status: "in-progress",
-    href: "https://christmas.postduty.in/",
+    href: null, // set to https://christmas.postduty.in/ once the custom domain is attached and verified
     featured: true,
   },
   {
