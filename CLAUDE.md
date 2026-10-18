@@ -24,6 +24,13 @@ Never commit these. Set in `.env.local` locally and in Cloudflare dashboard for 
 | `RAZORPAY_KEY_ID` | Runtime (Cloudflare) + .env.local | Razorpay publishable key |
 | `RAZORPAY_KEY_SECRET` | Runtime secret (Cloudflare) + .env.local | Razorpay secret — server only |
 | `ADMIN_SECRET` | Runtime secret (Cloudflare) + .env.local | Admin panel password — server only. **Rotated 2026-07-06** |
+| `ALLOWED_SHIPPING_STATES` | Runtime (Cloudflare) | Optional. Comma-separated GST state codes served (e.g. `29,32`). Empty/unset = all states. A non-empty list with no valid code serves nothing |
+| `SELLER_STATE_CODE` | Runtime (Cloudflare) | Seller GST state code for CGST/SGST vs IGST. Defaults to `29` (Karnataka) only when not GST-registered; required (checkout fails closed) when `GST_REGISTERED` is `true` |
+| `GST_REGISTERED` | Runtime (Cloudflare) | Optional. Exactly `true` shows "Prices include GST" in the cart and makes checkout refuse any product without a GST rate. Tax breakdown is stored on orders either way |
+| `SELLER_LEGAL_NAME`, `SELLER_ADDRESS` | Runtime (Cloudflare) | Seller legal name and address printed on invoices |
+| `SELLER_GSTIN` | Runtime (Cloudflare) | Optional. Valid GSTIN (matching `SELLER_STATE_CODE`) issues tax invoices; unset or invalid issues a bill of supply / receipt |
+| `PAYMENT_FEE_BPS` | Runtime (Cloudflare) | Optional. Payment fee deducted from creator payouts, basis points. Default `236` (2% + 18% GST) |
+| `PLATFORM_FEE_BPS` | Runtime (Cloudflare) | Optional. PostDuty platform fee on creator line value, basis points. Default `0` |
 
 `NEXT_PUBLIC_` vars are baked into the JS bundle at build time. The others are server-side only and must never have the `NEXT_PUBLIC_` prefix.
 

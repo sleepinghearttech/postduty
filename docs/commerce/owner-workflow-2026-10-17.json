@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "run_id": "20261017040632-31c656",
+  "started_at": "2026-10-17T04:06:32.895Z",
+  "completed_at": "2026-10-17T04:06:45.068Z",
+  "status": "passed",
+  "preview_url": "https://postduty-commerce-preview.jijo925.workers.dev",
+  "tests": [
+    {
+      "name": "Version-preview environment and HTML safety markers",
+      "status": "passed"
+    },
+    {
+      "name": "Unauthenticated owner mutations and draft preview are denied",
+      "status": "passed"
+    },
+    {
+      "name": "Owner login issues a secure HttpOnly session",
+      "status": "passed"
+    },
+    {
+      "name": "Cross-origin owner mutation is rejected",
+      "status": "passed"
+    },
+    {
+      "name": "Three photos and a video upload through the actual owner API",
+      "status": "passed"
+    },
+    {
+      "name": "Active SVG and disguised-image uploads are rejected",
+      "status": "passed"
+    },
+    {
+      "name": "Draft creation, persisted pricing and private preview: lantern",
+      "status": "passed"
+    },
+    {
+      "name": "Draft creation, persisted pricing and private preview: crochet",
+      "status": "passed"
+    },
+    {
+      "name": "Draft creation, persisted pricing and private preview: desk",
+      "status": "passed"
+    },
+    {
+      "name": "Owner publishing and storefront assignment: lantern",
+      "status": "passed"
+    },
+    {
+      "name": "Owner publishing and storefront assignment: crochet",
+      "status": "passed"
+    },
+    {
+      "name": "Owner publishing and storefront assignment: desk",
+      "status": "passed"
+    },
+    {
+      "name": "Unpublish hides product immediately and explicit republish restores it",
+      "status": "passed"
+    },
+    {
+      "name": "Duplicate stays draft with zero inventory and can be safely archived",
+      "status": "passed"
+    },
+    {
+      "name": "Invalid stock, variants, fractional quantities and storefronts are rejected before payment",
+      "status": "passed"
+    },
+    {
+      "name": "Real test-provider order uses authoritative variant prices despite tampered client totals",
+      "status": "passed"
+    },
+    {
+      "name": "Forged payment verification cannot manufacture a paid order",
+      "status": "passed"
+    },
+    {
+      "name": "Unpaid provider order leaves canonical stock and variant stock unchanged",
+      "status": "passed"
+    }
+  ],
+  "fixtures": [
+    {
+      "key": "lantern",
+      "id": "a250c122-173d-4d91-949f-29ffa8aff237",
+      "slug": "fictional-preview-lantern-20261017040632-31c656",
+      "name": "Fictional preview Kerala lantern 20261017040632-31c656",
+      "status": "published",
+      "price_paise": 59925,
+      "stock": 7,
+      "storefronts": [
+        "christmas"
+      ],
+      "owner_preview_url": "https://postduty-commerce-preview.jijo925.workers.dev/admin/products/a250c122-173d-4d91-949f-29ffa8aff237/preview",
+      "public_urls": [
+        "https://postduty-commerce-preview.jijo925.workers.dev/products/fictional-preview-lantern-20261017040632-31c656?storefront=christmas"
+      ]
+    },
+    {
+      "key": "crochet",
+      "id": "492e02f7-c101-4b3e-b7b6-6448349ea523",
+      "slug": "fictional-preview-crochet-20261017040632-31c656",
+      "name": "Fictional preview crochet star 20261017040632-31c656",
+      "status": "published",
+      "price_paise": 34950,
+      "stock": 8,
+      "storefronts": [
+        "general",
+        "christmas"
+      ],
+      "owner_preview_url": "https://postduty-commerce-preview.jijo925.workers.dev/admin/products/492e02f7-c101-4b3e-b7b6-6448349ea523/preview",
+      "public_urls": [
+        "https://postduty-commerce-preview.jijo925.workers.dev/products/fictional-preview-crochet-20261017040632-31c656?storefront=general",
+        "https://postduty-commerce-preview.jijo925.workers.dev/products/fictional-preview-crochet-20261017040632-31c656?storefront=christmas"
+      ]
+    },
+    {
+      "key": "desk",
+      "id": "7d9cfa1a-52b6-4c76-bdee-14e8197bdbac",
+      "slug": "fictional-preview-desk-20261017040632-31c656",
+      "name": "Fictional preview healthcare desk gift 20261017040632-31c656",
+      "status": "published",
+      "price_paise": 79900,
+      "stock": 5,
+      "storefronts": [
+        "general"
+      ],
+      "owner_preview_url": "https://postduty-commerce-preview.jijo925.workers.dev/admin/products/7d9cfa1a-52b6-4c76-bdee-14e8197bdbac/preview",
+      "public_urls": [
+        "https://postduty-commerce-preview.jijo925.workers.dev/products/fictional-preview-desk-20261017040632-31c656?storefront=general"
+      ]
+    }
+  ],
+  "uploads": [
+    {
+      "source_path": "/commerce-preview/lantern.webp",
+      "url": "https://vafifcctwqvlrsfwxggh.supabase.co/storage/v1/object/public/commerce-preview-media/8e4f3b40-d945-4dfa-8ff8-24323a583d44.webp",
+      "type": "image",
+      "bytes": 115012
+    },
+    {
+      "source_path": "/commerce-preview/crochet.webp",
+      "url": "https://vafifcctwqvlrsfwxggh.supabase.co/storage/v1/object/public/commerce-preview-media/61e607e9-ab30-4f64-9564-767978cf75b9.webp",
+      "type": "image",
+      "bytes": 232740
+    },
+    {
+      "source_path": "/commerce-preview/desk.webp",
+      "url": "https://vafifcctwqvlrsfwxggh.supabase.co/storage/v1/object/public/commerce-preview-media/d5b1bacf-4511-41ae-8faa-c39029824f74.webp",
+      "type": "image",
+      "bytes": 107444
+    },
+    {
+      "source_path": "/commerce-preview/test-motion.mp4",
+      "url": "https://vafifcctwqvlrsfwxggh.supabase.co/storage/v1/object/public/commerce-preview-media/3e5d28f2-25c7-43e0-8a44-b9bbe4f25ccc.mp4",
+      "type": "video",
+      "bytes": 3732
+    }
+  ],
+  "provider_test_order": {
+    "reference": "order_TopzSjA5k42oQ6",
+    "amount_paise": 164800,
+    "currency": "INR",
+    "test_mode": true,
+    "status": "created_unpaid",
+    "payment_captured": false
+  },
+  "limitations": [
+    "API smoke test, not an Android browser usability test.",
+    "No payment capture, paid order, customer notification or payout is performed.",
+    "Provider order creation does not prove checkout completion or webhook delivery."
+  ],
+  "archived_duplicate": {
+    "id": "3e682f19-1e42-4d57-b0cf-52742c232213",
+    "slug": "fictional-preview-lantern-20261017040632-31c656-cef30f46",
+    "status": "archived",
+    "stock": 0
+  }
+}

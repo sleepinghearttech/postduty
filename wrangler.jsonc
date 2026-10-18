@@ -10,6 +10,12 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "postduty",
 	"vars": { "COMMERCE_SANDBOX": "false", "COMMERCE_CATALOG_ONLY": "true", "ORDER_NOTIFICATIONS_ENABLED": "false" },
+	// Custom domains served by this Worker. clads.postduty.in is a separate project and is not listed here.
+	"routes": [
+		{ "pattern": "postduty.in", "custom_domain": true },
+		{ "pattern": "store.postduty.in", "custom_domain": true },
+		{ "pattern": "christmas.postduty.in", "custom_domain": true }
+	],
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-06-21",
 	"compatibility_flags": [

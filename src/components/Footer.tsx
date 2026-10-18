@@ -16,7 +16,7 @@ export default function Footer() {
           <div>
             <p className="font-serif text-brand text-xl">PostDuty</p>
             <p className="text-ink-400 text-sm mt-1 max-w-xs leading-relaxed">
-              Thoughtful gifts for nurses, doctors, and every healthcare hero across India.
+              Considered objects for healthcare, home and everyday life. Made by PostDuty and independent creators.
             </p>
             <p className="text-ink-400 text-xs mt-3">postdutyswag@gmail.com</p>
           </div>
@@ -38,7 +38,7 @@ export default function Footer() {
             © 2026 PostDuty. Made with care in India.
           </p>
           <p className="text-xs text-ink-400">
-            Payments secured by Razorpay
+            Healthcare · Handmade · Personalised
           </p>
         </div>
       </div>

@@ -1,0 +1,12 @@
+import type { BusinessData } from '@/lib/business/data';
+import { currency } from '@/lib/business/metrics';
+import { Section } from './BusinessUI';
+
+export default function PaymentAttention({data}:{data:BusinessData}) {
+  return <section className="mb-5"><Section title="Payment & notification attention" detail="Unresolved records across all dates and payment modes. Captures without orders are excluded from receipts above.">
+    {!data.attentionAvailable&&<p role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Insufficient data: one or more attention sources are unavailable. Any records below are a partial view; this queue cannot be declared clear.</p>}
+    {data.attentionAvailable&&data.attention.length===0&&<p className="text-sm text-stone-500">No unresolved captures, flagged checkouts or failed/unconfirmed notification attempts are recorded.</p>}
+    {data.attention.length>0&&<details open className="text-sm"><summary className="cursor-pointer font-semibold">{data.attention.length} record{data.attention.length===1?'':'s'} need review</summary><div className="mt-4 grid gap-3 lg:grid-cols-2">{data.attention.map(item=><article key={item.id} className="rounded-xl border border-amber-200 bg-amber-50/40 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">{item.title}</h3><span className={`rounded-full px-2 py-1 text-xs font-bold ${item.mode==='live'?'bg-amber-200 text-amber-950':item.mode==='test'?'bg-stone-200 text-stone-700':'bg-red-100 text-red-800'}`}>{item.mode==='unknown'?'Mode unknown':`${item.mode.toUpperCase()} mode`}</span></div>{item.amount!==null&&<p className="mt-2 text-lg font-semibold">{item.currency==='INR'?currency(item.amount):'Amount needs currency review'}</p>}<p className="mt-2 text-xs text-stone-600">{item.status.replaceAll('_',' ')} · {new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kolkata'}).format(new Date(item.at))} IST</p><p className="mt-2 break-all text-xs text-stone-500">Reference: {item.reference}</p><p className="mt-3 text-sm">{item.detail}</p><p className="mt-2 text-xs leading-relaxed text-stone-600"><strong>Next:</strong> {item.action}</p></article>)}</div></details>}
+    <p className="mt-4 text-xs text-stone-500">Read-only attention queue. No payment, refund, order correction, payout or message retry runs from this view.</p>
+  </Section></section>;
+}

@@ -20,6 +20,7 @@ jobs:
       RAZORPAY_WEBHOOK_SECRET: ci-placeholder-webhook
       ADMIN_SECRET: ci-placeholder-admin
       ORDER_NOTIFICATIONS_ENABLED: "false"
+      COMMERCE_SANDBOX: "true"
       NEXT_PUBLIC_BASE_URL: https://ci.example.invalid
     steps:
       - name: Check out repository

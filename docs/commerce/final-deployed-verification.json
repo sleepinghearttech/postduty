@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-16T10:26:13.409Z",
+  "status": "passed",
+  "preview_url": "https://2cb6d725-postduty.jijo925.workers.dev",
+  "fixtures": {
+    "order_id": "ebfcb382-af42-41a3-b9db-351917f65797",
+    "product_id": "6589c5c8-e543-453e-81ec-f8d309bc2a29"
+  },
+  "tests": [
+    {
+      "name": "Version-preview noindex and fictional storefront notices",
+      "status": "passed"
+    },
+    {
+      "name": "Existing verified test fixture and preserved source production baseline",
+      "status": "passed"
+    },
+    {
+      "name": "Unauthenticated owner routes and manual refund API are denied",
+      "status": "passed"
+    },
+    {
+      "name": "Owner session and protected operation routes work",
+      "status": "passed"
+    },
+    {
+      "name": "Two genuine signed callback replays remain idempotent",
+      "status": "passed"
+    },
+    {
+      "name": "Evidence-based analytics and sourced research are accessible",
+      "status": "passed"
+    },
+    {
+      "name": "Manual refund create, approve, stale-version rejection and resolve",
+      "status": "passed"
+    },
+    {
+      "name": "No money, order, stock, catalog or production changes",
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "API verification, not an Android visual usability review.",
+    "Replays a previously captured genuine provider TEST payment; creates no new charge and makes no provider mutations.",
+    "Notification suppression is verified in the application ledger; external delivery systems are not queried.",
+    "The refund case is a fictional manual service record, not evidence of a refund transfer."
+  ],
+  "baseline": {
+    "counts": {
+      "products": 2,
+      "orders": 13,
+      "preview_products": 4,
+      "preview_orders": 1,
+      "preview_order_items": 1,
+      "preview_checkout_payments": 1,
+      "preview_order_cases": 0
+    },
+    "stock": 7,
+    "provider": {
+      "verified": true,
+      "status": "captured",
+      "amount_paise": 34950,
+      "currency": "INR",
+      "amount_refunded_paise": 0
+    }
+  },
+  "payment_replay": {
+    "count": 2,
+    "same_order": true,
+    "unchanged_inventory_and_record_counts": true,
+    "notification_status": "suppressed_test"
+  },
+  "intelligence": {
+    "date_ist": "2026-10-16",
+    "test_paid_orders": 1,
+    "test_revenue_paise": 34950,
+    "research_records": 3
+  },
+  "manual_case": {
+    "id": "2c86a232-8170-4ae7-9161-8b06713cfb2c",
+    "status": "resolved",
+    "amount_paise": 100,
+    "manual_record_only": true
+  },
+  "final": {
+    "counts": {
+      "products": 2,
+      "orders": 13,
+      "preview_products": 4,
+      "preview_orders": 1,
+      "preview_order_items": 1,
+      "preview_checkout_payments": 1,
+      "preview_order_cases": 1
+    },
+    "stock": 7,
+    "provider_amount_refunded_paise": 0,
+    "notifications_suppressed": true,
+    "production_counts_unchanged": true
+  },
+  "completed_at": "2026-10-16T10:26:27.448Z"
+}

@@ -1,0 +1,50 @@
+{
+  "verified_at": "2026-10-16T12:28:25.989Z",
+  "approved_by_owner": true,
+  "production_deployments_unchanged": true,
+  "original_worker_subdomain": {
+    "enabled": true,
+    "previews_enabled": false
+  },
+  "protected_worker_subdomain": {
+    "enabled": true,
+    "previews_enabled": false
+  },
+  "retired": [
+    {
+      "hostname": "commerce-preview-postduty.jijo925.workers.dev",
+      "status": 404,
+      "catalog_served": false
+    },
+    {
+      "hostname": "2cd9f9c0-postduty.jijo925.workers.dev",
+      "status": 404,
+      "catalog_served": false
+    },
+    {
+      "hostname": "2cb6d725-postduty.jijo925.workers.dev",
+      "status": 404,
+      "catalog_served": false
+    },
+    {
+      "hostname": "14141c0a-postduty.jijo925.workers.dev",
+      "status": 404,
+      "catalog_served": false
+    }
+  ],
+  "production": [
+    {
+      "url": "https://postduty.in",
+      "status": 200
+    },
+    {
+      "url": "https://store.postduty.in",
+      "status": 200
+    },
+    {
+      "url": "https://postduty.jijo925.workers.dev",
+      "status": 200
+    }
+  ],
+  "retirement_verified": true
+}

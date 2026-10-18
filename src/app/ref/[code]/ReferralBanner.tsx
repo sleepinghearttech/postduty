@@ -31,7 +31,7 @@ export default function ReferralBanner({
             for <span className="underline decoration-2">{discountLabel}</span> your order
           </p>
           <p className="text-xs text-white/70 mt-1">
-            Discount auto-applied at checkout • Referred by {referrerCode}
+            Code pre-filled in your bag — tap Apply • Referred by {referrerCode}
           </p>
         </div>
       </div>

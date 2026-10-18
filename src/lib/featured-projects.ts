@@ -23,7 +23,7 @@ export const featuredProjects: readonly FeaturedProject[] = [
     title: "Christmas Atelier",
     description: "Small objects. A little wonder.",
     status: "in-progress",
-    href: null, // /christmas remains unpublished; no dead public link.
+    href: "https://christmas.postduty.in/",
     featured: true,
   },
   {

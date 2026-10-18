@@ -1,63 +1,13 @@
-'use client'
-
-import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
-
-export default function AdminLoginPage() {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-
-    const res = await fetch('/api/admin/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    })
-
-    if (res.ok) {
-      router.push('/admin/products')
-    } else {
-      setError('Wrong password. Try again.')
-      setLoading(false)
-    }
-  }
-
-  return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-gray-800 mb-1">PostDuty Admin</h1>
-        <p className="text-sm text-gray-500 mb-6">Enter the admin password to continue.</p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-            autoFocus
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Logging in…' : 'Log in'}
-          </button>
-        </form>
-      </div>
-    </main>
-  )
+'use client';
+import { useEffect,useState,FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
+import { ownerReturnPath } from '@/lib/owner-return-path';
+const auth=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+export default function AdminLoginPage(){
+ const [password,setPassword]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);const [google,setGoogle]=useState(false);const router=useRouter();
+ useEffect(()=>{let active=true;const signedOut=new URLSearchParams(window.location.search).get('signed_out')==='1';if(signedOut)void auth.auth.signOut({scope:'local'});fetch('/api/admin/google-session').then(r=>r.json() as Promise<{enabled:boolean}>).then(data=>{if(active)setGoogle(data.enabled===true);}).catch(()=>{});
+ const {data:{subscription}}=auth.auth.onAuthStateChange(async(event,session)=>{if(!signedOut&&['SIGNED_IN','INITIAL_SESSION','TOKEN_REFRESHED'].includes(event)&&session){const r=await fetch('/api/admin/google-session',{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`}});if(r.ok)router.replace(ownerReturnPath(new URLSearchParams(window.location.search).get('next')));else if(active)setError('This Google account is not authorized for the owner dashboard.');}});return()=>{active=false;subscription.unsubscribe();};},[router]);
+ async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError('');try{const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});if(!r.ok)throw new Error('Sign-in failed. Check your existing admin password.');router.replace(ownerReturnPath(new URLSearchParams(window.location.search).get('next')));router.refresh();}catch(e){setError(e instanceof Error?e.message:'Unable to sign in.');}finally{setBusy(false);}}
+ return <main style={{minHeight:'100svh',background:'#173c2f',display:'grid',placeItems:'center',padding:24}}><section style={{background:'#faf8f0',padding:'40px 28px',borderRadius:24,maxWidth:410,width:'100%'}}><p style={{fontSize:12,letterSpacing:3,color:'#607567'}}>POSTDUTY STUDIO</p><h1 style={{fontSize:30,fontFamily:'serif',margin:'14px 0'}}>Your business, at hand.</h1><p style={{fontSize:14,color:'#657367',lineHeight:1.6,marginBottom:24}}>Manage both stores, products and orders from one private workspace.</p><form onSubmit={submit}><label htmlFor="password" style={{fontSize:13}}>Existing admin password</label><input id="password" type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} style={{display:'block',width:'100%',border:'1px solid #cbd3c7',borderRadius:10,padding:14,margin:'8px 0 16px',fontSize:16}}/><button disabled={busy} style={{background:'#173c2f',color:'white',borderRadius:10,padding:14,width:'100%',minHeight:48}}>{busy?'Signing in…':'Open owner dashboard'}</button></form>{google&&<button onClick={async()=>{const {error}=await auth.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/admin/login?next='+encodeURIComponent(ownerReturnPath(new URLSearchParams(window.location.search).get('next')))}});if(error)setError(error.message);}} style={{width:'100%',padding:14,border:'1px solid #b9c3b4',borderRadius:10,marginTop:12}}>Continue with authorized Google account</button>}{!google&&<p style={{fontSize:12,lineHeight:1.5,color:'#657367',marginTop:18}}>Google owner access awaits configuration. Your existing admin login remains available.</p>}{error&&<p role="alert" style={{color:'#9b2525',fontSize:14,marginTop:12}}>{error}</p>}</section></main>;
 }
