@@ -183,14 +183,16 @@ test('customer invoice API requires the same order ID + checkout phone verificat
 });
 
 // ─── creator profile and pickup ─────────────────────────────────────────────
-test('public creator profile: only owner-approved fields, https photo, story and profession required to publish', () => {
+test('public creator profile: only owner-approved fields and an https photo; publishing needs only the display name', () => {
   assert.equal(PUBLIC_CREATOR_COLUMNS, 'id,display_name,bio,photo_url,profession');
   const profile = validateCreatorProfile({ display_name: ' Fictional Maker ', bio: 'Makes things after night shifts.', profession: 'Staff nurse', photo_url: 'https://example.invalid/p.jpg', profile_published: true, email: 'leak@example.invalid', commission_bps: 0 });
   assert.deepEqual(profile, { display_name: 'Fictional Maker', bio: 'Makes things after night shifts.', photo_url: 'https://example.invalid/p.jpg', profession: 'Staff nurse', profile_published: true });
-  assert.equal(madeByLine(profile), 'Made by Fictional Maker, Staff nurse');
+  // The storefront credit never includes the profession.
+  assert.equal(madeByLine(profile), 'Made by Fictional Maker');
   assert.equal(madeByLine({ display_name: 'Fictional Maker', profession: null }), 'Made by Fictional Maker');
+  assert.deepEqual(validateCreatorProfile({ display_name: 'Fictional Maker', profile_published: true }), { display_name: 'Fictional Maker', bio: '', photo_url: null, profession: null, profile_published: true });
   assert.equal(validateCreatorProfile({ display_name: 'Fictional Maker', profile_published: false }).photo_url, null);
-  for (const patch of [{ photo_url: 'http://example.invalid/p.jpg' }, { photo_url: 'javascript:alert(1)' }, { bio: '<script>' }, { display_name: 'A' }, { profile_published: 'yes' }, { profession: '', profile_published: true }, { profession: 'x'.repeat(81) }])
+  for (const patch of [{ photo_url: 'http://example.invalid/p.jpg' }, { photo_url: 'javascript:alert(1)' }, { bio: '<script>' }, { display_name: 'A' }, { profile_published: 'yes' }, { profession: 'x'.repeat(81) }])
     assert.throws(() => validateCreatorProfile({ display_name: 'Fictional Maker', bio: 'Story', profession: 'Nurse', profile_published: false, ...patch }));
 });
 test('private pickup address: Indian mobile, 6-digit PIN, safe Shiprocket location code', () => {
@@ -202,6 +204,6 @@ test('private pickup address: Indian mobile, 6-digit PIN, safe Shiprocket locati
 test('product page reads creators through the public (anon) client with the restricted column list only', () => {
   const source = readFileSync(new URL('../../src/components/commerce/catalog-data.ts', import.meta.url), 'utf8');
   const fn = source.slice(source.indexOf('export async function getCreatorProfile'));
-  assert.match(fn, /supabase\.from\(commerceTable\('creators'\)\)\.select\(PUBLIC_CREATOR_COLUMNS\)/);
+  assert.match(fn, /supabase\.from\(commerceTable\('creators'\)\)\.select\(STOREFRONT_CREATOR_COLUMNS\)/);
   assert.doesNotMatch(source, /supabaseAdmin/);
 });
