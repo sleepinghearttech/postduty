@@ -29,14 +29,23 @@ export function validateCreatorProfile(body: Record<string, unknown>): CreatorPr
     } catch { return bad('The photo must be an https:// image link.'); }
   }
   if (typeof body.profile_published !== 'boolean') return bad('Choose whether the profile is shown on product pages.');
-  if (body.profile_published && (!profession || !bio)) return bad('Add a profession and a short story before showing the profile.');
+  // Publishing needs only the display name; story and profession are optional.
   return { display_name, bio, photo_url, profession, profile_published: body.profile_published };
 }
 
-/** "Made by <name>, <profession>". */
-export function madeByLine(profile: Pick<PublicCreatorProfile, 'display_name' | 'profession'>): string {
-  return `Made by ${profile.display_name}${profile.profession ? `, ${profile.profession}` : ''}`;
+/** Storefront credit: exactly "Made by <display_name>". Profession is an admin-only field and is never shown. */
+export function madeByLine(profile: Pick<PublicCreatorProfile, 'display_name'>): string {
+  return `Made by ${profile.display_name.trim()}`;
 }
+/** The story is shown under the credit only when it has content. */
+export function creatorStory(profile: Pick<PublicCreatorProfile, 'bio'>): string | null {
+  const story = profile.bio?.trim();
+  return story ? story : null;
+}
+
+/** Columns the storefront reads: profession is deliberately excluded. */
+export const STOREFRONT_CREATOR_COLUMNS = 'id,display_name,bio,photo_url' as const;
+export type StorefrontCreatorProfile = Omit<PublicCreatorProfile, 'profession'>;
 
 export type PickupAddress = { pickup_name: string; phone: string; address: string; pincode: string; shiprocket_location: string | null };
 export function validatePickupAddress(body: Record<string, unknown>): PickupAddress {

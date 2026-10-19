@@ -3,7 +3,7 @@ import { unstable_noStore as noStore } from 'next/cache';
 import { supabase } from '@/lib/supabase';
 import { commerceTable } from '@/lib/commerce-db';
 import type { StoreProduct, Storefront } from './types';
-import { PUBLIC_CREATOR_COLUMNS, type PublicCreatorProfile } from '@/lib/creator-profile';
+import { STOREFRONT_CREATOR_COLUMNS, type StorefrontCreatorProfile } from '@/lib/creator-profile';
 import { comboAvailability } from '@/lib/checkout-contract';
 
 export function belongsToStore(product:StoreProduct, storefront:Storefront) {
@@ -29,11 +29,11 @@ export async function getStoreProduct(slug:string,storefront:Storefront):Promise
  * Public creator profile for a product page. Uses the anon client: the database column grant and policy
  * expose only owner-published profiles of active creators, and only these columns.
  */
-export async function getCreatorProfile(creatorId:string):Promise<PublicCreatorProfile|null> {
+export async function getCreatorProfile(creatorId:string):Promise<StorefrontCreatorProfile|null> {
   noStore();
-  const {data,error}=await supabase.from(commerceTable('creators')).select(PUBLIC_CREATOR_COLUMNS).eq('id',creatorId).maybeSingle();
+  const {data,error}=await supabase.from(commerceTable('creators')).select(STOREFRONT_CREATOR_COLUMNS).eq('id',creatorId).maybeSingle();
   if(error||!data) return null;
-  return data as PublicCreatorProfile;
+  return data as StorefrontCreatorProfile;
 }
 /**
  * A combo's displayed stock is derived from its components (stock ÷ quantity per combo, the scarcest wins).

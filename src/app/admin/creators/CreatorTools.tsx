@@ -16,11 +16,11 @@ const fields = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); 
 export function CreatorProfileForm({ creator, busy, act }: { creator: Creator; busy: boolean; act: Act }) {
   return <form className="mt-3 space-y-3" onSubmit={event => { const values = fields(event); void act({ ...values, action: 'creator_profile', creator_id: creator.id, profile_published: values.profile_published === 'on' }); }}>
     <label className="block text-sm">Display name<input name="display_name" required maxLength={100} defaultValue={creator.display_name} className={`${input} mt-1`} /></label>
-    <label className="block text-sm">Profession<input name="profession" maxLength={80} defaultValue={creator.profession ?? ''} placeholder="e.g. Staff nurse" className={`${input} mt-1`} /></label>
+    <label className="block text-sm">Profession (admin only, never shown on the storefront)<input name="profession" maxLength={80} defaultValue={creator.profession ?? ''} placeholder="e.g. Staff nurse" className={`${input} mt-1`} /></label>
     <label className="block text-sm">Photo (https link)<input name="photo_url" type="url" maxLength={2048} defaultValue={creator.photo_url ?? ''} className={`${input} mt-1`} /></label>
     <label className="block text-sm">Short story<textarea name="bio" rows={3} maxLength={600} defaultValue={creator.bio} className={`${input} mt-1`} /></label>
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="profile_published" defaultChecked={creator.profile_published === true} /> Show “Made by …” on this creator’s product pages</label>
-    <p className="text-xs text-stone-500">Only name, profession, photo and story are ever public. Confirm the creator agrees before showing their profile.</p>
+    <p className="text-xs text-stone-500">Shown as “Made by” plus the display name, with the photo and the story below it when filled in. You can show it before the creator accepts their invitation. Confirm the creator agrees first.</p>
     <button className={button} disabled={busy}>Save profile</button>
   </form>;
 }
