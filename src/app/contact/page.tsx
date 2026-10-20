@@ -35,15 +35,6 @@ export default function ContactPage() {
             </p>
           </div>
 
-          {seller.phone && (
-            <div>
-              <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Phone / WhatsApp</h3>
-              <p className="text-base font-semibold text-stone-800">
-                <a href={`tel:${seller.phone.replace(/[^\d+]/g, "")}`} className="text-brand hover:underline">{seller.phone}</a>
-              </p>
-            </div>
-          )}
-
           <div>
             <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-1">Support hours</h3>
             <p className="text-xs text-stone-500">Monday to Saturday: 10:00 AM – 6:00 PM</p>
@@ -55,6 +46,7 @@ export default function ContactPage() {
               <p className="text-xs text-stone-500 leading-relaxed">
                 PostDuty is a sole proprietorship of <strong>{seller.legalName}</strong>.<br />
                 {seller.address}<br />
+                {seller.phone && <>Phone: {seller.phone} (email preferred)<br /></>}
                 Country of origin of all products: India.
               </p>
             ) : (
@@ -92,7 +84,7 @@ export default function ContactPage() {
             {seller.phone && (
               <div>
                 <p className="text-xs text-stone-400 font-semibold uppercase tracking-wider">Phone</p>
-                <p className="font-semibold text-stone-800">{seller.phone}</p>
+                <p className="text-xs text-stone-500">{seller.phone}</p>
               </div>
             )}
           </div>
