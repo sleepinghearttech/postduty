@@ -44,8 +44,6 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
   const totalQuantity = cart.reduce((sum,item) => sum + item.quantity, 0);
   const [deliveryMethod, setDeliveryMethod] = useState<"standard" | "same_day">("standard");
   const sameDayOffered = Boolean(sameDayPrefixes?.length);
-  // Mirrors the server rule; the server recalculates every amount before payment.
-  const shippingCharge = deliveryMethod === "same_day" ? sameDayShipping : totalQuantity === 1 ? singleItemShipping : 0;
   const browseHref = storefront === "christmas" ? "/christmas" : "/store";
   const [loading, setLoading] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<string | null>(null);
@@ -62,6 +60,10 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
     pincode: "",
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const sameDayPinOk = !form.pincode || /^\d{6}$/.test(form.pincode) === false || Boolean(sameDayPrefixes?.some(p => form.pincode.startsWith(p)));
+  const effectiveDelivery = deliveryMethod === "same_day" && !sameDayPinOk ? "standard" : deliveryMethod;
+  // Mirrors the server rule; the server recalculates every amount before payment.
+  const shippingCharge = effectiveDelivery === "same_day" ? sameDayShipping : totalQuantity === 1 ? singleItemShipping : 0;
 
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
@@ -203,7 +205,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
           storefront,
           customerName: form.name, customerEmail: form.email, customerPhone: form.phone,
           addressLine1: form.addressLine1, addressLine2: form.addressLine2 || undefined, city: form.city, stateCode: form.stateCode, pincode: form.pincode,
-          acceptTerms, deliveryMethod,
+          acceptTerms, deliveryMethod: effectiveDelivery,
           couponCode: couponApplied?.code || undefined,
           isGift,
           giftMessage: isGift ? giftMessage : undefined,
@@ -525,7 +527,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
                 <span>Shipping</span>
                 <span>{shippingCharge > 0 ? `+${formatPrice(shippingCharge)}` : "Free"}</span>
               </div>
-              {deliveryMethod === "standard" && shippingCharge > 0 && <p className="text-[11px] text-stone-400">Shipping is free when your bag has two or more items.</p>}
+              {effectiveDelivery === "standard" && shippingCharge > 0 && <p className="text-[11px] text-stone-400">Shipping is free when your bag has two or more items.</p>}
               <div className="flex items-center justify-between font-bold text-stone-800 text-base">
                 <span>Estimated total</span>
                 <span className="text-brand">{formatPrice(finalTotal)}</span>
@@ -537,11 +539,11 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
               <fieldset className="space-y-2 text-xs text-stone-600">
                 <legend className={labelClass}>Delivery option</legend>
                 <label className="flex items-start gap-2 cursor-pointer">
-                  <input type="radio" name="deliveryMethod" value="standard" checked={deliveryMethod === "standard"} onChange={() => setDeliveryMethod("standard")} className="mt-0.5 accent-brand" />
+                  <input type="radio" name="deliveryMethod" value="standard" checked={effectiveDelivery === "standard"} onChange={() => setDeliveryMethod("standard")} className="mt-0.5 accent-brand" />
                   <span><strong>Standard</strong> · 2–5 working days · {formatPrice(singleItemShipping)} for one item, free for two or more</span>
                 </label>
                 <label className="flex items-start gap-2 cursor-pointer">
-                  <input type="radio" name="deliveryMethod" value="same_day" checked={deliveryMethod === "same_day"} onChange={() => setDeliveryMethod("same_day")} className="mt-0.5 accent-brand" />
+                  <input type="radio" name="deliveryMethod" value="same_day" checked={effectiveDelivery === "same_day"} disabled={!sameDayPinOk} onChange={() => setDeliveryMethod("same_day")} className="mt-0.5 accent-brand" />
                   <span><strong>Same-day</strong> · {formatPrice(sameDayShipping)} · Bengaluru PIN codes starting with {sameDayPrefixes!.join(", ")} only; orders after 2 PM go out the next working day</span>
                 </label>
               </fieldset>

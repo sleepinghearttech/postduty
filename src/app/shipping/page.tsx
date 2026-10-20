@@ -54,7 +54,7 @@ export default function ShippingPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">6. Damaged or Missing Parcels</h2>
           <p>
-            If your parcel arrives damaged or does not arrive, contact us at <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a> within 48 hours of the expected delivery, with a photo of the parcel if it is damaged. We will replace the item or refund you in full, including the delivery charge.
+            If your parcel arrives damaged or does not arrive, contact us at <a href="mailto:postdutyswag@gmail.com" className="text-brand hover:underline">postdutyswag@gmail.com</a> within 7 days of delivery (or of the expected delivery date, if it never arrives), with a photo of the parcel if it is damaged. We will replace the item or refund you in full, including the delivery charge.
           </p>
         </section>
       </div>
