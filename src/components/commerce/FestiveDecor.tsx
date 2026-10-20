@@ -35,7 +35,7 @@ export function Ornament({ second = false }: { second?: boolean }) {
 export function Garland() {
   return (
     <svg className={styles.garland} viewBox="0 0 1200 34" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M0 4 Q150 34 300 4 T600 4 T900 4 T1200 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M0 6 Q150 32 300 6 Q450 32 600 6 Q750 32 900 6 Q1050 32 1200 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       {[150, 450, 750, 1050].map(x => <circle key={x} cx={x} cy="19" r="5" fill="#9e1b32" />)}
       {[300, 600, 900].map(x => <circle key={x} cx={x} cy="6" r="3.5" fill="#c8a15a" />)}
     </svg>

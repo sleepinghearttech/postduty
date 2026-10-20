@@ -67,3 +67,13 @@
 @media(max-width:640px){.festiveBar{font-size:9px;gap:8px;padding:9px 12px}.festiveBar i{display:none}.trustWrap{padding:6px 16px 0}.trustStrip div{padding:14px 12px}.trustStrip strong{font-size:13px}.trustStrip span{font-size:10px}.ornament{width:32px;left:8%}.ornament.ornamentTwo{display:none}.festive .productImage{border-radius:10px}}
 @media(prefers-reduced-motion:reduce){.ornament,.snow span,.festive .card,.festive .heroCopy,.festive .generalHeroVisual{animation:none}.snow{display:none}.festive .primaryLink,.festive .productImage{transition:none}}
 .trustStrip p{margin:0}
+/* Festive wins over the refined design layer (doubled class raises specificity without !important). */
+.festive.festive{background:var(--cream)}
+.festive.festive[data-storefront] [data-storefront-part="hero-copy"] h1 em{color:var(--berry)}
+.festive.festive[data-storefront] [data-storefront-part="hero-copy"]>p:first-child{color:var(--berry)}
+.festive.festive[data-storefront] [data-storefront-part="primary-action"]{background:var(--berry);border-radius:999px;box-shadow:0 10px 24px #9e1b3226}
+.festive.festive[data-storefront] [data-storefront-part="primary-action"]:hover{background:#7f1427}
+.festive.festive[data-storefront] [data-storefront-part="hero-image"]{background:#efe5d0}
+.festive .snow span{background:#c8a15a;opacity:.35}
+.festive .closing .snow span{background:#fff;opacity:.6}
+.festive.festive[data-storefront] [data-storefront-part="closing"] h2{color:#f6ecd6}.festive.festive[data-storefront] [data-storefront-part="closing"]::before{background:var(--gold)}
