@@ -65,6 +65,17 @@ test('checkout readiness requires a structured served address and explicit (not 
   assert.throws(()=>assertCheckoutReady(legacy,null),/full delivery address/);
   assert.throws(()=>assertCheckoutReady(parseCheckoutRequest({items:[{productId:id,quantity:1}],acceptTerms:true}),null),/full delivery address/);
 });
+test('PIN prefix limit: unset serves all; listed prefixes only; a misconfigured list fails closed',()=>{
+  const {parseAllowedPinPrefixes,assertShippingPin}=contract;
+  assert.equal(parseAllowedPinPrefixes(undefined),null);assert.equal(parseAllowedPinPrefixes(' '),null);
+  const blr=parseAllowedPinPrefixes('560');
+  assert.doesNotThrow(()=>assertShippingPin('560054',blr));
+  assert.throws(()=>assertShippingPin('570001',blr),/deliver only to PIN codes starting with 560/);
+  assert.doesNotThrow(()=>assertShippingPin('570001',null));
+  const broken=parseAllowedPinPrefixes('XX');assert.equal(broken.length,0);assert.throws(()=>assertShippingPin('560054',broken),/temporarily unavailable/);
+  assert.throws(()=>assertCheckoutReady(request({pincode:'570001'}),parseAllowedStates('29'),blr),/PIN 570001/);
+  assert.equal(assertCheckoutReady(request(),parseAllowedStates('29'),blr).pincode,'560001');
+});
 test('PIN code must be exactly six digits and cannot start with zero',()=>{
   for(const pin of ['560001','110001','999999']) assert.equal(validPincode(pin),true,pin);
   for(const pin of ['056000','56000','5600011','56000a',' 560001',560001,'']) assert.equal(validPincode(pin),false,String(pin));

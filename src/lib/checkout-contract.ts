@@ -55,6 +55,17 @@ export function assertShippingState(stateCode: string | undefined, allowed: Set<
     throw new CheckoutError(names.length ? `We do not deliver to ${stateName(stateCode)} yet. We currently deliver to: ${names.join(", ")}.` : "Delivery is temporarily unavailable. No payment has been taken.", 422);
   }
 }
+/** Optional local-delivery limit, e.g. "560" for Bengaluru. Empty/unset = no PIN limit. A non-empty value with no valid prefix serves nothing (fails closed). */
+export function parseAllowedPinPrefixes(value: string | undefined | null): string[] | null {
+  if (!value || !value.trim()) return null;
+  return value.split(",").map(p => p.trim()).filter(p => /^[1-9][0-9]{0,5}$/.test(p));
+}
+export function assertShippingPin(pincode: string, prefixes: string[] | null): void {
+  if (!prefixes) return;
+  if (!prefixes.some(p => pincode.startsWith(p))) {
+    throw new CheckoutError(prefixes.length ? `We do not deliver to PIN ${pincode} yet. We currently deliver only to PIN codes starting with ${prefixes.join(", ")}.` : "Delivery is temporarily unavailable. No payment has been taken.", 422);
+  }
+}
 export function validPincode(value: unknown): value is string { return typeof value === "string" && /^[1-9][0-9]{5}$/.test(value); }
 /** Accepts +91 / 91 / 0 prefixes and common separators; returns the 10-digit mobile number. */
 export function normalizeIndianMobile(value: unknown): string | null {
@@ -188,9 +199,10 @@ export function parseDeliveryAddress(body: Record<string, unknown>): CheckoutCus
   return {name,email,phone,address:composeAddress({address_line1,address_line2,city,state,pincode}),address_line1,address_line2,city,state_code,state,pincode,country:"IN"};
 }
 /** New checkouts need a structured, served delivery address and explicit terms acceptance before any payment is created. */
-export function assertCheckoutReady(request: CheckoutRequest, allowed: Set<string> | null): CheckoutCustomer {
+export function assertCheckoutReady(request: CheckoutRequest, allowed: Set<string> | null, pinPrefixes: string[] | null = null): CheckoutCustomer {
   if (!request.customer?.state_code || !request.customer.pincode) throw new CheckoutError("Enter your full delivery address, including state and PIN code.");
   assertShippingState(request.customer.state_code,allowed);
+  assertShippingPin(request.customer.pincode,pinPrefixes);
   if (!request.termsAccepted) throw new CheckoutError("Please accept the Terms of Service, Refund and Shipping policies to continue.");
   return request.customer;
 }

@@ -29,12 +29,12 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 type PaymentResponse = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
-export type CartConfig = { states: { code: string; name: string }[]; allStatesServed: boolean; singleItemShipping: number; gstRegistered: boolean };
+export type CartConfig = { states: { code: string; name: string }[]; allStatesServed: boolean; pinPrefixes?: string[] | null; deliveryAreaLabel?: string | null; singleItemShipping: number; gstRegistered: boolean };
 
 const inputClass = "w-full border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand";
 const labelClass = "block text-xs font-semibold text-stone-500 uppercase mb-1";
 
-export default function CartClient({ states, allStatesServed, singleItemShipping, gstRegistered }: CartConfig) {
+export default function CartClient({ states, allStatesServed, pinPrefixes = null, deliveryAreaLabel = null, singleItemShipping, gstRegistered }: CartConfig) {
   const router = useRouter();
   const { cart: allItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const searchParams = useSearchParams();
@@ -380,7 +380,11 @@ export default function CartClient({ states, allStatesServed, singleItemShipping
           </h2>
 
           <form onSubmit={handleCheckout} className="space-y-4">
-            {!allStatesServed && (
+            {pinPrefixes ? (
+              <p className="rounded-lg bg-stone-50 border border-stone-200 p-3 text-xs leading-relaxed text-stone-600">
+                {pinPrefixes.length ? <>We currently deliver only within <strong>{deliveryAreaLabel ?? "selected areas"}</strong> (PIN codes starting with {pinPrefixes.join(", ")}).</> : "Delivery is temporarily unavailable."}
+              </p>
+            ) : !allStatesServed && (
               <p className="rounded-lg bg-stone-50 border border-stone-200 p-3 text-xs leading-relaxed text-stone-600">
                 {states.length ? <>We currently deliver to: <strong>{states.map(s => s.name).join(", ")}</strong>.</> : "Delivery is temporarily unavailable."}
               </p>

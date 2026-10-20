@@ -36,7 +36,7 @@ export default function PrivacyPage() {
             <li><strong>Supabase:</strong> For secure database hosting and order storage.</li>
             <li><strong>Resend:</strong> For dispatching transactional email notifications.</li>
             <li><strong>Meta Graph API (WhatsApp):</strong> For delivering automated order alerts and tracking details.</li>
-            <li><strong>Shiprocket:</strong> For processing shipment labels and logistics.</li>
+            <li><strong>Delivery partners:</strong> Your name, phone number and delivery address are shared with the courier or local delivery service that delivers your order, and with the maker who packs it.</li>
           </ul>
         </section>
 
