@@ -236,6 +236,9 @@ function OrderCard({
             Total
           </p>
           <p className="text-lg font-bold text-gray-900">{formatRupees(order.total_amount)}</p>
+          {order.shipping_details?.delivery_method === "same_day" && (
+            <p className="text-xs font-semibold text-orange-700 mt-0.5">Same-day delivery requested</p>
+          )}
           {(order.shipping_amount ?? 0) > 0 && (
             <p className="text-xs text-gray-500 mt-0.5">Includes shipping: {formatRupees(order.shipping_amount ?? 0)}</p>
           )}

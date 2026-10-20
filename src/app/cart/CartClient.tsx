@@ -29,12 +29,12 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 type PaymentResponse = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
-export type CartConfig = { states: { code: string; name: string }[]; allStatesServed: boolean; singleItemShipping: number; gstRegistered: boolean };
+export type CartConfig = { states: { code: string; name: string }[]; allStatesServed: boolean; pinPrefixes?: string[] | null; deliveryAreaLabel?: string | null; sameDayPrefixes?: string[] | null; sameDayShipping?: number; singleItemShipping: number; gstRegistered: boolean };
 
 const inputClass = "w-full border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand";
 const labelClass = "block text-xs font-semibold text-stone-500 uppercase mb-1";
 
-export default function CartClient({ states, allStatesServed, singleItemShipping, gstRegistered }: CartConfig) {
+export default function CartClient({ states, allStatesServed, pinPrefixes = null, deliveryAreaLabel = null, sameDayPrefixes = null, sameDayShipping = 9900, singleItemShipping, gstRegistered }: CartConfig) {
   const router = useRouter();
   const { cart: allItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const searchParams = useSearchParams();
@@ -42,8 +42,8 @@ export default function CartClient({ states, allStatesServed, singleItemShipping
   const cart = allItems.filter(item => item.storefront === storefront);
   const totalAmount = cart.reduce((sum,item) => sum + cartUnitPrice(item) * item.quantity, 0);
   const totalQuantity = cart.reduce((sum,item) => sum + item.quantity, 0);
-  // Mirrors the server rule; the server recalculates every amount before payment.
-  const shippingCharge = totalQuantity === 1 ? singleItemShipping : 0;
+  const [deliveryMethod, setDeliveryMethod] = useState<"standard" | "same_day">("standard");
+  const sameDayOffered = Boolean(sameDayPrefixes?.length);
   const browseHref = storefront === "christmas" ? "/christmas" : "/store";
   const [loading, setLoading] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<string | null>(null);
@@ -60,6 +60,10 @@ export default function CartClient({ states, allStatesServed, singleItemShipping
     pincode: "",
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const sameDayPinOk = !form.pincode || /^\d{6}$/.test(form.pincode) === false || Boolean(sameDayPrefixes?.some(p => form.pincode.startsWith(p)));
+  const effectiveDelivery = deliveryMethod === "same_day" && !sameDayPinOk ? "standard" : deliveryMethod;
+  // Mirrors the server rule; the server recalculates every amount before payment.
+  const shippingCharge = effectiveDelivery === "same_day" ? sameDayShipping : totalQuantity === 1 ? singleItemShipping : 0;
 
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
@@ -201,7 +205,7 @@ export default function CartClient({ states, allStatesServed, singleItemShipping
           storefront,
           customerName: form.name, customerEmail: form.email, customerPhone: form.phone,
           addressLine1: form.addressLine1, addressLine2: form.addressLine2 || undefined, city: form.city, stateCode: form.stateCode, pincode: form.pincode,
-          acceptTerms,
+          acceptTerms, deliveryMethod: effectiveDelivery,
           couponCode: couponApplied?.code || undefined,
           isGift,
           giftMessage: isGift ? giftMessage : undefined,
@@ -380,7 +384,11 @@ export default function CartClient({ states, allStatesServed, singleItemShipping
           </h2>
 
           <form onSubmit={handleCheckout} className="space-y-4">
-            {!allStatesServed && (
+            {pinPrefixes ? (
+              <p className="rounded-lg bg-stone-50 border border-stone-200 p-3 text-xs leading-relaxed text-stone-600">
+                {pinPrefixes.length ? <>We currently deliver only within <strong>{deliveryAreaLabel ?? "selected areas"}</strong> (PIN codes starting with {pinPrefixes.join(", ")}).</> : "Delivery is temporarily unavailable."}
+              </p>
+            ) : !allStatesServed && (
               <p className="rounded-lg bg-stone-50 border border-stone-200 p-3 text-xs leading-relaxed text-stone-600">
                 {states.length ? <>We currently deliver to: <strong>{states.map(s => s.name).join(", ")}</strong>.</> : "Delivery is temporarily unavailable."}
               </p>
@@ -519,13 +527,27 @@ export default function CartClient({ states, allStatesServed, singleItemShipping
                 <span>Shipping</span>
                 <span>{shippingCharge > 0 ? `+${formatPrice(shippingCharge)}` : "Free"}</span>
               </div>
-              {shippingCharge > 0 && <p className="text-[11px] text-stone-400">Shipping is free when your bag has two or more items.</p>}
+              {effectiveDelivery === "standard" && shippingCharge > 0 && <p className="text-[11px] text-stone-400">Shipping is free when your bag has two or more items.</p>}
               <div className="flex items-center justify-between font-bold text-stone-800 text-base">
                 <span>Estimated total</span>
                 <span className="text-brand">{formatPrice(finalTotal)}</span>
               </div>
               {gstRegistered && <p className="text-[11px] text-stone-400 text-right">Prices include GST</p>}
             </div>
+
+            {sameDayOffered && (
+              <fieldset className="space-y-2 text-xs text-stone-600">
+                <legend className={labelClass}>Delivery option</legend>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="deliveryMethod" value="standard" checked={effectiveDelivery === "standard"} onChange={() => setDeliveryMethod("standard")} className="mt-0.5 accent-brand" />
+                  <span><strong>Standard</strong> · 2–5 working days · {formatPrice(singleItemShipping)} for one item, free for two or more</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="deliveryMethod" value="same_day" checked={effectiveDelivery === "same_day"} disabled={!sameDayPinOk} onChange={() => setDeliveryMethod("same_day")} className="mt-0.5 accent-brand" />
+                  <span><strong>Same-day</strong> · {formatPrice(sameDayShipping)} · Bengaluru PIN codes starting with {sameDayPrefixes!.join(", ")} only; orders after 2 PM go out the next working day</span>
+                </label>
+              </fieldset>
+            )}
 
             <label className="flex items-start gap-3 text-xs leading-relaxed text-stone-600 cursor-pointer">
               <input type="checkbox" name="acceptTerms" required checked={acceptTerms} onChange={e => setAcceptTerms(e.target.checked)} className="mt-0.5 w-4 h-4 accent-brand" />

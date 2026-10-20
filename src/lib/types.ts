@@ -37,7 +37,7 @@ export type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancel
 /** Structured delivery address captured at checkout (legacy orders only have `shipping_address`). */
 export type ShippingDetails = {
   name?: string; phone?: string; email?: string; address?: string;
-  address_line1?: string; address_line2?: string | null; city?: string; state?: string; state_code?: string; pincode?: string; country?: string;
+  address_line1?: string; address_line2?: string | null; city?: string; state?: string; state_code?: string; pincode?: string; country?: string; delivery_method?: "standard" | "same_day";
 };
 
 /** Order line as used in owner alerts, the orders view and packing slips. */
