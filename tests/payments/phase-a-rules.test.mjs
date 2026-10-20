@@ -76,6 +76,18 @@ test('PIN prefix limit: unset serves all; listed prefixes only; a misconfigured 
   assert.throws(()=>assertCheckoutReady(request({pincode:'570001'}),parseAllowedStates('29'),blr),/PIN 570001/);
   assert.equal(assertCheckoutReady(request(),parseAllowedStates('29'),blr).pincode,'560001');
 });
+test('delivery options: same-day is a flat ₹99 limited to listed PIN prefixes; standard keeps ₹49/free; method is stored on the customer',()=>{
+  assert.equal(shippingChargeFor(1,'same_day'),9900);assert.equal(shippingChargeFor(3,'same_day'),9900);assert.equal(shippingChargeFor(2,'standard'),0);
+  assert.equal(request().deliveryMethod,'standard');
+  assert.throws(()=>request({deliveryMethod:'drone'}),/Invalid delivery option/);
+  const blr=contract.parseAllowedPinPrefixes('560');
+  const sameDay=request({deliveryMethod:'same_day',items:[{productId:id,quantity:2}]});
+  assert.equal(assertCheckoutReady(sameDay,parseAllowedStates('29'),null,blr).delivery_method,'same_day');
+  assert.equal(buildCheckoutSnapshot(sameDay,[product],null).shippingCharge,9900);
+  assert.throws(()=>assertCheckoutReady(request({deliveryMethod:'same_day',pincode:'570001'}),parseAllowedStates('29'),null,blr),/Same-day delivery is available only/);
+  assert.throws(()=>assertCheckoutReady(request({deliveryMethod:'same_day'}),null,null,null),/not available right now/);
+  assert.equal(assertCheckoutReady(request({pincode:'570001'}),parseAllowedStates('29'),null,blr).delivery_method,'standard');
+});
 test('PIN code must be exactly six digits and cannot start with zero',()=>{
   for(const pin of ['560001','110001','999999']) assert.equal(validPincode(pin),true,pin);
   for(const pin of ['056000','56000','5600011','56000a',' 560001',560001,'']) assert.equal(validPincode(pin),false,String(pin));

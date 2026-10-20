@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     if (raw.length > 40_000) throw new CheckoutError("Request is too large.",413);
     const body = parseCheckoutRequest(JSON.parse(raw));
     // Delivery address, served-state allow-list and terms acceptance are checked before any database or provider access.
-    const customer = assertCheckoutReady(body,parseAllowedStates(process.env.ALLOWED_SHIPPING_STATES),parseAllowedPinPrefixes(process.env.ALLOWED_PIN_PREFIXES));
+    const customer = assertCheckoutReady(body,parseAllowedStates(process.env.ALLOWED_SHIPPING_STATES),parseAllowedPinPrefixes(process.env.ALLOWED_PIN_PREFIXES),parseAllowedPinPrefixes(process.env.SAME_DAY_PIN_PREFIXES));
     const sellerState = sellerStateCode(process.env);
     const config = paymentConfiguration(process.env);
     const ids = [...new Set(body.items.map(item => item.productId))];

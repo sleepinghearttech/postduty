@@ -29,12 +29,12 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 type PaymentResponse = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
-export type CartConfig = { states: { code: string; name: string }[]; allStatesServed: boolean; pinPrefixes?: string[] | null; deliveryAreaLabel?: string | null; singleItemShipping: number; gstRegistered: boolean };
+export type CartConfig = { states: { code: string; name: string }[]; allStatesServed: boolean; pinPrefixes?: string[] | null; deliveryAreaLabel?: string | null; sameDayPrefixes?: string[] | null; sameDayShipping?: number; singleItemShipping: number; gstRegistered: boolean };
 
 const inputClass = "w-full border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand";
 const labelClass = "block text-xs font-semibold text-stone-500 uppercase mb-1";
 
-export default function CartClient({ states, allStatesServed, pinPrefixes = null, deliveryAreaLabel = null, singleItemShipping, gstRegistered }: CartConfig) {
+export default function CartClient({ states, allStatesServed, pinPrefixes = null, deliveryAreaLabel = null, sameDayPrefixes = null, sameDayShipping = 9900, singleItemShipping, gstRegistered }: CartConfig) {
   const router = useRouter();
   const { cart: allItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const searchParams = useSearchParams();
@@ -42,8 +42,10 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
   const cart = allItems.filter(item => item.storefront === storefront);
   const totalAmount = cart.reduce((sum,item) => sum + cartUnitPrice(item) * item.quantity, 0);
   const totalQuantity = cart.reduce((sum,item) => sum + item.quantity, 0);
+  const [deliveryMethod, setDeliveryMethod] = useState<"standard" | "same_day">("standard");
+  const sameDayOffered = Boolean(sameDayPrefixes?.length);
   // Mirrors the server rule; the server recalculates every amount before payment.
-  const shippingCharge = totalQuantity === 1 ? singleItemShipping : 0;
+  const shippingCharge = deliveryMethod === "same_day" ? sameDayShipping : totalQuantity === 1 ? singleItemShipping : 0;
   const browseHref = storefront === "christmas" ? "/christmas" : "/store";
   const [loading, setLoading] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<string | null>(null);
@@ -201,7 +203,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
           storefront,
           customerName: form.name, customerEmail: form.email, customerPhone: form.phone,
           addressLine1: form.addressLine1, addressLine2: form.addressLine2 || undefined, city: form.city, stateCode: form.stateCode, pincode: form.pincode,
-          acceptTerms,
+          acceptTerms, deliveryMethod,
           couponCode: couponApplied?.code || undefined,
           isGift,
           giftMessage: isGift ? giftMessage : undefined,
@@ -523,13 +525,27 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
                 <span>Shipping</span>
                 <span>{shippingCharge > 0 ? `+${formatPrice(shippingCharge)}` : "Free"}</span>
               </div>
-              {shippingCharge > 0 && <p className="text-[11px] text-stone-400">Shipping is free when your bag has two or more items.</p>}
+              {deliveryMethod === "standard" && shippingCharge > 0 && <p className="text-[11px] text-stone-400">Shipping is free when your bag has two or more items.</p>}
               <div className="flex items-center justify-between font-bold text-stone-800 text-base">
                 <span>Estimated total</span>
                 <span className="text-brand">{formatPrice(finalTotal)}</span>
               </div>
               {gstRegistered && <p className="text-[11px] text-stone-400 text-right">Prices include GST</p>}
             </div>
+
+            {sameDayOffered && (
+              <fieldset className="space-y-2 text-xs text-stone-600">
+                <legend className={labelClass}>Delivery option</legend>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="deliveryMethod" value="standard" checked={deliveryMethod === "standard"} onChange={() => setDeliveryMethod("standard")} className="mt-0.5 accent-brand" />
+                  <span><strong>Standard</strong> · 2–5 working days · {formatPrice(singleItemShipping)} for one item, free for two or more</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="deliveryMethod" value="same_day" checked={deliveryMethod === "same_day"} onChange={() => setDeliveryMethod("same_day")} className="mt-0.5 accent-brand" />
+                  <span><strong>Same-day</strong> · {formatPrice(sameDayShipping)} · Bengaluru PIN codes starting with {sameDayPrefixes!.join(", ")} only; orders after 2 PM go out the next working day</span>
+                </label>
+              </fieldset>
+            )}
 
             <label className="flex items-start gap-3 text-xs leading-relaxed text-stone-600 cursor-pointer">
               <input type="checkbox" name="acceptTerms" required checked={acceptTerms} onChange={e => setAcceptTerms(e.target.checked)} className="mt-0.5 w-4 h-4 accent-brand" />

@@ -11,14 +11,14 @@ export default function ShippingPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">1. Where We Deliver</h2>
           <p>
-            We currently deliver only within <strong>Bengaluru</strong> (PIN codes starting with 560). Checkout will not accept addresses outside this area, so no payment is taken for an order we cannot deliver. We plan to add more locations soon. We do not ship internationally.
+            We currently deliver only within <strong>Karnataka</strong>. Checkout will not accept addresses outside Karnataka, so no payment is taken for an order we cannot deliver. We plan to add more states soon. We do not ship internationally.
           </p>
         </section>
 
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">2. Preparation Time</h2>
           <p>
-            Our products are handmade in small batches. In-stock items are packed and handed over for delivery within <strong>1 to 3 working days</strong> of payment (Monday to Saturday, excluding public holidays). If a product page states a different preparation time, that time applies.
+            Our products are handmade in small batches. For standard delivery, in-stock items are packed and handed over within <strong>1 to 3 working days</strong> of payment (Monday to Saturday, excluding public holidays). If a product page states a different preparation time, that time applies.
           </p>
           <p className="mt-2">
             If your order will take longer than promised, we will tell you by email or WhatsApp and you may cancel for a full refund.
@@ -28,14 +28,19 @@ export default function ShippingPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">3. How We Deliver</h2>
           <p>
-            Orders are delivered by local delivery partners within Bengaluru (for example, app-based parcel and courier services). Most orders arrive on the <strong>same or next working day</strong> after they are handed over. We will share the delivery partner&apos;s tracking link or details when your parcel leaves us.
+            You can choose between two options at checkout:</p>
+          <ul className="list-disc pl-5 mt-2 space-y-1">
+            <li><strong>Standard delivery (all of Karnataka):</strong> sent by India Post Speed Post or a courier, usually arriving <strong>2 to 5 working days</strong> after it is handed over.</li>
+            <li><strong>Same-day delivery (Bengaluru, PIN codes starting with 560):</strong> delivered by a local parcel service. Paid orders received before 2 PM on a working day are delivered the same day when the item is in stock; later orders go out the next working day.</li>
+          </ul>
+          <p className="mt-2">We share the tracking number or delivery partner details when your parcel leaves us.
           </p>
         </section>
 
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">4. Shipping Charges</h2>
           <p>
-            Delivery costs <strong>₹49 for an order with a single item</strong> and is <strong>free for orders with two or more items</strong>. The exact delivery charge is shown in your cart before you pay.
+            Standard delivery costs <strong>₹49 for an order with a single item</strong> and is <strong>free for orders with two or more items</strong>. Same-day delivery costs a flat <strong>₹99</strong> per order. The exact delivery charge is shown in your cart before you pay.
           </p>
         </section>
 

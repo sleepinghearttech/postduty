@@ -13,14 +13,16 @@ export type CheckoutCustomer = {
   name: string; email: string; phone: string; address: string;
   address_line1?: string; address_line2?: string | null; city?: string; state_code?: string; state?: string; pincode?: string; country?: "IN";
   terms_accepted_at?: string;
+  delivery_method?: DeliveryMethod;
 };
+export type DeliveryMethod = "standard" | "same_day";
 export type CheckoutProduct = {
   id: string; name: string; price: number; stock: number; is_active: boolean; creator_id?: string | null;
   commerce?: { storefronts?: Storefront[]; archived?: boolean; catalog_only?:boolean; made_to_order?:boolean; variants?: {id:string;name:string;price:number;stock:number}[]; personalization?: {enabled:boolean;required:boolean;max_length:number}; hsn?: string; gst_rate_bps?: number; combo?: {components:{product_id:string;quantity:number}[]} } | null;
 };
 export type CheckoutCreator = { id:string; status:string; commission_bps:number };
 export type CheckoutCoupon = { code:string; is_active:boolean; expires_at:string|null; max_uses:number|null; times_used:number; min_order:number; discount_type:string; discount_value:number };
-export type CheckoutRequest = { items: {productId:string;quantity:number;variantId?:string;personalization?:string}[]; storefront:Storefront; isGift:boolean; giftMessage:string|null; couponCode:string|null; customer:CheckoutCustomer|null; termsAccepted:boolean };
+export type CheckoutRequest = { items: {productId:string;quantity:number;variantId?:string;personalization?:string}[]; storefront:Storefront; isGift:boolean; giftMessage:string|null; couponCode:string|null; customer:CheckoutCustomer|null; termsAccepted:boolean; deliveryMethod?: DeliveryMethod };
 
 // ─── Delivery rules (owner-approved) ─────────────────────────────────────────
 /** GST state/UT codes. Code 25 (Daman and Diu) merged into 26 in 2020 and is not offered. */
@@ -37,9 +39,12 @@ export const INDIAN_STATES: readonly { code: string; name: string }[] = [
 const stateByCode = new Map(INDIAN_STATES.map(s => [s.code,s.name]));
 export function stateName(code: string): string | null { return stateByCode.get(code) ?? null; }
 export const SINGLE_ITEM_SHIPPING_PAISE = 4900;
-/** ₹49 when the order holds exactly one unit in total; free from two units. */
-export function shippingChargeFor(totalQuantity: number): number {
+/** Same-day local delivery is a flat paid option, never free. */
+export const SAME_DAY_SHIPPING_PAISE = 9900;
+/** Standard: ₹49 when the order holds exactly one unit in total; free from two units. Same-day: flat ₹99. */
+export function shippingChargeFor(totalQuantity: number, method: DeliveryMethod = "standard"): number {
   if (!Number.isSafeInteger(totalQuantity) || totalQuantity < 1) throw new CheckoutError("Cart must contain at least one item.");
+  if (method === "same_day") return SAME_DAY_SHIPPING_PAISE;
   return totalQuantity === 1 ? SINGLE_ITEM_SHIPPING_PAISE : 0;
 }
 /** Empty/unset = every state served. Unknown codes are ignored; a non-empty list with no valid code serves nothing (fails closed). */
@@ -199,12 +204,16 @@ export function parseDeliveryAddress(body: Record<string, unknown>): CheckoutCus
   return {name,email,phone,address:composeAddress({address_line1,address_line2,city,state,pincode}),address_line1,address_line2,city,state_code,state,pincode,country:"IN"};
 }
 /** New checkouts need a structured, served delivery address and explicit terms acceptance before any payment is created. */
-export function assertCheckoutReady(request: CheckoutRequest, allowed: Set<string> | null, pinPrefixes: string[] | null = null): CheckoutCustomer {
+export function assertCheckoutReady(request: CheckoutRequest, allowed: Set<string> | null, pinPrefixes: string[] | null = null, sameDayPrefixes: string[] | null = null): CheckoutCustomer {
   if (!request.customer?.state_code || !request.customer.pincode) throw new CheckoutError("Enter your full delivery address, including state and PIN code.");
   assertShippingState(request.customer.state_code,allowed);
   assertShippingPin(request.customer.pincode,pinPrefixes);
+  const method: DeliveryMethod = request.deliveryMethod ?? "standard";
+  if (method === "same_day" && !(sameDayPrefixes?.length && sameDayPrefixes.some(p => request.customer!.pincode!.startsWith(p)))) {
+    throw new CheckoutError(sameDayPrefixes?.length ? `Same-day delivery is available only for PIN codes starting with ${sameDayPrefixes.join(", ")}. Choose standard delivery instead.` : "Same-day delivery is not available right now. Choose standard delivery instead.", 422);
+  }
   if (!request.termsAccepted) throw new CheckoutError("Please accept the Terms of Service, Refund and Shipping policies to continue.");
-  return request.customer;
+  return {...request.customer, delivery_method: method};
 }
 export function parseCheckoutRequest(value: unknown): CheckoutRequest {
   const body = record(value);
@@ -219,7 +228,8 @@ export function parseCheckoutRequest(value: unknown): CheckoutRequest {
   });
   if (body.storefront !== undefined && body.storefront !== "general" && body.storefront !== "christmas") throw new CheckoutError("Invalid storefront.");
   if (body.isGift !== undefined && typeof body.isGift !== "boolean") throw new CheckoutError("Invalid gift option.");
-  return {items,storefront:(body.storefront ?? "general") as Storefront,isGift:body.isGift === true,giftMessage:body.isGift && body.giftMessage ? boundedText(body.giftMessage,200,"gift message") : null,couponCode:body.couponCode ? boundedText(body.couponCode,40,"coupon").toUpperCase() : null,customer:parseCustomer(body),termsAccepted:body.acceptTerms === true};
+  if (body.deliveryMethod !== undefined && body.deliveryMethod !== "standard" && body.deliveryMethod !== "same_day") throw new CheckoutError("Invalid delivery option.");
+  return {deliveryMethod:(body.deliveryMethod ?? "standard") as DeliveryMethod,items,storefront:(body.storefront ?? "general") as Storefront,isGift:body.isGift === true,giftMessage:body.isGift && body.giftMessage ? boundedText(body.giftMessage,200,"gift message") : null,couponCode:body.couponCode ? boundedText(body.couponCode,40,"coupon").toUpperCase() : null,customer:parseCustomer(body),termsAccepted:body.acceptTerms === true};
 }
 export type CouponResult = { ok: true; discount: number; label: string } | { ok: false; reason: "missing"|"inactive"|"expired"|"used_up"|"minimum"|"invalid"; message: string };
 /**
@@ -308,7 +318,7 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
     discountAmount = result.discount;
   }
   // A combo counts as one item for shipping, whatever it contains.
-  const shippingCharge = shippingChargeFor(lines.reduce((sum,line) => sum + (line.combo_role === "component" ? 0 : line.quantity),0));
+  const shippingCharge = shippingChargeFor(lines.reduce((sum,line) => sum + (line.combo_role === "component" ? 0 : line.quantity),0),request.deliveryMethod ?? "standard");
   const totalAmount = subtotal + giftCharge + shippingCharge - discountAmount;
   if (!Number.isSafeInteger(totalAmount) || totalAmount < 100 || totalAmount > 50_000_000) throw new CheckoutError("Order total is outside the supported payment range.");
   // Allocate the exact order discount across merchandise only (never the gift card).
