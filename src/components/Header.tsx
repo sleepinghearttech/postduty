@@ -27,7 +27,7 @@ function HeaderView({ christmas }: { christmas: boolean }) {
       <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link
           href={christmas?"/christmas":"/store"}
-          className="font-serif text-lg sm:text-2xl tracking-tight text-brand"
+          className={`font-serif text-lg sm:text-2xl tracking-tight ${christmas?"text-[#7c0f22]":"text-brand"}`}
         >
           {christmas?"Christmas by PostDuty":"PostDuty"}
         </Link>
