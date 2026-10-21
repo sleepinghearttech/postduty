@@ -100,7 +100,7 @@ export const STORE_TRUST: TrustItem[] = [
   DELIVERY, PAYMENTS, RETURNS,
 ];
 export const CHRISTMAS_TRUST: TrustItem[] = [
-  { title: 'Designed in Bengaluru', text: 'Original pieces, printed and finished by hand in small batches.', icon: ICONS.gift },
+  { title: 'Designed in Bengaluru', text: 'Original designs, 3D-printed and hand-finished in small batches.', icon: ICONS.gift },
   DELIVERY, PAYMENTS, RETURNS,
 ];
 
