@@ -8,6 +8,7 @@ import styles from './christmas.module.css';
 import commerce from '@/components/commerce/commerce.module.css';
 import refinement from '@/components/commerce/refinement.module.css';
 import { storefrontDesign, StorefrontDesignSwitch } from '@/components/commerce/StorefrontDesign';
+import { BrandBar, CHRISTMAS_TRUST, Garland, Ornament, Snowfall, Sparkles, TrustStrip } from '@/components/commerce/BrandDecor';
 
 export const dynamic='force-dynamic';
 export const metadata:Metadata={title:'Christmas by PostDuty | Thoughtful festive gifts',description:'Discover Christmas ornaments, handmade decorations and personal gifts in the seasonal PostDuty collection.'};
@@ -19,10 +20,11 @@ export default async function ChristmasPage({searchParams}:{searchParams:Promise
   const {products,unavailable}=await getStoreProducts('christmas');
   const hero=products.find(p=>p.commerce?.featured)??products[0];
   const heroImage=hero&&primaryImage(hero);
-  return <main className={`${styles.page} ${design==='refined'?refinement.refined:''}`} data-storefront="christmas" data-design={design}>
+  return <main className={`${styles.page} ${commerce.festive} ${design==='refined'?refinement.refined:''}`} data-storefront="christmas" data-design={design}>
     {sandbox&&<StorefrontDesignSwitch path="/christmas" design={design}/>}
+    <BrandBar items={['Christmas by PostDuty',<>Delivering across <b>Karnataka</b></>,'Same-day in Bengaluru']}/>
     <div className={commerce.storeNav} data-storefront-part="navigation"><Link href={`/christmas${designQuery}`} aria-current="page">Christmas by PostDuty</Link><div><Link href={`/store${designQuery}`}>The year-round store ↗</Link><Link href="/admin">Owner access</Link></div></div>
-    <section className={styles.shopHero} data-storefront-part="hero">
+    <section className={styles.shopHero} data-storefront-part="hero"><Snowfall/><Sparkles/><Ornament/><Ornament tone="gold" position="two"/><Ornament tone="silver" position="three"/>
       <div className={styles.shopHeroCopy} data-storefront-part="hero-copy">
         <p className={styles.kicker}>Christmas by PostDuty · The festive edit</p>
         <h1>A little wonder.<span> A gift to keep.</span></h1>
@@ -36,7 +38,10 @@ export default async function ChristmasPage({searchParams}:{searchParams:Promise
       </div>
     </section>
     <div className={commerce.seasonRibbon} data-storefront-part="season-ribbon"><span>For the tree</span><span aria-hidden="true">✦</span><span>For the home</span><span aria-hidden="true">✦</span><span>For someone special</span></div>
+    <Garland/>
+    <TrustStrip items={CHRISTMAS_TRUST}/>
     <section id="shop" className={commerce.collectionSection} data-storefront-part="collection"><div className={commerce.collectionHeading} data-storefront-part="collection-heading"><div><p className={commerce.eyebrow}>The Christmas collection</p><h2>Make room for a little magic.</h2></div><p>A festive edit of decorations and gifts.<br/>Explore the details that make each piece yours.</p></div><Catalog products={products} storefront="christmas" unavailable={unavailable}/></section>
-    <section className={`${commerce.closing} ${commerce.christmasClosing}`} data-storefront-part="closing"><p className={commerce.eyebrow}>Beyond December</p><h2>Good things, all year long.</h2><p>Healthcare gifts, handmade pieces and everyday objects from PostDuty.</p><Link href={`/store${designQuery}`}>Explore the PostDuty Store ↗</Link></section>
+    <Garland/>
+    <section className={`${commerce.closing} ${commerce.christmasClosing}`} data-storefront-part="closing"><Snowfall/><p className={commerce.eyebrow}>Beyond December</p><h2>Good things, all year long.</h2><p>Healthcare gifts, handmade pieces and everyday objects from PostDuty.</p><Link href={`/store${designQuery}`}>Explore the PostDuty Store ↗</Link></section>
   </main>;
 }
