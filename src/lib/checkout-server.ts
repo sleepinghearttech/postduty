@@ -2,7 +2,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase";
 import { commerceTable, isCommerceSandbox } from "@/lib/commerce-db";
 import { CheckoutError, assertCapturedPayment, paymentConfiguration, type CheckoutCustomer } from "@/lib/checkout-contract";
-import { sendAdminWhatsAppAlert, sendCustomerWhatsAppConfirmation } from "@/lib/notifications";
+import { sendAdminWhatsAppAlert, sendCreatorWhatsAppAlerts, sendCustomerWhatsAppConfirmation, type CreatorAlertLine } from "@/lib/notifications";
 import { sendOrderEmails } from "@/lib/email";
 import type { Order, OrderLineSummary } from "@/lib/types";
 
@@ -52,9 +52,11 @@ async function notifyNewOrder(orderId:string,testMode:boolean) {
   const {data:order} = await supabaseAdmin.from(commerceTable("orders")).select("*").eq("id",orderId).single();
   if (!order) return;
   // Owner alerts list each line's option and personalisation; customer messages are unchanged.
-  const {data:lines} = await supabaseAdmin.from(commerceTable("order_items")).select("product_name,quantity,variant_id,variant_name,personalization").eq("order_id",orderId);
+  const {data:lines} = await supabaseAdmin.from(commerceTable("order_items")).select("product_name,quantity,variant_id,variant_name,personalization,creator_id,combo_role").eq("order_id",orderId);
   const alertOrder = {...(order as Order),order_items:(lines ?? []) as OrderLineSummary[]};
-  const results = await Promise.allSettled([sendAdminWhatsAppAlert(alertOrder),sendCustomerWhatsAppConfirmation(order as Order),sendOrderEmails(alertOrder)]);
+  // Creators make component lines, not the priced combo parent.
+  const creatorLines = ((lines ?? []) as (CreatorAlertLine & {combo_role?: string|null})[]).filter(line => line.combo_role !== "combo");
+  const results = await Promise.allSettled([sendAdminWhatsAppAlert(alertOrder),sendCreatorWhatsAppAlerts(order as Order,creatorLines),sendCustomerWhatsAppConfirmation(order as Order),sendOrderEmails(alertOrder)]);
   // Existing transports swallow provider errors; do not mislabel an attempt as delivery.
   await supabaseAdmin.from(commerceTable("payment_notification_jobs")).update({status:results.some(r => r.status === "rejected") ? "failed" : "attempted_unconfirmed"}).eq("order_id",orderId);
 }

@@ -32,7 +32,9 @@ export async function middleware(request:NextRequest) {
  }
  const host=(request.headers.get('host')??'').split(':')[0].toLowerCase();
  if(process.env.COMMERCE_SANDBOX!=='true') {
-  const target=pathname==='/christmas' && host!=='christmas.postduty.in' ? 'christmas.postduty.in' : pathname==='/store' && host!=='store.postduty.in' ? 'store.postduty.in' : null;
+  // Payments are approved for store.postduty.in only, so shop pages on the main domain move there.
+  const shopPath=/^\/(cart|order-success|creator)(\/|$)|^\/(products|orders)(\/|$)/.test(pathname);
+  const target=pathname==='/christmas' && host!=='christmas.postduty.in' ? 'christmas.postduty.in' : pathname==='/store' && host!=='store.postduty.in' ? 'store.postduty.in' : shopPath && host==='postduty.in' ? 'store.postduty.in' : null;
   if(target && ['postduty.in','store.postduty.in','christmas.postduty.in'].includes(host)){const url=request.nextUrl.clone();url.hostname=target;return NextResponse.redirect(url);}
  }
  if(pathname==='/') {
