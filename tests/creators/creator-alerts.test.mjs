@@ -31,6 +31,14 @@ test('each configured creator gets one alert listing only their own lines; other
   assert.ok(alerts[0].details.length <= 900);
 });
 
+test('long orders keep the studio link; newlines in personalisation are collapsed', () => {
+  const lines = Array.from({ length: 40 }, (_, i) => ({ creator_id: a, product_name: `Very long handmade product name number ${i}`, quantity: 1, personalization: { text: 'Line one\n\nLine   two' } }));
+  const [alert] = creatorAlerts(order, lines, new Map([[a, '+91 90000 00001']]), 'https://store.postduty.in/creator');
+  assert.ok(alert.details.length <= 900);
+  assert.match(alert.details, /store\.postduty\.in\/creator$/);
+  assert.doesNotMatch(alert.details, /\n|\s{2,}/);
+});
+
 test('standard delivery is labelled and no numbers means no alerts', () => {
   const standard = creatorAlerts({ ...order, shipping_details: null }, [{ creator_id: a, product_name: 'Clip', quantity: 1 }], new Map([[a, '+91 90000 00001']]), 'https://store.postduty.in/creator');
   assert.match(standard[0].details, /Standard delivery/);

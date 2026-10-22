@@ -102,6 +102,10 @@ async function sendAdminFreeformText(adminPhone: string, phoneNumberId: string, 
  * approval — falls back automatically until Meta approves it).
  */
 async function sendAdminAlert(event: string, orderId: string, customerName: string, details: string, fallbackBody: string): Promise<void> {
+  if (process.env.COMMERCE_SANDBOX === "true" || process.env.ORDER_NOTIFICATIONS_ENABLED !== "true") {
+    console.log("[WhatsApp Admin] Notifications disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
+    return;
+  }
   const adminPhoneRaw = process.env.ADMIN_WHATSAPP_NUMBER;
   if (!adminPhoneRaw) {
     console.error("[WhatsApp Admin] Missing ADMIN_WHATSAPP_NUMBER env variable");
@@ -225,12 +229,17 @@ export function creatorAlerts(order: Order, lines: CreatorAlertLine[], numbers: 
   }
   const sameDay = (order.shipping_details as { delivery_method?: string } | null | undefined)?.delivery_method === "same_day";
   return [...byCreator.entries()].map(([id, own]) => {
+    // Template parameters reject newlines and long whitespace runs, so collapse them.
+    const flat = (value: string) => value.replace(/\s+/g, " ").trim();
     const items = own.map(line => {
-      const text = typeof line.personalization?.text === "string" ? line.personalization.text.trim() : "";
-      return `${line.product_name?.trim() || "Product"}${line.variant_name ? ` (${line.variant_name})` : ""} × ${line.quantity}${text ? ` [Personalisation: ${text}]` : ""}`;
+      const text = typeof line.personalization?.text === "string" ? flat(line.personalization.text) : "";
+      return `${flat(line.product_name || "") || "Product"}${line.variant_name ? ` (${flat(line.variant_name)})` : ""} × ${line.quantity}${text ? ` [Personalisation: ${text}]` : ""}`;
     }).join("; ");
     const delivery = sameDay ? "SAME-DAY delivery (Bengaluru)" : "Standard delivery";
-    const details = `${items}. ${delivery}. Please accept it in your Creator studio: ${studioUrl}`.slice(0, 900);
+    const tail = `. ${delivery}. Please accept it in your Creator studio: ${studioUrl}`;
+    // Trim the item list, never the studio link.
+    const room = 900 - tail.length;
+    const details = `${items.length > room ? `${items.slice(0, room - 1)}…` : items}${tail}`;
     const body = `🧶 *New PostDuty order for you!*\nOrder: \`${order.id.slice(0, 8)}\`\n${own.map(l => `• ${l.product_name || "Product"} × ${l.quantity}`).join("\n")}\n${delivery}\n\nAccept it here: ${studioUrl}`;
     return { phone: numbers.get(id)!, details, body };
   });
