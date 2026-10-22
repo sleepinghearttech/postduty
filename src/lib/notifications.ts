@@ -102,6 +102,20 @@ async function sendAdminFreeformText(adminPhone: string, phoneNumberId: string, 
  * approval — falls back automatically until Meta approves it).
  */
 async function sendAdminAlert(event: string, orderId: string, customerName: string, details: string, fallbackBody: string): Promise<void> {
+  if (process.env.COMMERCE_SANDBOX === "true" || process.env.ORDER_NOTIFICATIONS_ENABLED !== "true") {
+    console.log("[WhatsApp Admin] Notifications disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
+    return;
+  }
+  const adminPhoneRaw = process.env.ADMIN_WHATSAPP_NUMBER;
+  if (!adminPhoneRaw) {
+    console.error("[WhatsApp Admin] Missing ADMIN_WHATSAPP_NUMBER env variable");
+    return;
+  }
+  await sendTemplateAlert(adminPhoneRaw, event, orderId, customerName, details, fallbackBody);
+}
+
+/** Sends the admin_order_alert template to any internal recipient (owner or creator), falling back to free-form text. */
+async function sendTemplateAlert(recipientRaw: string, event: string, orderId: string, customerName: string, details: string, fallbackBody: string): Promise<void> {
   const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) {
     console.log("[WhatsApp Admin] Notifications disabled (ORDER_NOTIFICATIONS_ENABLED !== true)");
@@ -109,15 +123,14 @@ async function sendAdminAlert(event: string, orderId: string, customerName: stri
   }
 
   const token = process.env.WHATSAPP_PERMANENT_TOKEN;
-  const adminPhoneRaw = process.env.ADMIN_WHATSAPP_NUMBER;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "1222192880967535";
 
-  if (!token || !adminPhoneRaw) {
-    console.error("[WhatsApp Admin] Missing WHATSAPP_PERMANENT_TOKEN or ADMIN_WHATSAPP_NUMBER env variables");
+  if (!token) {
+    console.error("[WhatsApp Admin] Missing WHATSAPP_PERMANENT_TOKEN env variable");
     return;
   }
 
-  const adminPhone = normalizePhoneNumber(adminPhoneRaw);
+  const adminPhone = normalizePhoneNumber(recipientRaw);
 
   try {
     const response = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
@@ -185,6 +198,58 @@ ${lines}` : ""}`;
   // Template parameters cannot contain newlines; keep the item list on one line there.
   const details = `Amount: ${amountInRupees}${lines ? `. Items: ${lines.replace(/\n\s*/g, "; ").replace(/•\s/g, "")}` : ""}`.slice(0, 900);
   await sendAdminAlert("New order received", order.id, order.customer_name, details, fallbackBody);
+}
+
+/**
+ * Creator WhatsApp numbers live in a runtime secret, never in this public repository:
+ * CREATOR_WHATSAPP_NUMBERS = {"<creator uuid>": "+91 98765 43210", ...}. Invalid JSON or entries are ignored.
+ */
+export function parseCreatorWhatsApp(value: string | undefined | null): Map<string, string> {
+  const numbers = new Map<string, string>();
+  if (!value?.trim()) return numbers;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return numbers;
+    for (const [id, phone] of Object.entries(parsed as Record<string, unknown>)) {
+      if (/^[0-9a-f-]{36}$/i.test(id) && typeof phone === "string" && /^\+?[\d\s()-]{10,20}$/.test(phone)) numbers.set(id.toLowerCase(), phone);
+    }
+  } catch { /* Misconfiguration must never block an order. */ }
+  return numbers;
+}
+
+export type CreatorAlertLine = { creator_id: string | null; product_name: string | null; quantity: number; variant_name?: string | null; personalization?: { text?: unknown } | null };
+
+/** Groups a paid order's lines by creator and builds one alert per creator with a configured number. */
+export function creatorAlerts(order: Order, lines: CreatorAlertLine[], numbers: Map<string, string>, studioUrl: string) {
+  const byCreator = new Map<string, CreatorAlertLine[]>();
+  for (const line of lines) {
+    const id = line.creator_id?.toLowerCase();
+    if (!id || !numbers.has(id)) continue;
+    byCreator.set(id, [...(byCreator.get(id) ?? []), line]);
+  }
+  const sameDay = (order.shipping_details as { delivery_method?: string } | null | undefined)?.delivery_method === "same_day";
+  return [...byCreator.entries()].map(([id, own]) => {
+    // Template parameters reject newlines and long whitespace runs, so collapse them.
+    const flat = (value: string) => value.replace(/\s+/g, " ").trim();
+    const items = own.map(line => {
+      const text = typeof line.personalization?.text === "string" ? flat(line.personalization.text) : "";
+      return `${flat(line.product_name || "") || "Product"}${line.variant_name ? ` (${flat(line.variant_name)})` : ""} × ${line.quantity}${text ? ` [Personalisation: ${text}]` : ""}`;
+    }).join("; ");
+    const delivery = sameDay ? "SAME-DAY delivery (Bengaluru)" : "Standard delivery";
+    const tail = `. ${delivery}. Please accept it in your Creator studio: ${studioUrl}`;
+    // Trim the item list, never the studio link.
+    const room = 900 - tail.length;
+    const details = `${items.length > room ? `${items.slice(0, room - 1)}…` : items}${tail}`;
+    const body = `🧶 *New PostDuty order for you!*\nOrder: \`${order.id.slice(0, 8)}\`\n${own.map(l => `• ${l.product_name || "Product"} × ${l.quantity}`).join("\n")}\n${delivery}\n\nAccept it here: ${studioUrl}`;
+    return { phone: numbers.get(id)!, details, body };
+  });
+}
+
+/** Tells each creator with a configured WhatsApp number about their part of a new paid order. */
+export async function sendCreatorWhatsAppAlerts(order: Order, lines: CreatorAlertLine[]): Promise<void> {
+  if (order.is_test === true || order.payment_mode === "test") return;
+  const alerts = creatorAlerts(order, lines, parseCreatorWhatsApp(process.env.CREATOR_WHATSAPP_NUMBERS), "https://store.postduty.in/creator");
+  await Promise.allSettled(alerts.map(a => sendTemplateAlert(a.phone, "New order for you to make and pack", order.id, order.customer_name, a.details, a.body)));
 }
 
 /**
