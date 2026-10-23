@@ -253,7 +253,8 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
   const unavailable = () => new CheckoutError("A cart product is unavailable on this storefront.",409);
   const creatorFor = (p: CheckoutProduct) => {
     const creator = p.creator_id ? creators.find(c => c.id === p.creator_id) : null;
-    if (p.creator_id && (!creator || creator.status !== "active" || !Number.isSafeInteger(creator.commission_bps) || creator.commission_bps < 0 || creator.commission_bps > 10000)) throw new CheckoutError("A creator product is temporarily unavailable pending owner review.",409);
+    // PostDuty buys and resells, so an invited creator (not yet signed in) can still be sold; only suspension blocks sales.
+    if (p.creator_id && (!creator || (creator.status !== "active" && creator.status !== "invited") || !Number.isSafeInteger(creator.commission_bps) || creator.commission_bps < 0 || creator.commission_bps > 10000)) throw new CheckoutError("A creator product is temporarily unavailable pending owner review.",409);
     return creator;
   };
   const taxFields = (p: CheckoutProduct) => {

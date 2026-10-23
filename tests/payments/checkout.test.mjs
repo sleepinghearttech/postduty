@@ -77,7 +77,8 @@ test('creator commission is owner-configured, validated active and snapshotted a
  assert.equal(line.creator_earning_paise+line.commission_amount,s.subtotal-s.discountAmount);
  assert.equal(s.totalAmount,26899+4900); // Gift card and shipping belong to PostDuty, outside creator proceeds.
  creator.commission_bps=9999;assert.equal(line.commission_bps,1250);
- for(const creators of [[],[{...creator,status:'suspended'}],[{...creator,commission_bps:10001}],[{...creator,commission_bps:1.5}]]) assert.throws(()=>buildCheckoutSnapshot(request(),[p],null,Date.now(),creators),/creator product/);
+ assert.doesNotThrow(()=>buildCheckoutSnapshot(request(),[p],null,Date.now(),[{...creator,status:'invited'}]));
+ for(const creators of [[],[{...creator,status:'suspended'}],[{...creator,status:'unknown'}],[{...creator,commission_bps:10001}],[{...creator,commission_bps:1.5}]]) assert.throws(()=>buildCheckoutSnapshot(request(),[p],null,Date.now(),creators),/creator product/);
 });
 test('largest-remainder allocation accounts for every discounted paise across mixed creator/owned lines',()=>{
  const ids=[id,'10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000003'];
