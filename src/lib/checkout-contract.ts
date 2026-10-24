@@ -330,14 +330,11 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
   if (!Number.isSafeInteger(totalAmount) || totalAmount < 100 || totalAmount > 50_000_000) throw new CheckoutError("Order total is outside the supported payment range.");
   // Allocate the exact order discount across merchandise only (never the gift card).
   // Largest remainder keeps every paise accounted for; input order breaks equal ties. Components have no price of their own.
-  const allocation = lines.map((line,index) => {
-    const numerator = discountAmount * line.quantity * line.unit_price;
-    return {index,paise:Math.floor(numerator / subtotal),remainder:numerator % subtotal};
-  });
-  const residual = discountAmount - allocation.reduce((sum,a) => sum + a.paise,0);
-  const priority = [...allocation].sort((a,b) => b.remainder-a.remainder || a.index-b.index);
-  for (let i=0;i<residual;i++) allocation[priority[i].index].paise++;
-  for (const [index,line] of lines.entries()) line.line_discount_amount = allocation[index].paise;
+  // The pack saving belongs only to the pack lines; any coupon is then spread over all merchandise by remaining value.
+  const isPackLine = (line: CheckoutLine) => !line.combo_role && pack.saving > 0 && products.some(p => p.id === line.product_id && p.commerce?.pack && pack.groups.some(g => g.group === p.commerce?.pack?.group));
+  const packShares = pack.saving ? allocateByWeight(pack.saving,lines.map(line => isPackLine(line) ? line.quantity * line.unit_price : 0)) : lines.map(() => 0);
+  const couponShares = discountAmount - pack.saving ? allocateByWeight(discountAmount - pack.saving,lines.map((line,i) => line.quantity * line.unit_price - packShares[i])) : lines.map(() => 0);
+  for (const [index,line] of lines.entries()) line.line_discount_amount = packShares[index] + couponShares[index];
   // A combo's net price is split across its components in proportion to their unit prices × quantity per combo.
   for (const [index,line] of lines.entries()) {
     if (line.combo_role !== "combo") continue;

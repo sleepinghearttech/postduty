@@ -525,7 +525,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
               {pack.groups.map(g => (
                 <div key={g.group} className="flex items-center justify-between text-xs text-stone-600">
                   <span>Pack of {g.size}{g.packs > 1 ? ` × ${g.packs}` : ""}: {formatPrice(g.price)} a pack, that&apos;s {formatPrice(Math.round(g.price / g.size))} each</span>
-                  <span>-{formatPrice(pack.saving)}</span>
+                  <span>-{formatPrice(g.saving)}</span>
                 </div>
               ))}
               {packRule && packUnits % packRule.size !== 0 && (

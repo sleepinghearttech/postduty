@@ -5,6 +5,8 @@ export type ProductCommerce = {
   sku?: string; category?: string; storefronts?: Storefront[]; collections?: string[];
   short_description?: string; materials?: string; tags?: string[]; media?: ProductMedia[];
   variants?: ProductVariant[];
+  /** "Any N for ₹X" pack rule; see lib/pack-pricing. */
+  pack?: { group: string; size: number; price: number } | null;
   personalization?: { enabled: boolean; label: string; max_length: number; required: boolean };
   made_to_order?: boolean; preparation_days?: number; capacity?: number; low_stock_threshold?: number;
   featured?: boolean; archived?: boolean; catalog_only?: boolean; seo_title?: string; seo_description?: string;

@@ -5,7 +5,7 @@
  */
 export type PackRule = { group: string; size: number; price: number };
 export type PackUnitLine = { unitPrice: number; quantity: number; pack: PackRule | null | undefined };
-export type PackResult = { saving: number; packs: number; groups: { group: string; size: number; price: number; packs: number }[] };
+export type PackResult = { saving: number; packs: number; groups: { group: string; size: number; price: number; packs: number; saving: number }[] };
 
 export function validPackRule(value: unknown): PackRule | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -38,7 +38,7 @@ export function packPricing(lines: PackUnitLine[]): PackResult {
     if (!groupSaving) continue;
     saving += groupSaving;
     packs += count;
-    groups.push({ group: rule.group, size: rule.size, price: rule.price, packs: count });
+    groups.push({ group: rule.group, size: rule.size, price: rule.price, packs: count, saving: groupSaving });
   }
   return { saving, packs, groups };
 }

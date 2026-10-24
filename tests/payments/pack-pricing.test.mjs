@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { packPricing, validPackRule } from '../../src/lib/pack-pricing.ts';
 import { buildCheckoutSnapshot, parseCheckoutRequest, shippingChargeFor } from '../../src/lib/checkout-contract.ts';
+import { validateCommerce } from '../../src/lib/product-validation.ts';
 
 const rule = { group: 'crochet-clips', size: 4, price: 30000 };
 const ids = [1, 2, 3, 4, 5].map(n => `10000000-0000-4000-8000-00000000000${n}`);
@@ -9,6 +10,12 @@ const clip = id => ({ id, name: `Clip ${id.slice(-1)}`, price: 10000, stock: 10,
 const other = { id: '10000000-0000-4000-8000-000000000009', name: 'Other item', price: 50000, stock: 10, is_active: true, commerce: { storefronts: ['general'] } };
 const address = { customerName: 'Test Buyer', customerEmail: 'b@example.invalid', customerPhone: '9876543210', addressLine1: '1 Fictional Street', city: 'Testpur', stateCode: '29', pincode: '560001', acceptTerms: true };
 const snap = (items, products) => buildCheckoutSnapshot(parseCheckoutRequest({ items, storefront: 'general', ...address }), products, null);
+
+test('owner product saves keep a valid pack rule and reject a malformed one', () => {
+  assert.deepEqual(validateCommerce({ pack: rule }).pack, rule);
+  assert.equal(validateCommerce({ pack: null }).pack, undefined);
+  assert.throws(() => validateCommerce({ pack: { group: 'Bad Group', size: 4, price: 30000 } }), /pack/i);
+});
 
 test('pack rule validation rejects malformed rules', () => {
   assert.deepEqual(validPackRule(rule), rule);
@@ -35,5 +42,8 @@ test('checkout totals: 4 clips = ₹300 with free delivery; 5 = ₹400; 1 = ₹1
   assert.equal(one.totalAmount, 10000 + 4900);
   const withOther = snap([{ productId: ids[0], quantity: 4 }, { productId: other.id, quantity: 1 }], [...ids.map(clip), other]);
   assert.equal(withOther.totalAmount, 30000 + 50000);
+  // The pack saving is borne only by pack lines, never by another product in the same order.
+  assert.equal(withOther.lines.find(l => l.product_id === other.id).line_discount_amount, 0);
+  assert.equal(withOther.lines.find(l => l.product_id === ids[0]).line_discount_amount, 10000);
   assert.equal(shippingChargeFor(1, 'standard', 1), 0); assert.equal(shippingChargeFor(4, 'same_day', 1), 9900);
 });
