@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (typeof provider.id !== "string" || !/^order_\w+$/.test(provider.id) || provider.amount !== snapshot.totalAmount || provider.currency !== "INR") throw new CheckoutError("Payment provider returned an unexpected order. No payment has been taken.",502);
     const {error:bindError} = await supabaseAdmin.from(commerceTable("checkout_intents")).update({provider_order_id:provider.id,status:"awaiting_payment"}).eq("id",id).eq("status","created");
     if (bindError) throw new CheckoutError("Secure checkout could not be prepared. No payment has been taken.",503);
-    return NextResponse.json({razorpayOrderId:provider.id,amount:snapshot.totalAmount,keyId:config.keyId,currency:"INR",subtotal:snapshot.subtotal,giftCharge:snapshot.giftCharge,shippingCharge:snapshot.shippingCharge,discountAmount:snapshot.discountAmount,couponCode:snapshot.couponCode,testMode:config.testMode},{headers:{"Cache-Control":"no-store"}});
+    return NextResponse.json({razorpayOrderId:provider.id,amount:snapshot.totalAmount,keyId:config.keyId,currency:"INR",subtotal:snapshot.subtotal,giftCharge:snapshot.giftCharge,shippingCharge:snapshot.shippingCharge,discountAmount:snapshot.discountAmount,packSaving:snapshot.packSaving,packs:snapshot.packs,couponCode:snapshot.couponCode,testMode:config.testMode},{headers:{"Cache-Control":"no-store"}});
   } catch (error) {
     const known = error instanceof CheckoutError;
     return NextResponse.json({error:known ? error.message : "Invalid checkout request. Please try again."},{status:known ? error.status : 400});
