@@ -40,7 +40,7 @@ export default function ShippingPage() {
         <section>
           <h2 className="text-base font-bold text-stone-800 uppercase tracking-wider mb-2">4. Shipping Charges</h2>
           <p>
-            Standard delivery costs <strong>₹49 for an order with a single item</strong> and is <strong>free for orders with two or more items</strong>. Same-day delivery costs a flat <strong>₹99</strong> per order. The exact delivery charge is shown in your cart before you pay.
+            Standard delivery costs <strong>₹49 for an order with a single item</strong> and is <strong>free for orders with two or more items</strong>, including every pack of 4 clips. Same-day delivery costs a flat <strong>₹99</strong> per order. The exact delivery charge is shown in your cart before you pay.
           </p>
         </section>
 

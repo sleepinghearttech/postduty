@@ -94,6 +94,14 @@ export function validateCommerce(value: unknown): ProductCommerce {
     }) };
     if (new Set(result.combo.components.map(c => c.product_id)).size !== result.combo.components.length) return bad('Each product can appear only once in a combo; raise its quantity instead.');
   }
+  if (own(value,'pack') && value.pack !== null) {
+    // "Any N for ₹X" rule; kept on every owner save so a product edit never silently drops pack pricing.
+    // Same rule as validPackRule in lib/pack-pricing (kept inline: this module is loaded standalone by tests).
+    const p = value.pack;
+    const group = isRecord(p) && typeof p.group === 'string' ? p.group.trim() : '';
+    if (!isRecord(p) || !/^[a-z0-9-]{1,40}$/.test(group) || !Number.isSafeInteger(p.size) || (p.size as number) < 2 || (p.size as number) > 20 || !Number.isSafeInteger(p.price) || (p.price as number) < 100) return bad('A pack needs a group name (lowercase letters, numbers, hyphens), a size from 2 to 20 and a price in paise.');
+    result.pack = { group, size: p.size as number, price: p.price as number };
+  }
   if (own(value,'faqs')) {
     if (!Array.isArray(value.faqs) || value.faqs.length > 20) return bad('A product supports up to 20 FAQs.');
     result.faqs = value.faqs.map(faq => {

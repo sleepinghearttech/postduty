@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCart, cartUnitPrice, cartStock } from "@/components/CartContext";
 import type { Storefront } from "@/components/commerce/types";
+import { packPricing } from "@/lib/pack-pricing";
 
 function formatPrice(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
@@ -42,6 +43,10 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
   const cart = allItems.filter(item => item.storefront === storefront);
   const totalAmount = cart.reduce((sum,item) => sum + cartUnitPrice(item) * item.quantity, 0);
   const totalQuantity = cart.reduce((sum,item) => sum + item.quantity, 0);
+  // Mirrors the server's pack rule (any 4 clips for one pack price); the server recalculates before payment.
+  const pack = packPricing(cart.map(item => ({ unitPrice: cartUnitPrice(item), quantity: item.quantity, pack: item.product.commerce?.pack })));
+  const packRule = cart.map(item => item.product.commerce?.pack).find(Boolean) ?? null;
+  const packUnits = packRule ? cart.filter(item => item.product.commerce?.pack?.group === packRule.group).reduce((sum,item) => sum + item.quantity, 0) : 0;
   const [deliveryMethod, setDeliveryMethod] = useState<"standard" | "same_day">("standard");
   const sameDayOffered = Boolean(sameDayPrefixes?.length);
   const browseHref = storefront === "christmas" ? "/christmas" : "/store";
@@ -63,7 +68,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
   const sameDayPinOk = !form.pincode || /^\d{6}$/.test(form.pincode) === false || Boolean(sameDayPrefixes?.some(p => form.pincode.startsWith(p)));
   const effectiveDelivery = deliveryMethod === "same_day" && !sameDayPinOk ? "standard" : deliveryMethod;
   // Mirrors the server rule; the server recalculates every amount before payment.
-  const shippingCharge = effectiveDelivery === "same_day" ? sameDayShipping : totalQuantity === 1 ? singleItemShipping : 0;
+  const shippingCharge = effectiveDelivery === "same_day" ? sameDayShipping : pack.packs > 0 ? 0 : totalQuantity === 1 ? singleItemShipping : 0;
 
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
@@ -101,7 +106,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
 
   const giftCharge = isGift ? 2000 : 0; // ₹20 in paise
   const discountAmount = couponApplied?.discountAmount ?? 0;
-  const finalTotal = totalAmount + giftCharge + shippingCharge - discountAmount;
+  const finalTotal = totalAmount + giftCharge + shippingCharge - pack.saving - discountAmount;
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -119,7 +124,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: couponCode.trim(),
-          subtotal: totalAmount,
+          subtotal: totalAmount - pack.saving,
           giftCharge,
         }),
       });
@@ -516,6 +521,15 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
                   <span>🎁 Gift Card</span>
                   <span>+{formatPrice(giftCharge)}</span>
                 </div>
+              )}
+              {pack.groups.map(g => (
+                <div key={g.group} className="flex items-center justify-between text-xs text-stone-600">
+                  <span>Pack of {g.size}{g.packs > 1 ? ` × ${g.packs}` : ""}: {formatPrice(g.price)} a pack, that&apos;s {formatPrice(Math.round(g.price / g.size))} each</span>
+                  <span>-{formatPrice(g.saving)}</span>
+                </div>
+              ))}
+              {packRule && packUnits % packRule.size !== 0 && (
+                <p className="text-[11px] text-stone-500">Add {packRule.size - (packUnits % packRule.size)} more to make a pack of {packRule.size} for {formatPrice(packRule.price)}, delivered free.</p>
               )}
               {discountAmount > 0 && (
                 <div className="flex items-center justify-between text-xs text-green-600">

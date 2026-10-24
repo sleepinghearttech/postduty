@@ -1,4 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+// Explicit .ts extension so the node:test runner (type stripping, no bundler) resolves it too.
+import { packPricing, type PackRule } from "./pack-pricing.ts";
 
 export class CheckoutError extends Error {
   readonly status: number;
@@ -18,7 +20,7 @@ export type CheckoutCustomer = {
 export type DeliveryMethod = "standard" | "same_day";
 export type CheckoutProduct = {
   id: string; name: string; price: number; stock: number; is_active: boolean; creator_id?: string | null;
-  commerce?: { storefronts?: Storefront[]; archived?: boolean; catalog_only?:boolean; made_to_order?:boolean; variants?: {id:string;name:string;price:number;stock:number}[]; personalization?: {enabled:boolean;required:boolean;max_length:number}; hsn?: string; gst_rate_bps?: number; combo?: {components:{product_id:string;quantity:number}[]} } | null;
+  commerce?: { storefronts?: Storefront[]; archived?: boolean; catalog_only?:boolean; made_to_order?:boolean; variants?: {id:string;name:string;price:number;stock:number}[]; pack?: PackRule | null; personalization?: {enabled:boolean;required:boolean;max_length:number}; hsn?: string; gst_rate_bps?: number; combo?: {components:{product_id:string;quantity:number}[]} } | null;
 };
 export type CheckoutCreator = { id:string; status:string; commission_bps:number };
 export type CheckoutCoupon = { code:string; is_active:boolean; expires_at:string|null; max_uses:number|null; times_used:number; min_order:number; discount_type:string; discount_value:number };
@@ -41,10 +43,11 @@ export function stateName(code: string): string | null { return stateByCode.get(
 export const SINGLE_ITEM_SHIPPING_PAISE = 4900;
 /** Same-day local delivery is a flat paid option, never free. */
 export const SAME_DAY_SHIPPING_PAISE = 9900;
-/** Standard: ₹49 when the order holds exactly one unit in total; free from two units. Same-day: flat ₹99. */
-export function shippingChargeFor(totalQuantity: number, method: DeliveryMethod = "standard"): number {
+/** Standard: ₹49 when the order holds exactly one unit in total; free from two units, and always free with a pack. Same-day: flat ₹99. */
+export function shippingChargeFor(totalQuantity: number, method: DeliveryMethod = "standard", packs = 0): number {
   if (!Number.isSafeInteger(totalQuantity) || totalQuantity < 1) throw new CheckoutError("Cart must contain at least one item.");
   if (method === "same_day") return SAME_DAY_SHIPPING_PAISE;
+  if (packs > 0) return 0;
   return totalQuantity === 1 ? SINGLE_ITEM_SHIPPING_PAISE : 0;
 }
 /** Empty/unset = every state served. Unknown codes are ignored; a non-empty list with no valid code serves nothing (fails closed). */
@@ -312,26 +315,26 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
   const subtotal = lines.reduce((sum,line) => sum + line.unit_price * line.quantity,0);
   if (!Number.isSafeInteger(subtotal) || subtotal < 100 || subtotal > 50_000_000) throw new CheckoutError("Merchandise total is outside the supported payment range.");
   const giftCharge = request.isGift ? 2000 : 0;
-  let discountAmount = 0;
+  // Pack pricing ("any 4 for ₹300") applies to direct lines only; combos already carry their own price.
+  const pack = packPricing(lines.filter(line => !line.combo_role).map(line => ({unitPrice:line.unit_price,quantity:line.quantity,pack:products.find(p => p.id === line.product_id)?.commerce?.pack})));
+  let discountAmount = pack.saving;
   if (request.couponCode) {
-    const result = couponDiscount(coupon,subtotal,giftCharge,now);
+    // A coupon applies to the merchandise price after packs.
+    const result = couponDiscount(coupon,subtotal - pack.saving,giftCharge,now);
     if (!result.ok) throw new CheckoutError("That coupon is no longer available. Remove it or use another code.",409);
-    discountAmount = result.discount;
+    discountAmount += result.discount;
   }
   // A combo counts as one item for shipping, whatever it contains.
-  const shippingCharge = shippingChargeFor(lines.reduce((sum,line) => sum + (line.combo_role === "component" ? 0 : line.quantity),0),request.deliveryMethod ?? "standard");
+  const shippingCharge = shippingChargeFor(lines.reduce((sum,line) => sum + (line.combo_role === "component" ? 0 : line.quantity),0),request.deliveryMethod ?? "standard",pack.packs);
   const totalAmount = subtotal + giftCharge + shippingCharge - discountAmount;
   if (!Number.isSafeInteger(totalAmount) || totalAmount < 100 || totalAmount > 50_000_000) throw new CheckoutError("Order total is outside the supported payment range.");
   // Allocate the exact order discount across merchandise only (never the gift card).
   // Largest remainder keeps every paise accounted for; input order breaks equal ties. Components have no price of their own.
-  const allocation = lines.map((line,index) => {
-    const numerator = discountAmount * line.quantity * line.unit_price;
-    return {index,paise:Math.floor(numerator / subtotal),remainder:numerator % subtotal};
-  });
-  const residual = discountAmount - allocation.reduce((sum,a) => sum + a.paise,0);
-  const priority = [...allocation].sort((a,b) => b.remainder-a.remainder || a.index-b.index);
-  for (let i=0;i<residual;i++) allocation[priority[i].index].paise++;
-  for (const [index,line] of lines.entries()) line.line_discount_amount = allocation[index].paise;
+  // The pack saving belongs only to the pack lines; any coupon is then spread over all merchandise by remaining value.
+  const isPackLine = (line: CheckoutLine) => !line.combo_role && pack.saving > 0 && products.some(p => p.id === line.product_id && p.commerce?.pack && pack.groups.some(g => g.group === p.commerce?.pack?.group));
+  const packShares = pack.saving ? allocateByWeight(pack.saving,lines.map(line => isPackLine(line) ? line.quantity * line.unit_price : 0)) : lines.map(() => 0);
+  const couponShares = discountAmount - pack.saving ? allocateByWeight(discountAmount - pack.saving,lines.map((line,i) => line.quantity * line.unit_price - packShares[i])) : lines.map(() => 0);
+  for (const [index,line] of lines.entries()) line.line_discount_amount = packShares[index] + couponShares[index];
   // A combo's net price is split across its components in proportion to their unit prices × quantity per combo.
   for (const [index,line] of lines.entries()) {
     if (line.combo_role !== "combo") continue;
@@ -347,7 +350,7 @@ export function buildCheckoutSnapshot(request: CheckoutRequest, products: Checko
   }
   const stateCode = request.customer?.state_code;
   const taxBreakdown = stateCode ? gstBreakdown(lines,stateCode,options.sellerStateCode ?? "29",options.gstRegistered === true,{shipping:shippingCharge,gift:giftCharge}) : null;
-  return {lines,subtotal,giftCharge,shippingCharge,discountAmount,totalAmount,couponCode:request.couponCode,taxBreakdown};
+  return {lines,subtotal,giftCharge,shippingCharge,discountAmount,packSaving:pack.saving,packs:pack.packs,totalAmount,couponCode:request.couponCode,taxBreakdown};
 }
 export function paymentConfiguration(env: Record<string,string|undefined>) {
   const keyId = env.RAZORPAY_KEY_ID?.trim();
