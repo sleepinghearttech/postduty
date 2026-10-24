@@ -9,7 +9,7 @@ const request=(overrides={})=>parseCheckoutRequest({items:[{productId:id,quantit
 test('client-supplied amounts, prices and creator identities cannot affect the authoritative snapshot',()=>{
  const parsed=request({totalAmount:1,discountAmount:25000,items:[{productId:id,quantity:2,unitPrice:1,creator_id:'fraud'}]});
  const s=buildCheckoutSnapshot(parsed,[product],null);
- assert.equal(s.totalAmount,50000); assert.equal(s.lines[0].unit_price,25000); assert.equal(s.lines[0].creator_id,null);
+ assert.equal(s.totalAmount,50000+4900); assert.equal(s.lines[0].unit_price,25000); assert.equal(s.lines[0].creator_id,null);
 });
 test('rejects fractional, negative, zero, oversized, and nonnumeric quantities',()=>{
  for(const quantity of [0,-1,1.5,101,'1',NaN,Infinity]) assert.throws(()=>request({items:[{productId:id,quantity}]}),/quantity/);

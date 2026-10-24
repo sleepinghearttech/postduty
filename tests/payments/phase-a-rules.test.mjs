@@ -18,16 +18,17 @@ const product2={...product,id:id2,price:10000,commerce:{storefronts:['general'],
 const address={customerName:'Test Buyer',customerEmail:'Buyer@Example.invalid',customerPhone:'+91 98765 43210',addressLine1:'1 Fictional Street',addressLine2:'Near Test Landmark',city:'Testpur',stateCode:'29',pincode:'560001'};
 const request=(overrides={})=>parseCheckoutRequest({items:[{productId:id,quantity:1}],storefront:'general',...address,acceptTerms:true,...overrides});
 
-test('shipping: exactly one item in total costs ₹49 (4900 paise); two or more items ship free',()=>{
+test('shipping: standard is ₹49 (4900 paise) per order without a pack; free when a pack is formed',()=>{
   assert.equal(shippingChargeFor(1),4900);
-  for(const quantity of [2,3,50]) assert.equal(shippingChargeFor(quantity),0);
+  for(const quantity of [2,3,50]) assert.equal(shippingChargeFor(quantity),4900);
+  for(const quantity of [4,9]) assert.equal(shippingChargeFor(quantity,'standard',1),0);
   for(const quantity of [0,-1,1.5,NaN]) assert.throws(()=>shippingChargeFor(quantity),/at least one/);
   const one=buildCheckoutSnapshot(request(),[product],null);
   assert.equal(one.shippingCharge,4900);assert.equal(one.totalAmount,25000+4900);
   const twoOfOne=buildCheckoutSnapshot(request({items:[{productId:id,quantity:2}]}),[product],null);
-  assert.equal(twoOfOne.shippingCharge,0);assert.equal(twoOfOne.totalAmount,50000);
+  assert.equal(twoOfOne.shippingCharge,4900);assert.equal(twoOfOne.totalAmount,54900);
   const twoLines=buildCheckoutSnapshot(request({items:[{productId:id,quantity:1},{productId:id2,quantity:1}]}),[product,product2],null);
-  assert.equal(twoLines.shippingCharge,0);assert.equal(twoLines.totalAmount,35000);
+  assert.equal(twoLines.shippingCharge,4900);assert.equal(twoLines.totalAmount,39900);
 });
 test('client-supplied shipping is ignored; coupons never discount shipping or push it below zero',()=>{
   const s=buildCheckoutSnapshot(request({shippingCharge:0,shipping_charge:0}),[product],null);
@@ -77,7 +78,7 @@ test('PIN prefix limit: unset serves all; listed prefixes only; a misconfigured 
   assert.equal(assertCheckoutReady(request(),parseAllowedStates('29'),blr).pincode,'560001');
 });
 test('delivery options: same-day is a flat ₹99 limited to listed PIN prefixes; standard keeps ₹49/free; method is stored on the customer',()=>{
-  assert.equal(shippingChargeFor(1,'same_day'),9900);assert.equal(shippingChargeFor(3,'same_day'),9900);assert.equal(shippingChargeFor(2,'standard'),0);
+  assert.equal(shippingChargeFor(1,'same_day'),9900);assert.equal(shippingChargeFor(3,'same_day'),9900);assert.equal(shippingChargeFor(2,'standard'),4900);
   assert.equal(request().deliveryMethod,'standard');
   assert.throws(()=>request({deliveryMethod:'drone'}),/Invalid delivery option/);
   const blr=contract.parseAllowedPinPrefixes('560');
@@ -136,7 +137,7 @@ test('GST split: same state → equal CGST + SGST halves; other state → IGST; 
 test('snapshot carries per-line HSN and GST rate and a tax breakdown from the customer state vs seller state',()=>{
   const s=buildCheckoutSnapshot(request({stateCode:'32',items:[{productId:id,quantity:2}]}),[product],null,Date.now(),[],{sellerStateCode:'29',gstRegistered:false});
   assert.equal(s.lines[0].hsn,'7117');assert.equal(s.lines[0].gst_rate_bps,300);
-  assert.equal(s.taxBreakdown.regime,'inter_state');assert.equal(s.taxBreakdown.igst,inclusiveTax(50000,300));
+  assert.equal(s.taxBreakdown.regime,'inter_state');assert.equal(s.taxBreakdown.igst,inclusiveTax(50000,300)+inclusiveTax(4900,300));
   const local=buildCheckoutSnapshot(request(),[product],null,Date.now(),[],{sellerStateCode:'29'});
   assert.equal(local.taxBreakdown.regime,'intra_state');assert.equal(local.taxBreakdown.place_of_supply,'29');
   // Prices are tax-inclusive: the amount charged never changes with tax.

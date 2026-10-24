@@ -36,8 +36,8 @@ test('a combo line records its components, splits its price by component unit pr
   assert.equal(s.taxBreakdown.complete, true);
   assert.equal(s.taxBreakdown.taxable_value + s.taxBreakdown.total_tax, s.totalAmount);
   assert.deepEqual(s.lines.map(l => l.creator_id), [null, makerA, makerB]);
-  // A combo plus one other item is two items: free shipping.
-  assert.equal(buildCheckoutSnapshot(request([{ productId: C, quantity: 1 }, { productId: D, quantity: 1 }]), [combo, a, b, solo], null, Date.now(), creators).shippingCharge, 0);
+  // Without a pack, standard delivery is charged once per order, however many items.
+  assert.equal(buildCheckoutSnapshot(request([{ productId: C, quantity: 1 }, { productId: D, quantity: 1 }]), [combo, a, b, solo], null, Date.now(), creators).shippingCharge, 4900);
   // Discounts reach the combo and therefore its components, never the shipping.
   const coupon = { code: 'TEN', is_active: true, expires_at: null, max_uses: null, times_used: 0, min_order: 0, discount_type: 'percent', discount_value: 10 };
   const d = buildCheckoutSnapshot(request([{ productId: C, quantity: 1 }], { couponCode: 'TEN' }), [combo, a, b], coupon, Date.now(), creators);
