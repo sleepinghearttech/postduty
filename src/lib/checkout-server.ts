@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { commerceTable, isCommerceSandbox } from "@/lib/commerce-db";
 import { CheckoutError, assertCapturedPayment, paymentConfiguration, type CheckoutCustomer } from "@/lib/checkout-contract";
 import { sendAdminWhatsAppAlert, sendCreatorWhatsAppAlerts, sendCustomerWhatsAppConfirmation, type CreatorAlertLine } from "@/lib/notifications";
-import { sendOrderEmails } from "@/lib/email";
+import { sendCreatorOrderEmails, sendOrderEmails, type CreatorRecipient } from "@/lib/email";
 import type { Order, OrderLineSummary } from "@/lib/types";
 
 export async function razorpayRequest(path: string, init: RequestInit = {}) {
@@ -56,7 +56,17 @@ async function notifyNewOrder(orderId:string,testMode:boolean) {
   const alertOrder = {...(order as Order),order_items:(lines ?? []) as OrderLineSummary[]};
   // Creators make component lines, not the priced combo parent.
   const creatorLines = ((lines ?? []) as (CreatorAlertLine & {combo_role?: string|null})[]).filter(line => line.combo_role !== "combo");
-  const results = await Promise.allSettled([sendAdminWhatsAppAlert(alertOrder),sendCreatorWhatsAppAlerts(order as Order,creatorLines),sendCustomerWhatsAppConfirmation(order as Order),sendOrderEmails(alertOrder)]);
+  const creatorIds = [...new Set(creatorLines.flatMap(line => line.creator_id ? [line.creator_id] : []))];
+  // A failed creator lookup only skips creator emails; owner and customer alerts still go out.
+  let creatorRecipients: CreatorRecipient[] = [];
+  if (creatorIds.length) {
+    try {
+      const {data:creatorRows,error:creatorError} = await supabaseAdmin.from(commerceTable("creators")).select("id,email,display_name,status").in("id",creatorIds);
+      if (creatorError) console.error("[Email] Creator lookup failed; creator emails skipped:", creatorError.message);
+      creatorRecipients = ((creatorRows ?? []) as (CreatorRecipient & {status?:string})[]).filter(c => c.status !== "suspended");
+    } catch (err) { console.error("[Email] Creator lookup error; creator emails skipped:", err); }
+  }
+  const results = await Promise.allSettled([sendAdminWhatsAppAlert(alertOrder),sendCreatorWhatsAppAlerts(order as Order,creatorLines),sendCreatorOrderEmails(order as Order,creatorLines,creatorRecipients),sendCustomerWhatsAppConfirmation(order as Order),sendOrderEmails(alertOrder)]);
   // Existing transports swallow provider errors; do not mislabel an attempt as delivery.
   await supabaseAdmin.from(commerceTable("payment_notification_jobs")).update({status:results.some(r => r.status === "rejected") ? "failed" : "attempted_unconfirmed"}).eq("order_id",orderId);
 }
