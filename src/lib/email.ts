@@ -1,7 +1,12 @@
 import type { Order, OrderLineSummary } from "@/lib/types";
 
 type OrderWithLines = Order & { order_items?: OrderLineSummary[] };
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch] as string);
+/** RESEND_FROM (e.g. "PostDuty <orders@postduty.in>") once the domain is verified; Resend's sandbox otherwise, which only reaches the account owner. */
+function senderAddress(): string {
+  const from = process.env.RESEND_FROM?.trim();
+  return from && /^[^<>\r\n]{1,60}<[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}>$/i.test(from) ? from : "PostDuty <onboarding@resend.dev>";
+}
+const escapeHtml =(value: string) => value.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch] as string);
 /** Owner email only: each line's option and personalisation (customer-entered text is escaped). */
 function ownerItemsHtml(order: OrderWithLines): string {
   if (!Array.isArray(order.order_items) || !order.order_items.length) return "";
@@ -38,7 +43,7 @@ export async function sendOrderEmails(order: OrderWithLines): Promise<void> {
   }
 
   const amountInRupees = (order.total_amount / 100).toFixed(2);
-  const fromEmail = "PostDuty <onboarding@resend.dev>";
+  const fromEmail = senderAddress();
   
   // 1. Admin email details
   const adminEmailPayload = {
@@ -168,7 +173,7 @@ export async function sendCustomerShippingEmail(order: Order): Promise<void> {
   }
 
   const amountInRupees = (order.total_amount / 100).toFixed(2);
-  const fromEmail = "PostDuty <onboarding@resend.dev>";
+  const fromEmail = senderAddress();
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://postduty.in";
   const trackingLink = `${baseUrl}/orders/${order.id}`;
 
@@ -245,7 +250,7 @@ export async function sendFollowUpDay1Email(order: Order): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
 
-  const fromEmail = "PostDuty <onboarding@resend.dev>";
+  const fromEmail = senderAddress();
 
   const payload = {
     from: fromEmail,
@@ -306,7 +311,7 @@ export async function sendFollowUpDay5Email(order: Order): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
 
-  const fromEmail = "PostDuty <onboarding@resend.dev>";
+  const fromEmail = senderAddress();
 
   const payload = {
     from: fromEmail,
@@ -372,7 +377,7 @@ export async function sendWinBackEmail(order: Order, couponCode: string): Promis
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
 
-  const fromEmail = "PostDuty <onboarding@resend.dev>";
+  const fromEmail = senderAddress();
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://postduty.in";
   // The marketing call-to-action must open the retained storefront, not the
   // new creative homepage at the site root.
@@ -433,5 +438,55 @@ export async function sendWinBackEmail(order: Order, couponCode: string): Promis
     }
   } catch (err) {
     console.error("[Email] WinBack error:", err);
+  }
+}
+
+export type CreatorEmailLine = { creator_id: string | null; product_name: string | null; quantity: number; variant_name?: string | null; personalization?: { text?: unknown } | null };
+export type CreatorRecipient = { id: string; email: string; display_name?: string | null };
+
+/** One email per creator listing only their own lines; all customer-entered text is escaped. */
+export function creatorOrderEmail(order: Order, lines: CreatorEmailLine[], creator: CreatorRecipient, studioUrl: string): { subject: string; html: string } | null {
+  const own = lines.filter(line => line.creator_id?.toLowerCase() === creator.id.toLowerCase());
+  if (!own.length) return null;
+  const sameDay = (order.shipping_details as { delivery_method?: string } | null | undefined)?.delivery_method === "same_day";
+  const units = own.reduce((sum, line) => sum + line.quantity, 0);
+  const rows = own.map(line => {
+    const text = typeof line.personalization?.text === "string" ? line.personalization.text.trim() : "";
+    return `<li style="margin-bottom:6px;">${escapeHtml(line.product_name?.trim() || "Product")}${line.variant_name ? ` (${escapeHtml(line.variant_name)})` : ""} × ${line.quantity}${text ? `<br><span style="color:#6b7280;">Personalisation: ${escapeHtml(text)}</span>` : ""}</li>`;
+  }).join("");
+  const name = escapeHtml(creator.display_name?.trim() || "there");
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16302d;max-width:600px;margin:0 auto;border:1px solid #e2ecea;padding:20px;border-radius:10px;">
+      <h2 style="color:#1f6f68;margin-top:0;">New PostDuty order for you 🧶</h2>
+      <p>Hi ${name}, a customer has ordered ${units} of your piece${units === 1 ? "" : "s"}:</p>
+      <ul style="padding-left:18px;">${rows}</ul>
+      <p style="background:${sameDay ? "#fff4e5" : "#f5fafa"};padding:10px 12px;border-radius:6px;"><strong>${sameDay ? "SAME-DAY delivery (Bengaluru)" : "Standard delivery"}</strong>: please have it ready ${sameDay ? "today" : "within 3 working days"}.</p>
+      <p>Order reference: <code>${escapeHtml(order.id.slice(0, 8))}</code></p>
+      <p><a href="${studioUrl}" style="display:inline-block;background:#1f6f68;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;">Open your Creator studio</a></p>
+      <p style="font-size:12px;color:#6b7280;">PostDuty will arrange pickup and delivery. Reply to this email if anything is unclear.</p>
+    </div>`;
+  return { subject: `${sameDay ? "SAME-DAY · " : ""}New PostDuty order: ${units} piece${units === 1 ? "" : "s"} to make`, html };
+}
+
+/** Emails each creator about their part of a new paid order. Failures are logged and never block the order. */
+export async function sendCreatorOrderEmails(order: Order, lines: CreatorEmailLine[], creators: CreatorRecipient[]): Promise<void> {
+  if (order.is_test === true || order.payment_mode === "test") return;
+  if (process.env.COMMERCE_SANDBOX === "true" || process.env.ORDER_NOTIFICATIONS_ENABLED !== "true") return;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) { console.error("[Email] RESEND_API_KEY environment variable is not defined"); return; }
+  for (const creator of creators) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(creator.email) || creator.email.endsWith(".invalid")) continue;
+    const mail = creatorOrderEmail(order, lines, creator, "https://store.postduty.in/creator");
+    if (!mail) continue;
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ from: senderAddress(), to: [creator.email], reply_to: "postdutyswag@gmail.com", subject: mail.subject, html: mail.html }),
+      });
+      if (!response.ok) console.error(`[Email] Creator order email failed. Status: ${response.status}. Error: ${await response.text()}`);
+    } catch (err) {
+      console.error("[Email] Creator order email network error:", err);
+    }
   }
 }
