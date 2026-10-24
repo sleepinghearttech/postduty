@@ -42,7 +42,6 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
   const storefront: Storefront = searchParams.get("storefront") === "christmas" ? "christmas" : "general";
   const cart = allItems.filter(item => item.storefront === storefront);
   const totalAmount = cart.reduce((sum,item) => sum + cartUnitPrice(item) * item.quantity, 0);
-  const totalQuantity = cart.reduce((sum,item) => sum + item.quantity, 0);
   // Mirrors the server's pack rule (any 4 clips for one pack price); the server recalculates before payment.
   const pack = packPricing(cart.map(item => ({ unitPrice: cartUnitPrice(item), quantity: item.quantity, pack: item.product.commerce?.pack })));
   const packRule = cart.map(item => item.product.commerce?.pack).find(Boolean) ?? null;
@@ -68,7 +67,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
   const sameDayPinOk = !form.pincode || /^\d{6}$/.test(form.pincode) === false || Boolean(sameDayPrefixes?.some(p => form.pincode.startsWith(p)));
   const effectiveDelivery = deliveryMethod === "same_day" && !sameDayPinOk ? "standard" : deliveryMethod;
   // Mirrors the server rule; the server recalculates every amount before payment.
-  const shippingCharge = effectiveDelivery === "same_day" ? sameDayShipping : pack.packs > 0 ? 0 : totalQuantity === 1 ? singleItemShipping : 0;
+  const shippingCharge = effectiveDelivery === "same_day" ? sameDayShipping : pack.packs > 0 ? 0 : singleItemShipping;
 
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
@@ -541,7 +540,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
                 <span>Shipping</span>
                 <span>{shippingCharge > 0 ? `+${formatPrice(shippingCharge)}` : "Free"}</span>
               </div>
-              {effectiveDelivery === "standard" && shippingCharge > 0 && <p className="text-[11px] text-stone-400">Shipping is free when your bag has two or more items.</p>}
+              {effectiveDelivery === "standard" && shippingCharge > 0 && packRule && <p className="text-[11px] text-stone-400">Delivery is free with a pack of {packRule.size} clips.</p>}
               <div className="flex items-center justify-between font-bold text-stone-800 text-base">
                 <span>Estimated total</span>
                 <span className="text-brand">{formatPrice(finalTotal)}</span>
@@ -554,7 +553,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
                 <legend className={labelClass}>Delivery option</legend>
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input type="radio" name="deliveryMethod" value="standard" checked={effectiveDelivery === "standard"} onChange={() => setDeliveryMethod("standard")} className="mt-0.5 accent-brand" />
-                  <span><strong>Standard</strong> · 2–5 working days · {formatPrice(singleItemShipping)} for one item, free for two or more</span>
+                  <span><strong>Standard</strong> · 2–5 working days · {formatPrice(singleItemShipping)} per order, free with a pack of 4 clips</span>
                 </label>
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input type="radio" name="deliveryMethod" value="same_day" checked={effectiveDelivery === "same_day"} disabled={!sameDayPinOk} onChange={() => setDeliveryMethod("same_day")} className="mt-0.5 accent-brand" />

@@ -43,12 +43,11 @@ export function stateName(code: string): string | null { return stateByCode.get(
 export const SINGLE_ITEM_SHIPPING_PAISE = 4900;
 /** Same-day local delivery is a flat paid option, never free. */
 export const SAME_DAY_SHIPPING_PAISE = 9900;
-/** Standard: ₹49 when the order holds exactly one unit in total; free from two units, and always free with a pack. Same-day: flat ₹99. */
+/** Owner rule (25 Oct 2026): standard delivery is ₹49 per order, free only when the order contains a pack. Same-day: flat ₹99. */
 export function shippingChargeFor(totalQuantity: number, method: DeliveryMethod = "standard", packs = 0): number {
   if (!Number.isSafeInteger(totalQuantity) || totalQuantity < 1) throw new CheckoutError("Cart must contain at least one item.");
   if (method === "same_day") return SAME_DAY_SHIPPING_PAISE;
-  if (packs > 0) return 0;
-  return totalQuantity === 1 ? SINGLE_ITEM_SHIPPING_PAISE : 0;
+  return packs > 0 ? 0 : SINGLE_ITEM_SHIPPING_PAISE;
 }
 /** Empty/unset = every state served. Unknown codes are ignored; a non-empty list with no valid code serves nothing (fails closed). */
 export function parseAllowedStates(value: string | undefined | null): Set<string> | null {
