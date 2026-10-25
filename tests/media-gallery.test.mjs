@@ -20,6 +20,7 @@ function load(path) {
     if (id === 'react' || id.startsWith('react/')) return nativeRequire(id);
     if (id === 'next/link') return { __esModule: true, default: ({ href, children, ...rest }) => React.createElement('a', { href, ...rest }, children) };
     if (id.endsWith('.module.css')) return { __esModule: true, default: cssModule };
+    if (id === '@/components/CartContext') return { useCart: () => ({ addToCart() {} }) };
     if (id.startsWith('./')) return load(resolve(url, id));
     throw new Error(`Unexpected dependency ${id}`);
   };

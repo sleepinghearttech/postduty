@@ -136,3 +136,33 @@
 .festive.festive[data-storefront] [data-storefront-part="closing"] .eyebrow,.festive.festive[data-storefront] [data-storefront-part="closing"] a{color:#f6dca0}
 .festive.festive[data-storefront] [data-storefront-part="hero-footnote"]{color:#6b5457!important;opacity:1}
 @media(max-width:640px){.brandBar{font-size:10px}.trustStrip span{font-size:11px}.garland,.ecg{height:24px}}
+
+/* Quick add, similar products, PIN check */
+.quickAdd{position:absolute;right:12px;bottom:12px;z-index:3;width:40px;height:40px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;background:#fffdf7f0;color:var(--teal,var(--berry,#244c39));box-shadow:0 6px 16px #0000001f;cursor:pointer;transition:transform .2s,background .2s,color .2s}
+.quickAdd:hover{transform:translateY(-2px) scale(1.05)}
+.quickAdd[data-added]{background:var(--teal,var(--berry,#244c39));color:#fff}
+.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.viewSimilar{display:inline-flex;align-items:center;gap:8px;margin-top:14px;font-size:12px;color:#3c5336;border-bottom:1px solid currentColor;padding-bottom:2px}
+.pinCheck{margin:22px 0;padding:16px;border:1px solid #d7dccc;border-radius:12px;background:#fcfcf8}
+.pinCheck label{display:block;font-size:12px;color:#4d654d;margin-bottom:8px}
+.pinRow{display:flex;gap:8px}
+.pinRow input{flex:1;min-width:0;border:1px solid #c6cfbd;border-radius:8px;min-height:44px;padding:10px 12px;font-size:14px;background:#fff}
+.pinRow button{min-height:44px;padding:0 18px;border-radius:8px;border:1px solid #294d36;background:#294d36;color:#fff;font-size:12px;cursor:pointer}
+.pinRow button:disabled{opacity:.4;cursor:not-allowed}
+.pinResult{margin:12px 0 0;padding:0 0 0 2px;list-style:none;font-size:12px;line-height:1.7;color:#3c5336}
+.pinResult li+li{margin-top:6px}
+.pinNo{margin:12px 0 0;font-size:12px;color:#8c3b2e}
+.similar{margin-top:56px;padding-top:32px;border-top:1px solid #d7dccc;scroll-margin-top:90px}
+.similarHead{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.similarHead h2{font:400 clamp(22px,2.6vw,30px)/1.2 var(--font-fraunces),Georgia,serif;margin:0;color:#243e2f}
+.similarToggle{display:inline-flex;align-items:center;gap:8px;border:1px solid #c6cfbd;background:transparent;border-radius:999px;padding:9px 16px;font-size:12px;color:#3c5336;cursor:pointer;min-height:40px}
+.similarGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px 16px}
+.similarCard{min-width:0}
+.similarImage{position:relative;aspect-ratio:1/1.08;border-radius:12px;overflow:hidden;background:#efe9dc}
+.similarImage img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
+.similarCard:hover .similarImage img{transform:scale(1.04)}
+.similarCard h3{font:500 15px/1.35 var(--font-fraunces),Georgia,serif;margin:10px 0 4px;color:#2e4536}
+.similarCard p{font-size:12px;color:#5b6e53;margin:0}
+@media(max-width:900px){.similarGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.similarGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px}.quickAdd{width:36px;height:36px;right:8px;bottom:8px}.similarHead{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.quickAdd,.similarImage img{transition:none}}

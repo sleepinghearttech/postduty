@@ -5,7 +5,15 @@ import Link from 'next/link';
 import type {Metadata} from 'next';
 import CheckoutForm from '@/components/CheckoutForm';
 import ProductGallery from '@/components/commerce/ProductGallery';
-import {getStoreProduct,getCreatorProfile} from '@/components/commerce/catalog-data';
+import {getStoreProduct,getStoreProducts,getCreatorProfile} from '@/components/commerce/catalog-data';
+import SimilarProducts,{ViewSimilarLink} from '@/components/commerce/SimilarProducts';
+import PinCheck from '@/components/commerce/PinCheck';
+import {parseAllowedPinPrefixes,parseAllowedStates,servedStates,servedPinPrefixes,SAME_DAY_SHIPPING_PAISE,SINGLE_ITEM_SHIPPING_PAISE} from '@/lib/checkout-contract';
+import type {StoreProduct} from '@/components/commerce/types';
+function deliveryRules(product:StoreProduct){
+  const allowed=parseAllowedStates(process.env.ALLOWED_SHIPPING_STATES);
+  return {servedPrefixes:servedPinPrefixes(allowed,parseAllowedPinPrefixes(process.env.ALLOWED_PIN_PREFIXES)),servedLabel:allowed?servedStates(allowed).map(s=>s.name).join(', ')||'selected areas':'India',sameDayPrefixes:parseAllowedPinPrefixes(process.env.SAME_DAY_PIN_PREFIXES)??[],standardFee:SINGLE_ITEM_SHIPPING_PAISE,sameDayFee:SAME_DAY_SHIPPING_PAISE,packSize:product.commerce?.pack?.size??null};
+}
 import {creatorStory,madeByLine} from '@/lib/creator-profile';
 import {productStock,productHref,type Storefront} from '@/components/commerce/types';
 import {isCommerceSandbox} from '@/lib/commerce-db';
@@ -30,6 +38,10 @@ export default async function ProductPage({params,searchParams}:Props){
   const {slug}=await params;const storefront=await context(searchParams);if(!storefront)notFound();const product=await getStoreProduct(slug,storefront);if(!product)notFound();
   const catalogOnly=isCatalogOnly()||product.commerce?.catalog_only===true;
   const creator=product.creator_id?await getCreatorProfile(product.creator_id):null;
+  // Similar = same storefront, available, ranked by shared collections then same category.
+  const {products:siblings}=await getStoreProducts(storefront);
+  const similar=siblings.filter(p=>p.id!==product.id&&productStock(p)>0).map(p=>({p,score:(p.commerce?.collections??[]).filter(x=>product.commerce?.collections?.includes(x)).length*2+(p.commerce?.category&&p.commerce.category===product.commerce?.category?1:0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).map(x=>x.p).slice(0,12);
+  const delivery=deliveryRules(product);
   const c=product.commerce;const base=storefront==='christmas'?'https://christmas.postduty.in':'https://store.postduty.in';
   const variantPrices = c?.variants?.map(v=>v.price) ?? [];
   const offers = variantPrices.length ? {'@type':'AggregateOffer',lowPrice:(Math.min(...variantPrices)/100).toFixed(2),highPrice:(Math.max(...variantPrices)/100).toFixed(2),offerCount:variantPrices.length,priceCurrency:'INR'} : {'@type':'Offer',price:(product.price/100).toFixed(2),priceCurrency:'INR',availability:productStock(product)>0?'https://schema.org/InStock':'https://schema.org/OutOfStock',url:base+productHref(product,storefront)};
@@ -37,8 +49,9 @@ export default async function ProductPage({params,searchParams}:Props){
   return <main className={`${styles.productPage} ${storefront==='christmas'?styles.festiveProduct:''}`}>
     {isCommerceSandbox()?<div className={styles.previewNotice}>Fictional preview product · Not a live offer for sale</div>:<script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,'\\u003c')}}/>}
     <div className={styles.productInner}><Link className={styles.backLink} href={storefront==='christmas'?'/christmas':'/store'}>← {storefront==='christmas'?'The Christmas collection':'The PostDuty Store'}</Link>
-      <div className={styles.productColumns}><ProductGallery product={product}/><div className={styles.productInformation}><p className={styles.eyebrow}>{c?.category||'PostDuty collection'}</p><h1>{product.name}</h1>{c?.short_description&&<p className={styles.productIntro}>{c.short_description}</p>}{creator&&<aside className="my-4 flex items-start gap-3 rounded-2xl border border-stone-200 bg-white/70 p-3" aria-label="About the maker">{creator.photo_url&&<img src={creator.photo_url} alt={creator.display_name} className="h-14 w-14 flex-shrink-0 rounded-full object-cover"/>}<div><p className="text-sm font-semibold">{madeByLine(creator)}</p>{creatorStory(creator)&&<p className="mt-1 whitespace-pre-line text-sm leading-6 text-stone-600">{creatorStory(creator)}</p>}</div></aside>}<CheckoutForm product={product} storefront={storefront} catalogOnly={catalogOnly}/>
+      <div className={styles.productColumns}><ProductGallery product={product}/><div className={styles.productInformation}><p className={styles.eyebrow}>{c?.category||'PostDuty collection'}</p><h1>{product.name}</h1>{c?.short_description&&<p className={styles.productIntro}>{c.short_description}</p>}{creator&&<aside className="my-4 flex items-start gap-3 rounded-2xl border border-stone-200 bg-white/70 p-3" aria-label="About the maker">{creator.photo_url&&<img src={creator.photo_url} alt={creator.display_name} className="h-14 w-14 flex-shrink-0 rounded-full object-cover"/>}<div><p className="text-sm font-semibold">{madeByLine(creator)}</p>{creatorStory(creator)&&<p className="mt-1 whitespace-pre-line text-sm leading-6 text-stone-600">{creatorStory(creator)}</p>}</div></aside>}<CheckoutForm product={product} storefront={storefront} catalogOnly={catalogOnly}/><ViewSimilarLink count={similar.length}/>{!catalogOnly&&<PinCheck {...delivery}/>}
         <div className={styles.productDetails}><details open><summary>The details</summary><p>{product.description||'More details are being added. Please contact us with questions before ordering.'}</p>{c?.materials&&<p><strong>Materials:</strong> {c.materials}</p>}{c?.dimensions&&<p><strong>Dimensions:</strong> {c.dimensions}</p>}{c?.weight_grams!=null&&<p><strong>Weight:</strong> {c.weight_grams} g</p>}</details><details><summary>Preparation &amp; delivery</summary>{c?.made_to_order&&<p>This piece is made to order.</p>}{c?.preparation_days!=null?<p>Estimated preparation: {c.preparation_days} {c.preparation_days===1?'working day':'working days'}. This does not include delivery time.</p>:<p>Contact us to confirm preparation time before ordering.</p>}<p>Delivery timing depends on your location. <Link href="/shipping">Read our shipping policy</Link>.</p>{c?.shipping_method&&<p>Shipping method: {c.shipping_method}</p>}</details><details><summary>Customer reviews</summary><p>No verified customer reviews are available yet.</p></details>{c?.faqs?.map((faq,i)=><details key={i}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</div><p className={styles.help}>A question before you order? <Link href="/contact">Talk to PostDuty ↗</Link></p></div></div>
+      <SimilarProducts products={similar} storefront={storefront} ordering={!isCatalogOnly()}/>
     </div>
   </main>;
 }
