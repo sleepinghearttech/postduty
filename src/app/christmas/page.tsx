@@ -4,6 +4,7 @@ import Catalog from '@/components/commerce/Catalog';
 import { getStoreProducts } from '@/components/commerce/catalog-data';
 import { money,primaryImage,productHref,productPrice } from '@/components/commerce/types';
 import { isCommerceSandbox } from '@/lib/commerce-db';
+import { isCatalogOnly } from '@/lib/catalog-mode';
 import styles from './christmas.module.css';
 import commerce from '@/components/commerce/commerce.module.css';
 import refinement from '@/components/commerce/refinement.module.css';
@@ -40,7 +41,7 @@ export default async function ChristmasPage({searchParams}:{searchParams:Promise
     <div className={commerce.seasonRibbon} data-storefront-part="season-ribbon"><span>For the tree</span><span aria-hidden="true">✦</span><span>For the home</span><span aria-hidden="true">✦</span><span>For someone special</span></div>
     <Garland/>
     <TrustStrip items={CHRISTMAS_TRUST}/>
-    <section id="shop" className={commerce.collectionSection} data-storefront-part="collection"><div className={commerce.collectionHeading} data-storefront-part="collection-heading"><div><p className={commerce.eyebrow}>The Christmas collection</p><h2>Make room for a little magic.</h2></div><p>A festive edit of decorations and gifts.<br/>Explore the details that make each piece yours.</p></div><Catalog products={products} storefront="christmas" unavailable={unavailable}/></section>
+    <section id="shop" className={commerce.collectionSection} data-storefront-part="collection"><div className={commerce.collectionHeading} data-storefront-part="collection-heading"><div><p className={commerce.eyebrow}>The Christmas collection</p><h2>Make room for a little magic.</h2></div><p>A festive edit of decorations and gifts.<br/>Explore the details that make each piece yours.</p></div><Catalog products={products} storefront="christmas" unavailable={unavailable} ordering={!isCatalogOnly()}/></section>
     <Garland/>
     <section className={`${commerce.closing} ${commerce.christmasClosing}`} data-storefront-part="closing"><Snowfall/><p className={commerce.eyebrow}>Beyond December</p><h2>Good things, all year long.</h2><p>Healthcare gifts, handmade pieces and everyday objects from PostDuty.</p><Link href={`/store${designQuery}`}>Explore the PostDuty Store ↗</Link></section>
   </main>;
