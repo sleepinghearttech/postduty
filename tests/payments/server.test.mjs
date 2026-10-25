@@ -15,7 +15,7 @@ function server({payment,dbError=false,rpcError=false,testMode=true}={}) {
  const exports={};const module={exports};
  const imports={
    'server-only':{},'@/lib/supabase':{supabaseAdmin:admin},'@/lib/commerce-db':{commerceTable:n=>`preview_${n}`,isCommerceSandbox:()=>true},'@/lib/checkout-contract':contract,
-   '@/lib/notifications':{sendAdminWhatsAppAlert:async()=>notifications++,sendCustomerWhatsAppConfirmation:async()=>notifications++},'@/lib/email':{sendOrderEmails:async()=>notifications++}
+   '@/lib/notifications':{sendAdminWhatsAppAlert:async()=>notifications++,sendCustomerWhatsAppConfirmation:async()=>notifications++},'@/lib/email':{sendOrderEmails:async()=>notifications++},'@/lib/order-links':{myOrdersUrl:()=>null,orderStatusUrl:id=>`/order/${id}`}
  };
  const env={COMMERCE_SANDBOX:'true',RAZORPAY_KEY_ID:'rzp_test_fixture',RAZORPAY_KEY_SECRET:'fixture-secret',ORDER_NOTIFICATIONS_ENABLED:'true'};
  const provider=payment??{id:'pay_fixture',order_id:'order_fixture',amount:25000,currency:'INR',captured:true,status:'captured',amount_refunded:0};

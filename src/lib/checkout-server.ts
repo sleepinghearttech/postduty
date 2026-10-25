@@ -4,6 +4,7 @@ import { commerceTable, isCommerceSandbox } from "@/lib/commerce-db";
 import { CheckoutError, assertCapturedPayment, paymentConfiguration, type CheckoutCustomer } from "@/lib/checkout-contract";
 import { sendAdminWhatsAppAlert, sendCreatorWhatsAppAlerts, sendCustomerWhatsAppConfirmation, type CreatorAlertLine } from "@/lib/notifications";
 import { sendCreatorOrderEmails, sendOrderEmails, type CreatorRecipient } from "@/lib/email";
+import { myOrdersUrl, orderStatusUrl } from "@/lib/order-links";
 import type { Order, OrderLineSummary } from "@/lib/types";
 
 export async function razorpayRequest(path: string, init: RequestInit = {}) {
@@ -66,7 +67,7 @@ async function notifyNewOrder(orderId:string,testMode:boolean) {
       creatorRecipients = ((creatorRows ?? []) as (CreatorRecipient & {status?:string})[]).filter(c => c.status !== "suspended");
     } catch (err) { console.error("[Email] Creator lookup error; creator emails skipped:", err); }
   }
-  const results = await Promise.allSettled([sendAdminWhatsAppAlert(alertOrder),sendCreatorWhatsAppAlerts(order as Order,creatorLines),sendCreatorOrderEmails(order as Order,creatorLines,creatorRecipients),sendCustomerWhatsAppConfirmation(order as Order),sendOrderEmails(alertOrder)]);
+  const results = await Promise.allSettled([sendAdminWhatsAppAlert(alertOrder),sendCreatorWhatsAppAlerts(order as Order,creatorLines),sendCreatorOrderEmails(order as Order,creatorLines,creatorRecipients),sendCustomerWhatsAppConfirmation(order as Order),sendOrderEmails(alertOrder,{orderUrl:orderStatusUrl(orderId,(order as {storefront?:string|null}).storefront),myOrdersUrl:myOrdersUrl((order as Order).customer_email)})]);
   // Existing transports swallow provider errors; do not mislabel an attempt as delivery.
   await supabaseAdmin.from(commerceTable("payment_notification_jobs")).update({status:results.some(r => r.status === "rejected") ? "failed" : "attempted_unconfirmed"}).eq("order_id",orderId);
 }
