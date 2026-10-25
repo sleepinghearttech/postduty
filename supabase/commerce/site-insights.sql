@@ -31,4 +31,7 @@ create table if not exists public.preview_site_events (like public.site_events i
 alter table public.site_events enable row level security;
 alter table public.preview_site_events enable row level security;
 revoke all on public.site_events, public.preview_site_events from anon, authenticated;
-grant select, insert on public.site_events, public.preview_site_events to service_role;
+grant select, insert, delete on public.site_events, public.preview_site_events to service_role;
+-- Per-session flood guard and 180-day retention in /api/events.
+create index if not exists site_events_session_idx on public.site_events (session_id, created_at);
+create index if not exists preview_site_events_session_idx on public.preview_site_events (session_id, created_at);

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCart, cartUnitPrice, cartStock } from "@/components/CartContext";
 import type { Storefront } from "@/components/commerce/types";
 import { packPricing } from "@/lib/pack-pricing";
-import { storedAttribution, trackEvent } from "@/lib/attribution-client";
+import { sessionId, storedAttribution, trackEvent } from "@/lib/attribution-client";
 
 function formatPrice(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
@@ -221,7 +221,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
           couponCode: couponApplied?.code || undefined,
           isGift,
           giftMessage: isGift ? giftMessage : undefined,
-          attribution: storedAttribution(),
+          attribution: { ...storedAttribution(), session_id: sessionId() },
         }),
       });
 

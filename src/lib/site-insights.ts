@@ -5,7 +5,7 @@
 export const SITE_EVENTS = ["page_view", "product_view", "add_to_cart", "checkout_start"] as const;
 export type SiteEventName = typeof SITE_EVENTS[number];
 export type Device = "mobile" | "tablet" | "desktop";
-export type Attribution = { source: string; medium: string | null; campaign: string | null; referrer_host: string | null; landing_path: string | null; first_seen_at: string | null };
+export type Attribution = { source: string; medium: string | null; campaign: string | null; referrer_host: string | null; landing_path: string | null; first_seen_at: string | null; session_id: string | null };
 export type Place = { country: string | null; region: string | null; city: string | null };
 
 const OWN_HOSTS = /(^|\.)postduty\.in$|(^|\.)workers\.dev$/;
@@ -64,6 +64,8 @@ export function sanitizeAttribution(value: unknown): Attribution | null {
     referrer_host: host,
     landing_path: safePath(v.landing_path),
     first_seen_at: seen && Number.isFinite(Date.parse(seen)) ? new Date(seen).toISOString() : null,
+    // Links a paid order to the visit it came from, so the funnel's last step counts real journeys.
+    session_id: typeof v.session_id === "string" && /^[A-Za-z0-9_-]{8,40}$/.test(v.session_id) ? v.session_id : null,
   };
 }
 export function deviceClass(userAgent: string | null | undefined): Device {

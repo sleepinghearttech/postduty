@@ -68,9 +68,11 @@ test('audience summary builds funnel, hours (IST), sources and areas', () => {
     ev('checkout_start', 's1aaaaaa', '2026-10-25T14:03:00Z'),
     ev('page_view', 's2bbbbbb', '2026-10-25T03:00:00Z'),
   ];
-  const orders = [{ id: 'o1', created_at: '2026-10-25T14:05:00Z', total_amount: 30000, pincode: '560034', attribution: { source: 'instagram', device: 'mobile' } }];
+  const orders = [{ id: 'o1', created_at: '2026-10-25T14:05:00Z', total_amount: 30000, pincode: '560034', attribution: { source: 'instagram', device: 'mobile', session_id: 's1aaaaaa' } },
+    { id: 'o0', created_at: '2026-10-20T14:30:00Z', total_amount: 14900, pincode: '682001', attribution: null }];
   const s = summarizeAudience(events, orders);
-  assert.deepEqual(s.funnel, { visits: 2, productViews: 1, addToCart: 1, checkoutStarts: 1, paidOrders: 1 });
+  // The untracked older order counts in totals but not in the visit funnel.
+  assert.deepEqual(s.funnel, { visits: 2, productViews: 1, addToCart: 1, checkoutStarts: 1, paidOrders: 1, allPaidOrders: 2 });
   assert.equal(s.conversion.visitToPaid, 50);
   assert.equal(istHour('2026-10-25T14:05:00Z'), 19);
   assert.equal(s.hours[19].orders, 1);

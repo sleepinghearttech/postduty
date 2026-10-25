@@ -2,7 +2,7 @@ import { pinArea } from "../bengaluru-pins.ts";
 
 /** Pure aggregation for the Insights "Customers & traffic" view. Counts only; no personal data passes through. */
 export type AudienceEvent = { created_at: string; event: string; session_id: string; path: string; source: string | null; device: string | null; city: string | null; region: string | null; landing_path: string | null };
-export type AudienceOrder = { id: string; created_at: string; total_amount: number; pincode: string | null; attribution: { source?: string | null; device?: string | null; campaign?: string | null; city?: string | null } | null };
+export type AudienceOrder = { id: string; created_at: string; total_amount: number; pincode: string | null; attribution: { source?: string | null; device?: string | null; campaign?: string | null; city?: string | null; session_id?: string | null } | null };
 export type Row = { label: string; count: number; amount?: number };
 
 const IST = 19800000;
@@ -36,7 +36,9 @@ export function summarizeAudience(events: AudienceEvent[], orders: AudienceOrder
     productViews: reached("product_view"),
     addToCart: reached("add_to_cart"),
     checkoutStarts: reached("checkout_start"),
-    paidOrders: orders.length,
+    // Only orders traced to a tracked visit, so every step is the same population and rates stay ≤ 100%.
+    paidOrders: new Set(orders.flatMap(o => o.attribution?.session_id && sessions.has(o.attribution.session_id) ? [o.attribution.session_id] : [])).size,
+    allPaidOrders: orders.length,
   };
   const hours = Array.from({ length: 24 }, (_, h) => ({ hour: h, label: hourLabel(h), orders: 0, visits: 0 }));
   for (const o of orders) hours[istHour(o.created_at)].orders += 1;

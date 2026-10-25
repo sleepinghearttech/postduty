@@ -19,17 +19,19 @@ function Hours({ s, field }: { s: AudienceSummary; field: 'orders' | 'visits' })
 
 const pct = (v: number | null) => v === null ? '—' : `${v}%`;
 
-export default function AudiencePanel({ s, notes }: { s: AudienceSummary; notes: string[] }) {
+export default function AudiencePanel({ s, notes, testMode }: { s: AudienceSummary; notes: string[]; testMode: boolean }) {
   const f = s.funnel;
-  const steps: [string, number, number | null][] = [['Visits', f.visits, null], ['Viewed a product', f.productViews, s.conversion.visitToProduct], ['Added to cart', f.addToCart, s.conversion.productToCart], ['Started checkout', f.checkoutStarts, s.conversion.cartToCheckout], ['Paid orders', f.paidOrders, s.conversion.checkoutToPaid]];
+  const steps: [string, number, number | null][] = [['Visits', f.visits, null], ['Viewed a product', f.productViews, s.conversion.visitToProduct], ['Added to cart', f.addToCart, s.conversion.productToCart], ['Started checkout', f.checkoutStarts, s.conversion.cartToCheckout], ['Paid (from these visits)', f.paidOrders, s.conversion.checkoutToPaid]];
+  // Visit events are never test-mode, so rates against test orders would mislead.
+  const showRates = !testMode;
   return <section className="mt-8">
     <h2 className="mb-1 text-xl font-bold text-stone-900">Customers &amp; traffic</h2>
     <p className="mb-4 text-sm text-stone-600">Visits are counted without cookies, one per browser tab session. Tracking started 25 Oct 2026, so earlier dates show orders only. Times are India time.</p>
     {notes.map(n => <p key={n} className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">{n}</p>)}
     <div className="grid gap-5 lg:grid-cols-2">
       <Section title="Shopping funnel" detail="How many visits reached each step. Percentages are from the step before.">
-        <ol className="space-y-2 text-sm">{steps.map(([label, n, rate]) => <li key={label} className="flex justify-between gap-3 border-b border-stone-100 pb-2"><span>{label}</span><span><strong>{n}</strong>{rate !== null && <span className="ml-2 text-xs text-stone-500">{pct(rate)}</span>}</span></li>)}</ol>
-        <p className="mt-3 text-xs text-stone-500">Visit to paid order: {pct(s.conversion.visitToPaid)}</p>
+        <ol className="space-y-2 text-sm">{steps.map(([label, n, rate]) => <li key={label} className="flex justify-between gap-3 border-b border-stone-100 pb-2"><span>{label}</span><span><strong>{n}</strong>{showRates && rate !== null && <span className="ml-2 text-xs text-stone-500">{pct(rate)}</span>}</span></li>)}</ol>
+        <p className="mt-3 text-xs text-stone-500">{showRates ? `Visit to paid order: ${pct(s.conversion.visitToPaid)} · ` : 'Rates hidden in test mode: visits are live traffic. · '}All verified paid orders in these dates: {f.allPaidOrders}</p>
       </Section>
       <Section title="When orders are placed" detail={s.busiestOrderHour ? `Busiest hour so far: ${s.busiestOrderHour.label}.` : 'Paid orders by hour of day.'}>
         <Hours s={s} field="orders" />
@@ -39,7 +41,7 @@ export default function AudiencePanel({ s, notes }: { s: AudienceSummary; notes:
         <Bars rows={s.orderAreas} money />
         <div className="mt-4 border-t border-stone-100 pt-3"><p className="mb-2 text-xs font-semibold text-stone-500">By taluk</p><Bars rows={s.orderZones} money /></div>
       </Section>
-      <Section title="Where orders came from" detail="The first link or site that brought the buyer within 30 days. Count · order value.">
+      <Section title="Where orders came from" detail="The most recent tagged link or outside site that brought the buyer, within 30 days. Count · order value.">
         <Bars rows={s.orderSources} money />
         {s.orderCampaigns.length > 0 && <div className="mt-4 border-t border-stone-100 pt-3"><p className="mb-2 text-xs font-semibold text-stone-500">Campaigns</p><Bars rows={s.orderCampaigns} money /></div>}
         <div className="mt-4 border-t border-stone-100 pt-3"><p className="mb-2 text-xs font-semibold text-stone-500">Device used to order</p><Bars rows={s.orderDevices} money /></div>
