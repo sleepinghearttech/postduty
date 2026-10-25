@@ -11,6 +11,9 @@ export default function PrivacyPage() {
           <p>
             When you purchase something from our store, as part of the buying and selling process, we collect the personal information you give us, such as your name, email address, phone number, and shipping address. This information is necessary to verify payments, fulfill your order, and communicate shipping updates.
           </p>
+          <p className="mt-3">
+            To understand how people find and use the store, we record anonymous visit statistics without cookies: the pages viewed, items added to the cart, the website or tagged link that brought you here, your device type (phone, tablet or computer) and an approximate city based on your connection. A random code stored only in your browser tab groups one visit together. We do not store your IP address or link these statistics to your name, email or phone, and we do not use advertising trackers.
+          </p>
         </section>
 
         <section>

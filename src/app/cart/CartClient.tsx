@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCart, cartUnitPrice, cartStock } from "@/components/CartContext";
 import type { Storefront } from "@/components/commerce/types";
 import { packPricing } from "@/lib/pack-pricing";
+import { sessionId, storedAttribution, trackEvent } from "@/lib/attribution-client";
 
 function formatPrice(paise: number): string {
   return (paise / 100).toLocaleString("en-IN", {
@@ -200,6 +201,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
     setLoading(true);
     setError(null);
 
+    trackEvent("checkout_start", { storefront });
     try {
       // 1. Create Razorpay order on our server
       const orderRes = await fetch("/api/create-order", {
@@ -219,6 +221,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
           couponCode: couponApplied?.code || undefined,
           isGift,
           giftMessage: isGift ? giftMessage : undefined,
+          attribution: { ...storedAttribution(), session_id: sessionId() },
         }),
       });
 

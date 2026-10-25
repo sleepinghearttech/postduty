@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 import SiteShell from "@/components/SiteShell";
 import { CartProvider } from "@/components/CartContext";
+import SiteAnalytics from "@/components/SiteAnalytics";
 import { isCatalogOnly } from '@/lib/catalog-mode';
 
 const jakarta = Plus_Jakarta_Sans({
@@ -46,6 +47,7 @@ export default function RootLayout({
           {process.env.COMMERCE_SANDBOX === "true" && <div role="note" style={{background:"#243e32",color:"#fff7df",padding:"8px 16px",textAlign:"center",fontSize:12}}>Owner preview · fictional test products · no real orders or payments</div>}
           {isCatalogOnly() && <div role="note" style={{background:"#243e32",color:"#fff7df",padding:"8px 16px",textAlign:"center",fontSize:12}}>Explore the PostDuty collection · Ordering opens soon</div>}
           <SiteShell>{children}</SiteShell>
+          <SiteAnalytics />
         </CartProvider>
       </body>
     </html>
