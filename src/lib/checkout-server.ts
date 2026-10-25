@@ -53,7 +53,14 @@ async function notifyNewOrder(orderId:string,testMode:boolean) {
   const {data:order} = await supabaseAdmin.from(commerceTable("orders")).select("*").eq("id",orderId).single();
   if (!order) return;
   // Owner alerts list each line's option and personalisation; customer messages are unchanged.
-  const {data:lines} = await supabaseAdmin.from(commerceTable("order_items")).select("product_name,quantity,variant_id,variant_name,personalization,creator_id,combo_role").eq("order_id",orderId);
+  const priced = await supabaseAdmin.from(commerceTable("order_items")).select("product_name,quantity,variant_id,variant_name,personalization,creator_id,combo_role,unit_price,line_discount_amount").eq("order_id",orderId);
+  let lines = priced.data; const linesError = priced.error;
+  // A schema mismatch must never silently drop owner and creator alerts: retry with the original columns.
+  if (linesError) {
+    console.error("[Email] Order lines with prices unavailable; retrying without prices:", linesError.message);
+    const fallback = await supabaseAdmin.from(commerceTable("order_items")).select("product_name,quantity,variant_id,variant_name,personalization,creator_id,combo_role").eq("order_id",orderId);
+    lines = (fallback.data ?? []).map(line => ({...line,unit_price:null,line_discount_amount:null}));
+  }
   const alertOrder = {...(order as Order),order_items:(lines ?? []) as OrderLineSummary[]};
   // Creators make component lines, not the priced combo parent.
   const creatorLines = ((lines ?? []) as (CreatorAlertLine & {combo_role?: string|null})[]).filter(line => line.combo_role !== "combo");

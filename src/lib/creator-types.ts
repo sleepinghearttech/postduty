@@ -14,7 +14,9 @@ export type CreatorFulfillment = {
   id: string; creator_id: string; order_id: string; order_item_id: string;
   product_name: string; quantity: number; requirements: Record<string, unknown>;
   status: FulfillmentStatus; tracking_code: string | null; tracking_url: string | null;
-  shipping_address: Record<string, unknown>; creator_earning_paise?: number | null; earnings_review_required?: boolean; is_test?: boolean; created_at: string; updated_at: string;
+  shipping_address: Record<string, unknown>; delivery_method?: 'standard' | 'same_day'; variant_name?: string | null;
+  customer_paid_paise?: number | null; order_total_paise?: number | null; order_delivery_paise?: number | null; gift?: { message: string | null } | null;
+  creator_earning_paise?: number | null; earnings_review_required?: boolean; is_test?: boolean; created_at: string; updated_at: string;
 };
 export type CreatorSettlement = {
   id: string; creator_id: string; amount_paise: number; status: 'pending' | 'approved' | 'paid';
