@@ -67,6 +67,17 @@ export function parseAllowedPinPrefixes(value: string | undefined | null): strin
   if (!value || !value.trim()) return null;
   return value.split(",").map(p => p.trim()).filter(p => /^[1-9][0-9]{0,5}$/.test(p));
 }
+/** PIN code prefixes per GST state, for the delivery checker. Only states listed here can be pre-checked by PIN. */
+export const STATE_PIN_PREFIXES: Readonly<Record<string, readonly string[]>> = { "29": ["56","57","58","59"] };
+/** PIN prefixes the store serves: an explicit PIN limit wins; otherwise the served states' prefixes; null = everywhere / unknown. */
+export function servedPinPrefixes(allowedStates: Set<string> | null, pinPrefixes: string[] | null): string[] | null {
+  if (pinPrefixes) return pinPrefixes;
+  if (!allowedStates) return null;
+  const codes = [...allowedStates];
+  if (!codes.length) return [];
+  if (codes.some(code => !STATE_PIN_PREFIXES[code])) return null;
+  return codes.flatMap(code => [...STATE_PIN_PREFIXES[code]]);
+}
 export function assertShippingPin(pincode: string, prefixes: string[] | null): void {
   if (!prefixes) return;
   if (!prefixes.some(p => pincode.startsWith(p))) {

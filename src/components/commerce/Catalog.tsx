@@ -3,9 +3,10 @@ import { useMemo,useState,useEffect } from 'react';
 import Link from 'next/link';
 import { money,primaryImage,productHref,productMedia,productStock,productPrice,type Storefront,type StoreProduct } from './types';
 import { MediaCarousel } from './MediaCarousel';
+import { QuickAdd } from './QuickAdd';
 import styles from './commerce.module.css';
 
-export default function Catalog({products,storefront,unavailable=false}:{products:StoreProduct[];storefront:Storefront;unavailable?:boolean}) {
+export default function Catalog({products,storefront,unavailable=false,ordering=true}:{products:StoreProduct[];storefront:Storefront;unavailable?:boolean;ordering?:boolean}) {
   const [query,setQuery]=useState('');
   const [category,setCategory]=useState('All');
   const [collection,setCollection]=useState('All');
@@ -36,7 +37,7 @@ export default function Catalog({products,storefront,unavailable=false}:{product
     {unavailable?<div className={styles.empty}><h3>The collection is temporarily unavailable.</h3><p>Please refresh in a moment, or contact us if the problem continues.</p><Link href="/contact">Contact PostDuty →</Link></div>:visible.length===0?<div className={styles.empty}><span aria-hidden="true">✦</span><h3>{products.length?'No pieces match these filters.':'A collection worth waiting for.'}</h3><p>{products.length?'Try another search or browse the full collection.':'Our next collection will appear here when it is ready to order.'}</p>{products.length>0&&<button type="button" onClick={()=>{setQuery('');setCategory('All');setCollection('All');setAvailableOnly(false);setSavedOnly(false);}}>Clear filters</button>}</div>:<div className={styles.grid} data-storefront-part="product-grid">{visible.map(p=>{
       const variants=p.commerce?.variants??[];const minPrice=variants.length?Math.min(...variants.map(v=>v.price)):p.price;const photo=primaryImage(p);
       return <article key={p.id} className={styles.card}>
-        <div className={styles.productImage} data-storefront-part="product-image">{photo?<MediaCarousel media={productMedia(p)} videos={false} label={`${p.name} photos`} wrap={track=><Link href={productHref(p,storefront)} aria-label={p.name} style={{display:'block',width:'100%',height:'100%'}}>{track}</Link>}/>:<Link href={productHref(p,storefront)} aria-label={p.name}><span className={styles.photoPlaceholder}>Photo coming soon</span></Link>}{p.commerce?.featured&&<span className={styles.badge}>In the edit</span>}</div>
+        <div className={styles.productImage} data-storefront-part="product-image">{photo?<MediaCarousel media={productMedia(p)} videos={false} label={`${p.name} photos`} wrap={track=><Link href={productHref(p,storefront)} aria-label={p.name} style={{display:'block',width:'100%',height:'100%'}}>{track}</Link>}/>:<Link href={productHref(p,storefront)} aria-label={p.name}><span className={styles.photoPlaceholder}>Photo coming soon</span></Link>}{p.commerce?.featured&&<span className={styles.badge}>In the edit</span>}<QuickAdd product={p} storefront={storefront} ordering={ordering}/></div>
         <button className={styles.favorite} data-storefront-part="favorite" type="button" disabled={!favoriteReady} aria-pressed={favorites.includes(p.id)} aria-label={`${favorites.includes(p.id)?'Remove':'Save'} ${p.name}${favorites.includes(p.id)?' from':' to'} favorites`} onClick={()=>toggleFavorite(p.id)}>{favorites.includes(p.id)?'♥':'♡'}</button>
         <div className={styles.cardMeta} data-storefront-part="product-meta"><p>{p.commerce?.category||'PostDuty collection'}</p><h3><Link href={productHref(p,storefront)}>{p.name}</Link></h3><div className={styles.priceRow}><span>{variants.length>1&&new Set(variants.map(v=>v.price)).size>1?'From ':''}{money(minPrice)}</span><span className={styles.stock} data-storefront-part="stock-label">{productStock(p)>0?(p.commerce?.made_to_order?'Made to order':'Available'):'Out of stock'}</span></div></div>
       </article>;
