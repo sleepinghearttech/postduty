@@ -463,7 +463,7 @@ export function creatorOrderEmail(order: Order, lines: CreatorEmailLine[], creat
     const text = typeof line.personalization?.text === "string" ? line.personalization.text.trim() : "";
     const unit = typeof line.unit_price === "number" ? line.unit_price : null;
     const paid = unit === null ? null : unit * line.quantity - Math.max(0, line.line_discount_amount ?? 0);
-    const price = unit === null ? "" : ` · customer pays ${rupees(paid!)}${line.quantity > 1 ? ` (${rupees(unit)} each${line.line_discount_amount ? ", after pack/discount" : ""})` : line.line_discount_amount ? " after pack/discount" : ""}`;
+    const price = unit === null ? "" : ` · ${(order.discount_amount ?? 0) > 0 ? "item price before coupon" : "customer pays"} ${rupees(paid!)}${line.quantity > 1 ? ` (${rupees(unit)} each${line.line_discount_amount ? ", after pack/discount" : ""})` : line.line_discount_amount ? " after pack/discount" : ""}`;
     return `<li style="margin-bottom:6px;">${escapeHtml(line.product_name?.trim() || "Product")}${line.variant_name ? ` (${escapeHtml(line.variant_name)})` : ""} × ${line.quantity}${price}${text ? `<br><span style="color:#6b7280;">Personalisation: ${escapeHtml(text)}</span>` : ""}</li>`;
   }).join("");
   const name = escapeHtml(creator.display_name?.trim() || "there");
@@ -484,7 +484,12 @@ export function creatorOrderEmail(order: Order, lines: CreatorEmailLine[], creat
         ${mapUrl ? `<p style="margin:6px 0 0;"><a href="${escapeHtml(mapUrl)}" style="color:#1f6f68;">Open in Google Maps</a></p>` : ""}
         ${gift}
       </div>`;
-  const totals = typeof order.total_amount !== "number" ? "" : `<p style="margin:0;">Whole order paid by the customer: <strong>${rupees(order.total_amount)}</strong>${(order.shipping_amount ?? 0) > 0 ? ` (includes ${rupees(order.shipping_amount!)} delivery)` : " (free delivery)"}. Payment is already received online — do not collect money on delivery.</p>`;
+  // The whole-order total is shown only when every made line is this creator's; otherwise it would reveal other creators' sales.
+  const soleCreator = lines.filter(line => (line as { combo_role?: string | null }).combo_role !== "combo").every(line => line.creator_id?.toLowerCase() === creator.id.toLowerCase());
+  const ownTotal = own.every(line => typeof line.unit_price === "number") ? own.reduce((sum, line) => sum + line.unit_price! * line.quantity - Math.max(0, line.line_discount_amount ?? 0), 0) : null;
+  const totals = !soleCreator || typeof order.total_amount !== "number"
+    ? (ownTotal === null ? "" : `<p style="margin:0;">Your items in this order: <strong>${rupees(ownTotal)}</strong>${(order.discount_amount ?? 0) > 0 ? " before the customer's coupon" : ""}. Payment is already received online — do not collect money on delivery.</p>`)
+    : `<p style="margin:0;">Whole order paid by the customer: <strong>${rupees(order.total_amount)}</strong>${(order.shipping_amount ?? 0) > 0 ? ` (includes ${rupees(order.shipping_amount!)} delivery)` : " (free delivery)"}. Payment is already received online — do not collect money on delivery.</p>`;
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16302d;max-width:600px;margin:0 auto;border:1px solid #e2ecea;padding:20px;border-radius:10px;">
       <h2 style="color:#1f6f68;margin-top:0;">New PostDuty order for you 🧶</h2>

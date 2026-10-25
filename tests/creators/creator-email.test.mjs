@@ -44,3 +44,10 @@ test('creator email carries delivery contact, address, map link and customer pri
   const pack = creatorOrderEmail(full, [{ creator_id: raj.id, product_name: 'Clip', quantity: 4, unit_price: 10000, line_discount_amount: 10000 }], raj, studio);
   assert.match(pack.html, /customer pays ₹300 \(₹100 each, after pack\/discount\)/);
 });
+test('mixed-creator orders show only the creator\'s own items total, never the whole order', () => {
+  const mixed = { id: '20000000-0000-4000-8000-000000000003', customer_name: 'Asha', total_amount: 99900, shipping_amount: 0, discount_amount: 0, shipping_details: { delivery_method: 'standard' } };
+  const mail = creatorOrderEmail(mixed, [{ creator_id: raj.id, product_name: 'Clip', quantity: 1, unit_price: 10000 }, { creator_id: other, product_name: 'Other piece', quantity: 1, unit_price: 89900 }], raj, studio);
+  assert.match(mail.html, /Your items in this order: <strong>₹100<\/strong>/);
+  assert.doesNotMatch(mail.html, /₹999/);
+  assert.doesNotMatch(mail.html, /Other piece/);
+});
