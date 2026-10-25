@@ -1,6 +1,7 @@
 'use client';
 import React,{createContext,useContext,useState,useEffect} from 'react';
 import type {StoreProduct,Storefront} from '@/components/commerce/types';
+import {trackEvent} from '@/lib/attribution-client';
 export type CartSelection={variantId?:string;personalization?:string;storefront?:Storefront};
 export type CartItem={product:StoreProduct;quantity:number;lineId:string;storefront:Storefront;variantId?:string;personalization?:string};
 export function cartUnitPrice(item:CartItem){return item.product.commerce?.variants?.find(v=>v.id===item.variantId)?.price??item.product.price;}
@@ -14,6 +15,7 @@ export function CartProvider({children}:{children:React.ReactNode}){
   useEffect(()=>{if(hydrated){try{localStorage.setItem('postduty_cart',JSON.stringify(cart));}catch{}}},[cart,hydrated]);
   function addToCart(product:StoreProduct,quantity=1,options:CartSelection={}){
     const storefront=options.storefront??'general';const lineId=keyFor(product.id,{...options,storefront});const stock=product.commerce?.variants?.find(v=>v.id===options.variantId)?.stock??product.stock;if(stock<1)return;
+    trackEvent('add_to_cart',{product_id:product.id,storefront});
     setCart(prev=>{const existing=prev.find(i=>i.lineId===lineId);return existing?prev.map(i=>i.lineId===lineId?{...i,product,quantity:Math.min(i.quantity+quantity,stock)}:i):[...prev,{product,quantity:Math.min(quantity,stock),lineId,storefront,variantId:options.variantId,personalization:options.personalization}];});
   }
   function removeFromCart(lineId:string){setCart(prev=>prev.filter(item=>item.lineId!==lineId));}
