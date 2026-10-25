@@ -28,7 +28,8 @@ function ownerItemsHtml(order: OrderWithLines): string {
  * Under the sandbox domain, Resend will only deliver emails to the account owner
  * (the email address used to register the Resend account).
  */
-export async function sendOrderEmails(order: OrderWithLines): Promise<void> {
+/** links: the customer's order-status and signed all-orders URLs, built by the caller (this transport stays dependency-free). */
+export async function sendOrderEmails(order: OrderWithLines, links: { orderUrl?: string; myOrdersUrl?: string | null } = {}): Promise<void> {
   if (order.is_test === true || order.payment_mode === "test") return;
   const enabled = process.env.COMMERCE_SANDBOX !== "true" && process.env.ORDER_NOTIFICATIONS_ENABLED === "true";
   if (!enabled) {
@@ -89,6 +90,8 @@ ${ownerItemsHtml(order)}
   };
 
   // 2. Customer email details
+  const myOrdersLink = links.myOrdersUrl ?? null;
+  const orderLink = links.orderUrl ?? "https://store.postduty.in/orders";
   const customerEmailPayload = {
     from: fromEmail,
     to: [order.customer_email],
@@ -111,6 +114,11 @@ ${ownerItemsHtml(order)}
           <p style="margin: 5px 0;"><strong>Amount Paid:</strong> ₹${amountInRupees}</p>
         </div>
         
+        <p style="text-align: center; margin: 24px 0;">
+          <a href="${orderLink}" style="display: inline-block; background-color: #1f6f68; color: #fff; padding: 11px 20px; border-radius: 999px; text-decoration: none; font-weight: bold;">Track this order</a>
+        </p>
+        ${myOrdersLink ? `<p style="text-align: center; margin: 0 0 20px;"><a href="${myOrdersLink}" style="color: #1f6f68;">See all my orders</a><br><span style="font-size: 12px; color: #6b7280;">A private link to every order placed with this email. Please don't share it.</span></p>` : ""}
+        <p style="font-size: 13px; color: #6b7280;">To view an order you'll be asked for the phone number used at checkout.</p>
         <p>Once your order ships, we'll send you another update with your courier tracking details so you can follow its journey.</p>
         
         <p>If you have any questions or need to make changes to your shipping details, feel free to reply to this email or reach out to us at <a href="mailto:postdutyswag@gmail.com">postdutyswag@gmail.com</a>.</p>
