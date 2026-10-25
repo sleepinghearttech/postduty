@@ -593,6 +593,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
             >
               {loading ? "Processing..." : pendingPayment ? "Payment confirmation pending" : `Continue to payment · ${formatPrice(finalTotal)}`}
             </button>
+            {pinBlocked && <p className="text-xs text-red-700 text-center">Check the PIN code above: we can&apos;t deliver to this address yet.</p>}
           </form>
         </div>
       </div>
