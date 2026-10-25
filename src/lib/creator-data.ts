@@ -13,7 +13,8 @@ export async function creatorFulfillment(creatorId?: string): Promise<CreatorFul
   const orderIds = [...new Set(items.map(item => item.order_id))];
   // Only query shipping details for this creator's assigned items, after identity verification.
   const { data: orders, error: orderError } = await supabaseAdmin.from(commerceTable('orders'))
-    .select('id,status,customer_name,customer_phone,shipping_address,is_test').in('id', orderIds)
+    // '*' tolerates older schemas without shipping_details/shipping_amount; only the fields mapped below leave the server.
+    .select('*').in('id', orderIds)
     .in('status', ['paid', 'shipped', 'delivered']).not('razorpay_payment_id', 'is', null);
   if (orderError) throw new Error('Orders unavailable');
   const orderMap = new Map((orders ?? []).map(order => [order.id, order]));
@@ -29,6 +30,12 @@ export async function creatorFulfillment(creatorId?: string): Promise<CreatorFul
       status: (item.fulfillment_status === 'awaiting_acceptance' ? 'assigned' : item.fulfillment_status) as FulfillmentStatus,
       tracking_code: item.tracking_number || null, tracking_url: item.tracking_url || null,
       shipping_address: { name: order.customer_name, phone: order.customer_phone, address: order.shipping_address },
+      delivery_method: order.shipping_details?.delivery_method === 'same_day' ? 'same_day' : 'standard',
+      variant_name: item.variant_name || null,
+      customer_paid_paise: typeof item.unit_price === 'number' ? item.unit_price * item.quantity - Math.max(0, item.line_discount_amount ?? 0) : null,
+      order_total_paise: typeof order.total_amount === 'number' ? order.total_amount : null,
+      order_delivery_paise: typeof order.shipping_amount === 'number' ? order.shipping_amount : null,
+      gift: order.is_gift ? { message: order.gift_message || null } : null,
       creator_earning_paise: item.earnings_creator_id === item.creator_id && item.earnings_review_required === false ? item.creator_earning_paise ?? null : null,
       earnings_review_required: item.earnings_review_required !== false || item.earnings_creator_id !== item.creator_id, is_test: order.is_test === true,
       created_at: item.created_at, updated_at: item.updated_at || item.created_at,

@@ -28,7 +28,7 @@ export async function requireCreator(request: NextRequest): Promise<Creator | nu
 }
 
 export function creatorDenied() {
-  return NextResponse.json({ error: 'An active invited creator account is required.' }, { status: 403 });
+  return NextResponse.json({ error: 'This Google account is not an active PostDuty creator yet. If you were invited, open the invitation link the owner sent you (it starts with store.postduty.in/creator#invite=) and sign in with the invited Google email.' }, { status: 403 });
 }
 
 export async function creatorAudit(actorId: string, action: string, entityType: string, entityId: string, details: Record<string, unknown> = {}) {

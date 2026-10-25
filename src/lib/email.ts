@@ -6,6 +6,7 @@ function senderAddress(): string {
   const from = process.env.RESEND_FROM?.trim();
   return from && /^[^<>\r\n]{1,60}<[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}>$/i.test(from) ? from : "PostDuty <onboarding@resend.dev>";
 }
+const rupees = (paise: number) => `₹${(paise / 100).toFixed(paise % 100 ? 2 : 0)}`;
 const escapeHtml =(value: string) => value.replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch] as string);
 /** Owner email only: each line's option and personalisation (customer-entered text is escaped). */
 function ownerItemsHtml(order: OrderWithLines): string {
@@ -449,7 +450,7 @@ export async function sendWinBackEmail(order: Order, couponCode: string): Promis
   }
 }
 
-export type CreatorEmailLine = { creator_id: string | null; product_name: string | null; quantity: number; variant_name?: string | null; personalization?: { text?: unknown } | null };
+export type CreatorEmailLine = { creator_id: string | null; product_name: string | null; quantity: number; variant_name?: string | null; personalization?: { text?: unknown } | null; unit_price?: number | null; line_discount_amount?: number | null };
 export type CreatorRecipient = { id: string; email: string; display_name?: string | null };
 
 /** One email per creator listing only their own lines; all customer-entered text is escaped. */
@@ -460,18 +461,41 @@ export function creatorOrderEmail(order: Order, lines: CreatorEmailLine[], creat
   const units = own.reduce((sum, line) => sum + line.quantity, 0);
   const rows = own.map(line => {
     const text = typeof line.personalization?.text === "string" ? line.personalization.text.trim() : "";
-    return `<li style="margin-bottom:6px;">${escapeHtml(line.product_name?.trim() || "Product")}${line.variant_name ? ` (${escapeHtml(line.variant_name)})` : ""} × ${line.quantity}${text ? `<br><span style="color:#6b7280;">Personalisation: ${escapeHtml(text)}</span>` : ""}</li>`;
+    const unit = typeof line.unit_price === "number" ? line.unit_price : null;
+    const paid = unit === null ? null : unit * line.quantity - Math.max(0, line.line_discount_amount ?? 0);
+    const price = unit === null ? "" : ` · customer pays ${rupees(paid!)}${line.quantity > 1 ? ` (${rupees(unit)} each${line.line_discount_amount ? ", after pack/discount" : ""})` : line.line_discount_amount ? " after pack/discount" : ""}`;
+    return `<li style="margin-bottom:6px;">${escapeHtml(line.product_name?.trim() || "Product")}${line.variant_name ? ` (${escapeHtml(line.variant_name)})` : ""} × ${line.quantity}${price}${text ? `<br><span style="color:#6b7280;">Personalisation: ${escapeHtml(text)}</span>` : ""}</li>`;
   }).join("");
   const name = escapeHtml(creator.display_name?.trim() || "there");
+  // The creator delivers, so she gets the delivery contact and address for this order only.
+  const ship = (order.shipping_details ?? {}) as { address_line1?: unknown; address_line2?: unknown; city?: unknown; state?: unknown; pincode?: unknown };
+  const str = (v: unknown) => typeof v === "string" ? v.trim() : "";
+  const addressLines = [str(ship.address_line1), str(ship.address_line2), [str(ship.city), str(ship.state)].filter(Boolean).join(", "), str(ship.pincode)].filter(Boolean);
+  const address = addressLines.length ? addressLines : [str((order as { shipping_address?: unknown }).shipping_address)].filter(Boolean);
+  const phone = str(order.customer_phone);
+  const mapUrl = address.length ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address.join(", "))}` : null;
+  const gift = order.is_gift ? `<p style="margin:6px 0 0;"><strong>Gift order.</strong>${order.gift_message ? ` Message to include: “${escapeHtml(order.gift_message)}”` : ""} Do not include a price tag.</p>` : "";
+  const delivery = `
+      <div style="border:1px solid #e2ecea;border-radius:8px;padding:12px;margin:12px 0;">
+        <p style="margin:0 0 6px;font-weight:bold;">Deliver to</p>
+        <p style="margin:0;">${escapeHtml(str(order.customer_name) || "Customer")}</p>
+        ${phone ? `<p style="margin:0;"><a href="tel:${escapeHtml(phone.replace(/[^\d+]/g, ""))}" style="color:#1f6f68;">${escapeHtml(phone)}</a></p>` : ""}
+        ${address.map(l => `<p style="margin:0;">${escapeHtml(l)}</p>`).join("")}
+        ${mapUrl ? `<p style="margin:6px 0 0;"><a href="${escapeHtml(mapUrl)}" style="color:#1f6f68;">Open in Google Maps</a></p>` : ""}
+        ${gift}
+      </div>`;
+  const totals = typeof order.total_amount !== "number" ? "" : `<p style="margin:0;">Whole order paid by the customer: <strong>${rupees(order.total_amount)}</strong>${(order.shipping_amount ?? 0) > 0 ? ` (includes ${rupees(order.shipping_amount!)} delivery)` : " (free delivery)"}. Payment is already received online — do not collect money on delivery.</p>`;
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#16302d;max-width:600px;margin:0 auto;border:1px solid #e2ecea;padding:20px;border-radius:10px;">
       <h2 style="color:#1f6f68;margin-top:0;">New PostDuty order for you 🧶</h2>
       <p>Hi ${name}, a customer has ordered ${units} of your piece${units === 1 ? "" : "s"}:</p>
       <ul style="padding-left:18px;">${rows}</ul>
-      <p style="background:${sameDay ? "#fff4e5" : "#f5fafa"};padding:10px 12px;border-radius:6px;"><strong>${sameDay ? "SAME-DAY delivery (Bengaluru)" : "Standard delivery"}</strong>: please have it ready ${sameDay ? "today" : "within 3 working days"}.</p>
+      ${totals}
+      <p style="background:${sameDay ? "#fff4e5" : "#f5fafa"};padding:10px 12px;border-radius:6px;"><strong>${sameDay ? "SAME-DAY delivery (Bengaluru)" : "Standard delivery"}</strong>: please deliver ${sameDay ? "today" : "within 3 working days"}.</p>
+      ${delivery}
       <p>Order reference: <code>${escapeHtml(order.id.slice(0, 8))}</code></p>
       <p><a href="${studioUrl}" style="display:inline-block;background:#1f6f68;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;">Open your Creator studio</a></p>
-      <p style="font-size:12px;color:#6b7280;">PostDuty will arrange pickup and delivery. Reply to this email if anything is unclear.</p>
+      <p style="font-size:12px;color:#6b7280;">In the Creator studio, accept the order, mark it ready, then record the dispatch once it is on its way. Use the customer's details only for this delivery. Reply to this email if anything is unclear.</p>
     </div>`;
   return { subject: `${sameDay ? "SAME-DAY · " : ""}New PostDuty order: ${units} piece${units === 1 ? "" : "s"} to make`, html };
 }
