@@ -30,12 +30,12 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 type PaymentResponse = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
-export type CartConfig = { states: { code: string; name: string }[]; allStatesServed: boolean; pinPrefixes?: string[] | null; deliveryAreaLabel?: string | null; sameDayPrefixes?: string[] | null; sameDayShipping?: number; singleItemShipping: number; gstRegistered: boolean };
+export type CartConfig = { states: { code: string; name: string }[]; allStatesServed: boolean; pinPrefixes?: string[] | null; deliveryAreaLabel?: string | null; sameDayPrefixes?: string[] | null; sameDayShipping?: number; servedPrefixes?: string[] | null; servedLabel?: string; statePinPrefixes?: Record<string, readonly string[]>; singleItemShipping: number; gstRegistered: boolean };
 
 const inputClass = "w-full border border-stone-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand";
 const labelClass = "block text-xs font-semibold text-stone-500 uppercase mb-1";
 
-export default function CartClient({ states, allStatesServed, pinPrefixes = null, deliveryAreaLabel = null, sameDayPrefixes = null, sameDayShipping = 9900, singleItemShipping, gstRegistered }: CartConfig) {
+export default function CartClient({ states, allStatesServed, pinPrefixes = null, deliveryAreaLabel = null, sameDayPrefixes = null, sameDayShipping = 9900, servedPrefixes = null, servedLabel = "our delivery area", statePinPrefixes = {}, singleItemShipping, gstRegistered }: CartConfig) {
   const router = useRouter();
   const { cart: allItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const searchParams = useSearchParams();
@@ -66,6 +66,12 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
   const [acceptTerms, setAcceptTerms] = useState(false);
   const sameDayPinOk = !form.pincode || /^\d{6}$/.test(form.pincode) === false || Boolean(sameDayPrefixes?.some(p => form.pincode.startsWith(p)));
   const effectiveDelivery = deliveryMethod === "same_day" && !sameDayPinOk ? "standard" : deliveryMethod;
+  // Live serviceability: a complete PIN outside the served area (or outside the chosen state) blocks payment before it starts.
+  const pinComplete = /^[1-9]\d{5}$/.test(form.pincode);
+  const statePrefixes = form.stateCode ? statePinPrefixes?.[form.stateCode] ?? null : null;
+  const pinServed = !pinComplete || !servedPrefixes || servedPrefixes.some(p => form.pincode.startsWith(p));
+  const pinMatchesState = !pinComplete || !statePrefixes || statePrefixes.some(p => form.pincode.startsWith(p));
+  const pinBlocked = pinComplete && (!pinServed || !pinMatchesState);
   // Mirrors the server rule; the server recalculates every amount before payment.
   const shippingCharge = effectiveDelivery === "same_day" ? sameDayShipping : pack.packs > 0 ? 0 : singleItemShipping;
 
@@ -424,7 +430,12 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
               </div>
               <div>
                 <label htmlFor="checkout-pincode" className={labelClass}>PIN Code</label>
-                <input id="checkout-pincode" name="pincode" autoComplete="postal-code" inputMode="numeric" required pattern="[1-9][0-9]{5}" maxLength={6} title="6-digit PIN code" placeholder="6 digits" value={form.pincode} onChange={handleChange} className={inputClass} />
+                <input id="checkout-pincode" name="pincode" autoComplete="postal-code" inputMode="numeric" required pattern="[1-9][0-9]{5}" maxLength={6} title="6-digit PIN code" placeholder="6 digits" value={form.pincode} onChange={handleChange} className={inputClass} aria-describedby="checkout-pincode-status" aria-invalid={pinBlocked || undefined} />
+                <p id="checkout-pincode-status" role="status" aria-live="polite" className="mt-1 text-[11px] leading-snug">
+                  {pinComplete && !pinServed && <span className="text-red-700">Sorry, we don&apos;t deliver to {form.pincode} yet. We currently deliver within {servedLabel}.</span>}
+                  {pinComplete && pinServed && !pinMatchesState && <span className="text-red-700">PIN {form.pincode} isn&apos;t in the state you selected. Please check the PIN or state.</span>}
+                  {pinComplete && !pinBlocked && <span className="text-green-700">✓ We deliver to {form.pincode}{sameDayPrefixes?.some(p => form.pincode.startsWith(p)) ? ", and same-day delivery is available" : ""}.</span>}
+                </p>
               </div>
             </div>
             <div>
@@ -577,7 +588,7 @@ export default function CartClient({ states, allStatesServed, pinPrefixes = null
 
             <button
               type="submit"
-              disabled={loading || !!pendingPayment || states.length === 0}
+              disabled={loading || !!pendingPayment || states.length === 0 || pinBlocked}
               className="btn-premium w-full justify-center disabled:opacity-60 mt-4"
             >
               {loading ? "Processing..." : pendingPayment ? "Payment confirmation pending" : `Continue to payment · ${formatPrice(finalTotal)}`}

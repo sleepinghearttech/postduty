@@ -221,6 +221,9 @@ export function assertCheckoutReady(request: CheckoutRequest, allowed: Set<strin
   if (!request.customer?.state_code || !request.customer.pincode) throw new CheckoutError("Enter your full delivery address, including state and PIN code.");
   assertShippingState(request.customer.state_code,allowed);
   assertShippingPin(request.customer.pincode,pinPrefixes);
+  // A PIN must belong to the chosen state where we know that state's PIN range (prevents "Karnataka" + an out-of-state PIN).
+  const statePrefixes = STATE_PIN_PREFIXES[request.customer.state_code];
+  if (statePrefixes && !statePrefixes.some(p => request.customer!.pincode!.startsWith(p))) throw new CheckoutError(`PIN code ${request.customer.pincode} is not in ${stateName(request.customer.state_code)}. Please check the PIN code or state. No payment has been taken.`,422);
   const method: DeliveryMethod = request.deliveryMethod ?? "standard";
   if (method === "same_day" && !(sameDayPrefixes?.length && sameDayPrefixes.some(p => request.customer!.pincode!.startsWith(p)))) {
     throw new CheckoutError(sameDayPrefixes?.length ? `Same-day delivery is available only for PIN codes starting with ${sameDayPrefixes.join(", ")}. Choose standard delivery instead.` : "Same-day delivery is not available right now. Choose standard delivery instead.", 422);

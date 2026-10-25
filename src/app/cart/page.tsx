@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { gstRegistered, parseAllowedPinPrefixes, parseAllowedStates, SAME_DAY_SHIPPING_PAISE, servedStates, SINGLE_ITEM_SHIPPING_PAISE } from "@/lib/checkout-contract";
+import { gstRegistered, parseAllowedPinPrefixes, parseAllowedStates, SAME_DAY_SHIPPING_PAISE, servedPinPrefixes, servedStates, SINGLE_ITEM_SHIPPING_PAISE, STATE_PIN_PREFIXES } from "@/lib/checkout-contract";
 import CartClient from "./CartClient";
 
 // Delivery and tax display read runtime configuration on every request.
@@ -16,6 +16,9 @@ export default function CartPage() {
         deliveryAreaLabel={process.env.DELIVERY_AREA_LABEL?.trim() || null}
         sameDayPrefixes={parseAllowedPinPrefixes(process.env.SAME_DAY_PIN_PREFIXES)}
         sameDayShipping={SAME_DAY_SHIPPING_PAISE}
+        servedPrefixes={servedPinPrefixes(allowed,parseAllowedPinPrefixes(process.env.ALLOWED_PIN_PREFIXES))}
+        servedLabel={allowed ? servedStates(allowed).map(s => s.name).join(", ") || "selected areas" : "India"}
+        statePinPrefixes={STATE_PIN_PREFIXES}
         singleItemShipping={SINGLE_ITEM_SHIPPING_PAISE}
         gstRegistered={gstRegistered(process.env)}
       />

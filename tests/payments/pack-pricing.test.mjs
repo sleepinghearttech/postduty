@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { packPricing, validPackRule } from '../../src/lib/pack-pricing.ts';
-import { buildCheckoutSnapshot, parseCheckoutRequest, shippingChargeFor } from '../../src/lib/checkout-contract.ts';
+import { assertCheckoutReady, buildCheckoutSnapshot, parseAllowedStates, parseCheckoutRequest, servedPinPrefixes, shippingChargeFor } from '../../src/lib/checkout-contract.ts';
 import { validateCommerce } from '../../src/lib/product-validation.ts';
 
 const rule = { group: 'crochet-clips', size: 4, price: 30000 };
@@ -10,6 +10,15 @@ const clip = id => ({ id, name: `Clip ${id.slice(-1)}`, price: 10000, stock: 10,
 const other = { id: '10000000-0000-4000-8000-000000000009', name: 'Other item', price: 50000, stock: 10, is_active: true, commerce: { storefronts: ['general'] } };
 const address = { customerName: 'Test Buyer', customerEmail: 'b@example.invalid', customerPhone: '9876543210', addressLine1: '1 Fictional Street', city: 'Testpur', stateCode: '29', pincode: '560001', acceptTerms: true };
 const snap = (items, products) => buildCheckoutSnapshot(parseCheckoutRequest({ items, storefront: 'general', ...address }), products, null);
+
+test('checkout rejects a PIN outside the chosen state; served-PIN helper follows the served states', () => {
+  const req = over => parseCheckoutRequest({ items: [{ productId: ids[0], quantity: 1 }], storefront: 'general', ...address, ...over });
+  assert.throws(() => assertCheckoutReady(req({ pincode: '682001' }), parseAllowedStates('29')), /682001 is not in Karnataka/);
+  assert.equal(assertCheckoutReady(req({ pincode: '575001' }), parseAllowedStates('29')).pincode, '575001');
+  assert.deepEqual(servedPinPrefixes(parseAllowedStates('29'), null), ['56', '57', '58', '59']);
+  assert.equal(servedPinPrefixes(null, null), null);
+  assert.deepEqual(servedPinPrefixes(parseAllowedStates('29'), ['560']), ['560']);
+});
 
 test('owner product saves keep a valid pack rule and reject a malformed one', () => {
   assert.deepEqual(validateCommerce({ pack: rule }).pack, rule);
