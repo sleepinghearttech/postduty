@@ -12,6 +12,8 @@ test('my-orders links are signed per email, case-insensitive, and reject tamperi
   assert.equal(verifyOrdersToken('other@example.invalid', token, env), false);
   assert.equal(verifyOrdersToken('buyer@example.invalid', token.slice(0, -1) + (token.endsWith('A') ? 'B' : 'A'), env), false);
   assert.equal(verifyOrdersToken('buyer@example.invalid', '', env), false);
+  assert.equal(verifyOrdersToken('buyer@example.invalid', 'é'.repeat(token.length), env), false);
+  assert.equal(myOrdersUrl(null, env), null);
   assert.equal(verifyOrdersToken('buyer@example.invalid', token, { ORDER_LINKS_SECRET: 'a-different-secret-9876543210' }), false);
 });
 

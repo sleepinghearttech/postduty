@@ -118,7 +118,7 @@ ${ownerItemsHtml(order)}
           <a href="${orderLink}" style="display: inline-block; background-color: #1f6f68; color: #fff; padding: 11px 20px; border-radius: 999px; text-decoration: none; font-weight: bold;">Track this order</a>
         </p>
         ${myOrdersLink ? `<p style="text-align: center; margin: 0 0 20px;"><a href="${myOrdersLink}" style="color: #1f6f68;">See all my orders</a><br><span style="font-size: 12px; color: #6b7280;">A private link to every order placed with this email. Please don't share it.</span></p>` : ""}
-        <p style="font-size: 13px; color: #6b7280;">To view an order you'll be asked for the phone number used at checkout.</p>
+        <p style="font-size: 13px; color: #6b7280;">Keep these links private: they open your order details without a password.</p>
         <p>Once your order ships, we'll send you another update with your courier tracking details so you can follow its journey.</p>
         
         <p>If you have any questions or need to make changes to your shipping details, feel free to reply to this email or reach out to us at <a href="mailto:postdutyswag@gmail.com">postdutyswag@gmail.com</a>.</p>

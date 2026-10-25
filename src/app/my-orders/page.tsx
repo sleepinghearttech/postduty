@@ -5,7 +5,7 @@ import { commerceTable } from "@/lib/commerce-db";
 import { normalizeOrderEmail, verifyOrdersToken } from "@/lib/order-links";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "My orders — PostDuty", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "My orders — PostDuty", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 type Props = { searchParams: Promise<{ e?: string; t?: string }> };
 type OrderRow = { id: string; created_at: string; total_amount: number; status: string; tracking_number: string | null; storefront: string | null };
@@ -24,7 +24,7 @@ export default async function MyOrdersPage({ searchParams }: Props) {
 
   const { data: orders, error } = await supabaseAdmin.from(commerceTable("orders")).select("id,created_at,total_amount,status,tracking_number,storefront")
     // Checkout stores emails lower-cased, so an exact match is safe (ilike would treat % and _ as wildcards).
-    .eq("customer_email", email).neq("payment_mode", "test").in("status", Object.keys(STATUS)).order("created_at", { ascending: false }).limit(50);
+    .eq("customer_email", email).eq("is_test", false).or("payment_mode.is.null,payment_mode.neq.test").in("status", Object.keys(STATUS)).order("created_at", { ascending: false }).limit(50);
   if (error) return <Shell><p className="text-sm text-stone-600">Your orders could not be loaded right now. Please try again in a moment.</p></Shell>;
   const list = (orders ?? []) as OrderRow[];
   const { data: lines } = list.length ? await supabaseAdmin.from(commerceTable("order_items")).select("order_id,product_name,quantity,combo_role,fulfillment_status,tracking_number,tracking_url").in("order_id", list.map(o => o.id)) : { data: [] };
